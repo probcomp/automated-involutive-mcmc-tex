@@ -23,6 +23,10 @@
 % If you use BibTeX in apalike style, activate the following line:
 \bibliographystyle{apalike}
 
+% graphics
+\usepackage{float}
+\usepackage{graphicx}
+
 % math and stuff
 \usepackage{amssymb}
 \usepackage{amsmath}
@@ -60,16 +64,31 @@
 \aistatsaddress{ Massachusetts Institute of Technology } ]
 
 \begin{abstract}
-  The Abstract paragraph should be indented 0.25 inch (1.5 picas) on
-  both left and right-hand margins. Use 10~point type, with a vertical
-  spacing of 11~points. The \textbf{Abstract} heading must be centered,
-  bold, and in point size 12. Two line spaces precede the
-  Abstract. The Abstract must be limited to one paragraph.
+Involutive MCMC is a unifying framework for MCMC that encompasses many standard
+and recent MCMC algorithms from the literature, from reversible jump MCMC to
+Hamiltonian Monte Carlo to kernels based on deep neural networks. The key idea
+in involutive MCMC is that a combination of (i) an auxiliary probability
+distribution and (ii) an involution on the extended state space that includes
+the model latent variables and the auxiliary variables results in MCMC kernels
+that satisfy detailed balance with respect to the target distribution. The
+involutive MCMC framework is appealing for its simplicity and generality, and
+promises to be a useful conceptual and mathematical tool for exploring the
+design space of MCMC kernels. However, like other Monte Carlo samplers,
+implementing involutive samplers is time consuming and error prone. This paper
+describes a technique for automatically generating the implementation of
+involutive MCMC samplers from two probabilistic programs that define the target
+distribution and the auxiliary probability distribution respectively, and a
+differentiable program that defines the involution. The technique also detects
+common conceptual and programming errors that arise when designing and
+specifying involutive MCMC algorithms. This paper describes the support for
+involutive MCMC in the Gen probabilistic system that uses this technique, and
+shows involutive samplers specified using Gen's high-level probabilistic and
+differentiable programming languages.
 \end{abstract}
 
 \section{INTRODUCTION}
 
-This is the best paper~\citep{cusumano2019gen}.
+%This is the best paper~\citep{cusumano2019gen}.
 
 \subsection{Second Level Heading}
 
@@ -80,6 +99,8 @@ This is the best paper~\citep{cusumano2019gen}.
 \section{BACKGROUND AND RELATED WORK}
 
 \subsection{Traces}
+
+\input{headline-figure}
 
 \section{INVOLUTIVE MCMC WITH TRACES}
 
@@ -101,11 +122,13 @@ This is the best paper~\citep{cusumano2019gen}.
 
 \subsection{Exploiting Jacobian Sparsity}
 
-\subsection{Exploiting Jacobian Sparsity}
+% TODO can only show this for a special case -- discrete involution + continuous?, or some more general case?
 
-\subsection{Exploiting Jacobian Sparsity}
+% TODO show an performance table of moves per second with and without the sparsity reduction (?)
 
 \section{A DYNAMIC CHECK FOR DETECTING BUGS}
+
+% TODO show an example of the type of bug it can detect (an edge case?)
 
 \section{EXAMPLES}
 
@@ -119,14 +142,30 @@ All acknowledgments go at the end of the paper, including thanks to reviewers wh
 \onecolumn
 \section*{APPENDIX}
 
-\subsection{Formalism}
+\subsection{Distributions on traces}
+Define target density $\pi$ (XXX below it is called $p$, fix this) on the joint space $X \times U$, where $X$ are traces of the model and $X$ are traces of the proposal, in terms of the density $p(x)$ and the family of densities $q_x(u)$ as $\pi(x, u) := p(x) q_u(x)$.
+
+% TODO rename the joint target density to \pi below
+We want to show stationarity with respect to $\pi$, using stationarity of the involution with respect to the joint density (below).
+\begin{equation}
+\int_X p(x) \ell_x(A) \mu(dx) = p(A) \mbox{ for all } A \in \Sigma
+\end{equation}
+where $\ell_x(A)$ is the probability of transitioning into set $A$ from $x$, and is given by:
+\begin{equation}
+\ell_x(A) := \int_U k_{(x, u)}(A \times U) \mu(du)
+\end{equation}
+where $k_{(x, u)}$ is the measure on $X \times U$ that is induced by applying the involution $h$ to the state $(x, u)$.
+% TODO checkme
+
+
+\subsection{Stationarity of the involution with respect to joint density}
 Let $(Z, \Sigma, \mu)$ be a measure space of pairs of traces of the model and proposal, where $\mu$ is $\sigma$-finite.
 Consider a $\mu$-measurable function $h : Z \to Z$ that is an involution ($h(h(z)) = z$) and let $\mu \circ h^{-1}$ denote the pushforward of $\mu$ under $h$, such that $\mu \circ h^{-1}$ is $\sigma$-finite and such that $\mu \circ h^{-1}$ is absolutely continuous with respect to $\mu$.
 % TODO can we simplify the conditions, using the fact that h is an involution?
 Then, the Radon-Nikodym derivative exists, and is denoted $(d (\mu \circ h^{-1}) / d \mu)(z)$.
 
 The goal is to prove stationarity with respect to the measure defined by density $p(z)$ with respect to $\mu$.
-The move starts with state $z \in Z$, applies the involution $h$, and then accepts (returns $h(z)$ with probability $\alpha(z)$) and otherwise returns $z$.
+The move starts with state $z \in Z$, applies the involution $h$, and then accepts (returns $h(z)$) with probability $\alpha(z)$ and otherwise returns $z$.
 Let $k_{z}$ denote the measure on new states induced by the involution $h$ and the previous state $z$:
 \begin{equation}
 k_{z}(A) = [h(z) \in A] \alpha(z) + [z \in A] (1 - \alpha(z))
@@ -171,5 +210,13 @@ All requirements:
 \item the function $g(z) := p(h(z)) [z \in A] \alpha(h(z))$ is $\mu$-measurable for all $A \in \Sigma$
 \item the function $(g \circ h)(z) = p(z) [h(z) \in A] \alpha(z)$ is integrable with respect to $\mu$ for all $A \in \Sigma$
 \end{enumerate}
+
+\paragraph{Characterizing the pushforward $\mu \circ h^{-1}$ for involution $h$}
+Can we guarantee that it is $\sigma$-finite or absolutely continuous with respect to $\mu$?
+Are there simpler sufficient conditions we can give?
+$(\mu \circ h^{-1})$ is $\sigma$-finite if $Z$ is the countable union of $(mu \circ h^{-1})$-measurable sets with finite measure.
+
+$\sigma$-finite means 
+
 
 \end{document}
