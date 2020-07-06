@@ -16,19 +16,15 @@ using PyPlot
 import Random
 
 include("dirichlet.jl")
+include("mixture_of_normals.jl")
 
 @gen function model(n::Int)
     k ~ poisson(2)
-    means = Vector{Float64}(undef, k)
-    vars = Vector{Float64}(undef, k)
-    for j in 1:k
-        means[j] = ({(:mu, j)} ~ normal(0, 10))
-        vars[j] = ({(:var, j)} ~ inv_gamma(1, 1))
-    end
-    probs ~ dirichlet(fill(2, k))
+    means = [({(:mu, j)} ~ normal(0, 10)) for j in 1:k]
+    vars = [({(:var, j)} ~ inv_gamma(1, 1)) for j in 1:k]
+    weights ~ dirichlet([2.0 for j in 1:k])
     for i in 1:n
-        z = ({(:z, i)} ~ categorical(probs))
-        {(:x, i)} ~ normal(means[z], sqrt(vars[z]))
+        {(:x, i)} ~ mixture_of_normals(weights, means, vars)
     end
 end
 
@@ -51,22 +47,22 @@ function get_xs(trace)
     return [trace[(:x, i)] for i in 1:n]
 end
 
-function marginal_density(k, probs, means, vars, x)
+function marginal_density(k, weights, means, vars, x)
     ls = zeros(k)
     for j in 1:k
         mu = means[j]
         var = vars[j]
-        ls[j] = logpdf(normal, x, mu, sqrt(var)) + log(probs[j])
+        ls[j] = logpdf(normal, x, mu, sqrt(var)) + log(weights[j])
     end
     return exp(logsumexp(ls))
 end
 
 function get_densities_at(trace, xs)
     k = trace[:k]
-    probs = trace[:probs]
+    weights = trace[:weights]
     means = get_means(trace)
     vars = get_vars(trace)
-    return [marginal_density(k, probs, means, vars, x) for x in xs]
+    return [marginal_density(k, weights, means, vars, x) for x in xs]
 end
 
 function render_trace(trace, xmin, xmax)
@@ -102,7 +98,7 @@ function generate_synthetic_two_mixture_data()
     n = 1000
     constraints = choicemap()
     constraints[:k] = 2
-    constraints[:probs] = [0.5, 0.5]
+    constraints[:weights] = [0.5, 0.5]
     constraints[(:mu, 1)] = -10.0
     constraints[(:mu, 2)] = 10.0
     constraints[(:var, 1)] = 40.0
@@ -117,9 +113,13 @@ end
 
 generate_synthetic_two_mixture_data()
 
-function merge_weight(w1, w2)
+function merge_weights(weights, j, k)
+    w1 = weights[j]
+    w2 = weights[k]
+    w = w1 + w2
     u1 = w1 / w
-    return (w1 + w2, u1)
+    new_weights = [(i == j) ? w : weights[i] for i in 1:k-1]
+    return (new_weights, u1)
 end
 
 function merge_mean_and_var(mu1, mu2, var1, var2, w1, w2, w)
@@ -131,10 +131,12 @@ function merge_mean_and_var(mu1, mu2, var1, var2, w1, w2, w)
     return (mu, var, u2, u3)
 end
 
-function split_weights(w, u1)
+function split_weights(weights, j, u1, k)
     w1 = w * u1
     w2 = w * (1 - u1)
-    return (w1, w2)
+    new_weights = [(i == j) ? w1 : (i == k + 1) ? w2 : weights[i] for i in 1:k+1]
+    @assert isapprox(sum(new_weights), 1.0)
+    return new_weights
 end
 
 function split_means(mu, var, u2, w1, w2)
@@ -164,28 +166,68 @@ end
         u1 ~ beta(2, 2)
         u2 ~ beta(2, 2)
         u3 ~ beta(1, 1)
-        # then compute new split values
-        w = trace[:probs][j] # TODO requires the change to allow for multivariate.. (merge from other branch)
-        mu = trace[(:mu, j)]
-        var = trace[(:var, j)]
-        (w1, w2) = split_weights(w, u1)
-        (mu1, mu2) = split_means(mu, var, u2, w1, w2)
-        (var1, var2) = split_vars(w, w1, w2, var, u2, u3)
-        # TODO write addrs (to j and k+1)
-        # TODO write increase k by one
     else
         # if merge, then pick two to merge
         j1 = uniform_discrete(1, k-1)
-        j2 = k
-        # then compute merged values
-        (w, u1) = merge_weight(w1, w2)
-        (mu, var, u2, u3) = merge_mean_and_var(mu1, mu2, var1, var2, w1, w2, w)
-        # TODO write addrs
-        # TODO write decrease k by one
     end
+    return split
 end
 
-@involution function split_merge_inv()
+@bijection function split_merge_inv(
+        model_args, proposal_args, proposal_retval)
+    k = @read_discrete_from_model(:k)
+    if split
+
+        # split
+
+        j = @read_discrete_from_proposal(:j) # the cluster to split
+        u1 = @read_continuous_from_proposal(:u1)
+        u2 = @read_continuous_from_proposal(:u2)
+        u3 = @read_continuous_from_proposal(:u3)
+        weights = @read_continuous_from_model(:weights)
+        mu = @read_continuous_from_model((:mu, j))
+        var = @read_continuous_from_model((:var, j))
+
+        new_weights = split_weights(weights, j, u1)
+        (mu1, mu2) = split_means(mu, var, u2, new_weights[j], new_weights[k+1])
+        (var1, var2) = split_vars(weights[j], new_weights[j], new_weights[k+1], var, u2, u3)
+
+        @write_discrete_to_model(:k, k+1)
+        @write_continuous_to_model(:weights, new_weights)
+        @write_continuous_to_model((:mu, j), mu1)
+        @write_continuous_to_model((:mu, k+1), mu2)
+        @write_continuous_to_model((:var, j), var1)
+        @write_continuous_to_model((:var, k+1), var2)
+    else
+
+        # merge
+
+        j = @read_discrete_from_proposal(:j) # the cluster to merge with the last cluster
+        u1 = @read_continuous_from_proposal(:u1)
+        u2 = @read_continuous_from_proposal(:u2)
+        u3 = @read_continuous_from_proposal(:u3)
+        weights = @read_continuous_from_model(:weights)
+
+        (new_weights, u1) = merge_weights(weights, j, k)
+        (mu, var, u2, u3) = merge_mean_and_var(mu1, mu2, var1, var2, weights[j], weights[k], new_weights[j])
+    
+        @write_discrete_to_model(:k, k-1)
+        @write_continuous_to_model(:weights, new_weights)
+        @write_continuous_to_model((:mu, j), mu)
+        @write_continuous_to_model((:var, j), var)
+        @write_continuous_to_proposal(:u1, u1)
+        @write_continuous_to_proposal(:u2, u2)
+        @write_continuous_to_proposal(:u3, u3)
+    end
+
 end
 
-# TODO add permutation moves..
+is_involution!(split_merge_inv)
+
+function split_merge_move(trace)
+    return mh(trace, split_merge_proposal, (), split_merge_inv; check=true)
+end
+
+# TODO add permutation moves.. (with the last cluster)
+
+
