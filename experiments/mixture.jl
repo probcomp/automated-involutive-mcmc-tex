@@ -91,7 +91,7 @@ function show_prior_data()
     savefig("prior_sample.png")
 end
 
-show_prior_data()
+#show_prior_data()
 
 function generate_synthetic_two_mixture_data()
     Random.seed!(1)
@@ -109,9 +109,10 @@ function generate_synthetic_two_mixture_data()
     xmax = 30.0
     render_trace(trace, xmin, xmax)
     savefig("synthetic_data.png")
+    return trace
 end
 
-generate_synthetic_two_mixture_data()
+#generate_synthetic_two_mixture_data()
 
 function merge_weights(weights, j, k)
     w1 = weights[j]
@@ -132,6 +133,7 @@ function merge_mean_and_var(mu1, mu2, var1, var2, w1, w2, w)
 end
 
 function split_weights(weights, j, u1, k)
+    w = weights[j]
     w1 = w * u1
     w2 = w * (1 - u1)
     new_weights = [(i == j) ? w1 : (i == k + 1) ? w2 : weights[i] for i in 1:k+1]
@@ -154,31 +156,34 @@ end
 @gen function split_merge_proposal(trace)
     # decide whether to split or merge
     k = trace[:k]
-    if k > 0
+    if k > 1
         split ~ bernoulli(0.5)
     else
         split = true
     end
     if split
         # if split, pick random to split
-        j = uniform_discrete(1, k)
+        j ~ uniform_discrete(1, k)
         # then pick DoFs
         u1 ~ beta(2, 2)
         u2 ~ beta(2, 2)
         u3 ~ beta(1, 1)
     else
         # if merge, then pick two to merge
-        j1 = uniform_discrete(1, k-1)
+        @assert k > 1
+        j ~ uniform_discrete(1, k-1)
     end
     return split
 end
 
 @bijection function split_merge_inv(
         model_args, proposal_args, proposal_retval)
+    split = proposal_retval
     k = @read_discrete_from_model(:k)
     if split
 
         # split
+        println("splitting, starting from k=$k")
 
         j = @read_discrete_from_proposal(:j) # the cluster to split
         u1 = @read_continuous_from_proposal(:u1)
@@ -188,36 +193,44 @@ end
         mu = @read_continuous_from_model((:mu, j))
         var = @read_continuous_from_model((:var, j))
 
-        new_weights = split_weights(weights, j, u1)
+        new_weights = split_weights(weights, j, u1, k)
         (mu1, mu2) = split_means(mu, var, u2, new_weights[j], new_weights[k+1])
         (var1, var2) = split_vars(weights[j], new_weights[j], new_weights[k+1], var, u2, u3)
 
         @write_discrete_to_model(:k, k+1)
+        @copy_proposal_to_proposal(:j, :j)
         @write_continuous_to_model(:weights, new_weights)
         @write_continuous_to_model((:mu, j), mu1)
         @write_continuous_to_model((:mu, k+1), mu2)
         @write_continuous_to_model((:var, j), var1)
         @write_continuous_to_model((:var, k+1), var2)
+        @write_discrete_to_proposal(:split, false)
     else
 
         # merge
 
         j = @read_discrete_from_proposal(:j) # the cluster to merge with the last cluster
-        u1 = @read_continuous_from_proposal(:u1)
-        u2 = @read_continuous_from_proposal(:u2)
-        u3 = @read_continuous_from_proposal(:u3)
+        println("merging, starting from k=$k")
+        mu1 = @read_continuous_from_model((:mu, j))
+        mu2 = @read_continuous_from_model((:mu, k))
+        var1 = @read_continuous_from_model((:var, j))
+        var2 = @read_continuous_from_model((:var, k))
         weights = @read_continuous_from_model(:weights)
 
         (new_weights, u1) = merge_weights(weights, j, k)
         (mu, var, u2, u3) = merge_mean_and_var(mu1, mu2, var1, var2, weights[j], weights[k], new_weights[j])
     
         @write_discrete_to_model(:k, k-1)
+        @copy_proposal_to_proposal(:j, :j)
         @write_continuous_to_model(:weights, new_weights)
         @write_continuous_to_model((:mu, j), mu)
         @write_continuous_to_model((:var, j), var)
         @write_continuous_to_proposal(:u1, u1)
         @write_continuous_to_proposal(:u2, u2)
         @write_continuous_to_proposal(:u3, u3)
+        if k > 2
+            @write_discrete_to_proposal(:split, true)
+        end
     end
 
 end
@@ -230,4 +243,14 @@ end
 
 # TODO add permutation moves.. (with the last cluster)
 
+function test_split_merge_move()
+    Random.seed!(1)
+    trace = generate_synthetic_two_mixture_data()
+    #display(get_choices(trace))
+    for rep in 1:1000
+        new_trace, acc = split_merge_move(trace)
+        println("acc: $acc")
+    end
+end
 
+test_split_merge_move()
