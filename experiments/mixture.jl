@@ -159,92 +159,82 @@ function split_means(mu, var, u2, w1, w2)
     return (mu1, mu2)
 end
 
-function split_vars(w, w1, w2, var, u2, u3)
-    var1 = u3 * (1 - u2^2) * var * w / w1
-    var2 = (1 - u3) * (1 - u2^2) * var * w / w2
+function split_vars(w1, w2, var, u2, u3)
+    var1 = u3 * (1 - u2^2) * var * (w1 + w2) / w1
+    var2 = (1 - u3) * (1 - u2^2) * var * (w1 + w2) / w2
     return (var1, var2)
 end
 
 @gen function split_merge_proposal(trace)
-    # decide whether to split or merge
-    k = trace[:k]
-    if k > 1
-        split ~ bernoulli(0.5)
-    else
-        split = true
-    end
-    if split
-        # if split, pick random to split
-        j ~ uniform_discrete(1, k)
-        # then pick DoFs
-        u1 ~ beta(2, 2)
-        u2 ~ beta(2, 2)
-        u3 ~ beta(1, 1)
-    else
-        # if merge, then pick two to merge
-        @assert k > 1
-        j ~ uniform_discrete(1, k-1)
-    end
-    return split
+   k = trace[:k]
+   split = (k == 1) ? true : ({:split} ~ bernoulli(0.5))
+   if split
+      # split; pick cluster to split and sample degrees of freedom
+      cluster_to_split ~ uniform_discrete(1, k)
+      u1 ~ beta(2, 2)
+      u2 ~ beta(2, 2)
+      u3 ~ beta(1, 1)
+   else
+      # merge; pick cluster to merge with last cluster
+      cluster_to_merge ~ uniform_discrete(1, k-1)
+   end
 end
 
-@bijection function split_merge_inv(
-        model_args, proposal_args, proposal_retval)
-    split = proposal_retval
+@bijection function split_merge_inv(_, _, _)
     k = @read_discrete_from_model(:k)
+    split = (k == 1) ? true : @read_discrete_from_proposal(:split)
     if split
 
-        # split
-        #println("splitting, starting from k=$k")
-
-        j = @read_discrete_from_proposal(:j) # the cluster to split
+        cluster_to_split = @read_discrete_from_proposal(:cluster_to_split)
         u1 = @read_continuous_from_proposal(:u1)
         u2 = @read_continuous_from_proposal(:u2)
         u3 = @read_continuous_from_proposal(:u3)
         weights = @read_continuous_from_model(:weights)
-        mu = @read_continuous_from_model((:mu, j))
-        var = @read_continuous_from_model((:var, j))
+        mu = @read_continuous_from_model((:mu, cluster_to_split))
+        var = @read_continuous_from_model((:var, cluster_to_split))
 
-        new_weights = split_weights(weights, j, u1, k)
-        (mu1, mu2) = split_means(mu, var, u2, new_weights[j], new_weights[k+1])
-        (var1, var2) = split_vars(weights[j], new_weights[j], new_weights[k+1], var, u2, u3)
+        new_weights = split_weights(weights, cluster_to_split, u1, k)
+        w1 = new_weights[cluster_to_split]
+        w2 = new_weights[k+1]
+        (mu1, mu2) = split_means(mu, var, u2, w1, w2)
+        (var1, var2) = split_vars(w1, w2, var, u2, u3)
 
         @write_discrete_to_model(:k, k+1)
-        @copy_proposal_to_proposal(:j, :j)
-        @write_continuous_to_model(:weights, new_weights)
-        @write_continuous_to_model((:mu, j), mu1)
-        @write_continuous_to_model((:mu, k+1), mu2)
-        @write_continuous_to_model((:var, j), var1)
-        @write_continuous_to_model((:var, k+1), var2)
+        @copy_proposal_to_proposal(:cluster_to_split, :cluster_to_merge)
         @write_discrete_to_proposal(:split, false)
+        @write_continuous_to_model(:weights, new_weights)
+        @write_continuous_to_model((:mu, cluster_to_split), mu1)
+        @write_continuous_to_model((:mu, k+1), mu2)
+        @write_continuous_to_model((:var, cluster_to_split), var1)
+        @write_continuous_to_model((:var, k+1), var2)
+
     else
 
-        # merge
-
-        j = @read_discrete_from_proposal(:j) # the cluster to merge with the last cluster
-        #println("merging, starting from k=$k")
-        mu1 = @read_continuous_from_model((:mu, j))
+        cluster_to_merge = @read_discrete_from_proposal(:cluster_to_merge)
+        mu1 = @read_continuous_from_model((:mu, cluster_to_merge))
         mu2 = @read_continuous_from_model((:mu, k))
-        var1 = @read_continuous_from_model((:var, j))
+        var1 = @read_continuous_from_model((:var, cluster_to_merge))
         var2 = @read_continuous_from_model((:var, k))
         weights = @read_continuous_from_model(:weights)
+        w1 = weights[cluster_to_merge]
+        w2 = weights[k]
 
-        (new_weights, u1) = merge_weights(weights, j, k)
-        (mu, var, u2, u3) = merge_mean_and_var(mu1, mu2, var1, var2, weights[j], weights[k], new_weights[j])
+        (new_weights, u1) = merge_weights(weights, cluster_to_merge, k)
+        w = new_weights[cluster_to_merge]
+        (mu, var, u2, u3) = merge_mean_and_var(mu1, mu2, var1, var2, w1, w2, w)
     
         @write_discrete_to_model(:k, k-1)
-        @copy_proposal_to_proposal(:j, :j)
-        @write_continuous_to_model(:weights, new_weights)
-        @write_continuous_to_model((:mu, j), mu)
-        @write_continuous_to_model((:var, j), var)
-        @write_continuous_to_proposal(:u1, u1)
-        @write_continuous_to_proposal(:u2, u2)
-        @write_continuous_to_proposal(:u3, u3)
+        @copy_proposal_to_proposal(:cluster_to_merge, :cluster_to_split)
         if k > 2
             @write_discrete_to_proposal(:split, true)
         end
+        @write_continuous_to_model(:weights, new_weights)
+        @write_continuous_to_model((:mu, cluster_to_merge), mu)
+        @write_continuous_to_model((:var, cluster_to_merge), var)
+        @write_continuous_to_proposal(:u1, u1)
+        @write_continuous_to_proposal(:u2, u2)
+        @write_continuous_to_proposal(:u3, u3)
     end
-
 end
 
 is_involution!(split_merge_inv)
