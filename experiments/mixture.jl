@@ -18,10 +18,12 @@ import Random
 include("dirichlet.jl")
 include("mixture_of_normals.jl")
 
+@dist poisson_plus_one(rate) = poisson(rate) + 1
+
 @gen function model(n::Int)
-    k ~ poisson(2)
+    k ~ poisson_plus_one(1)
     means = [({(:mu, j)} ~ normal(0, 10)) for j in 1:k]
-    vars = [({(:var, j)} ~ inv_gamma(1, 1)) for j in 1:k]
+    vars = [({(:var, j)} ~ inv_gamma(1, 10)) for j in 1:k]
     weights ~ dirichlet([2.0 for j in 1:k])
     for i in 1:n
         {(:x, i)} ~ mixture_of_normals(weights, means, vars)
@@ -68,7 +70,7 @@ end
 function render_trace(trace, xmin, xmax)
     # histogram
     xs = get_xs(trace)
-    (hist_data, ) = hist(xs, bins=collect(range(xmin, stop=xmax, length=50)))
+    (hist_data, ) = hist(xs, bins=collect(range(xmin, stop=xmax, length=50)), color="gray")
     (ymin, ymax) = gca().get_ylim()
 
     # density plot
@@ -76,13 +78,23 @@ function render_trace(trace, xmin, xmax)
     densities = get_densities_at(trace, test_xs)
     max_density = maximum(densities)
     scale = ymax / max_density
-    plot(test_xs, densities * scale, color="orange")
+    plot(test_xs, densities * scale, color="orange", linewidth=4, zorder=1)
+    
+    # individual component density plot
+    #if trace[:k] > 1
+        for j in 1:trace[:k]
+            densities = [marginal_density(1, [1.0], [trace[(:mu, j)]], [trace[(:var, j)]], x) for x in test_xs]
+            max_density = maximum(densities)
+            scale = ymax / max_density
+            plot(test_xs, densities * scale, color="red", linewidth=2, zorder=2)
+        end
+    #end
 end
 
 # simulate data and plot a histogram..
 function show_prior_data()
     Random.seed!(3)
-    n = 1000
+    n = 100
     trace = simulate(model, (n,))
     figure()
     xmin = -30.0
@@ -95,20 +107,20 @@ end
 
 function generate_synthetic_two_mixture_data()
     Random.seed!(1)
-    n = 1000
+    n = 100
     constraints = choicemap()
     constraints[:k] = 2
     constraints[:weights] = [0.5, 0.5]
     constraints[(:mu, 1)] = -10.0
     constraints[(:mu, 2)] = 10.0
-    constraints[(:var, 1)] = 40.0
-    constraints[(:var, 2)] = 40.0
+    constraints[(:var, 1)] = 50.0
+    constraints[(:var, 2)] = 50.0
     trace, = generate(model, (n,), constraints)
-    figure()
-    xmin = -30.0
-    xmax = 30.0
-    render_trace(trace, xmin, xmax)
-    savefig("synthetic_data.png")
+    #figure()
+    #xmin = -30.0
+    #xmax = 30.0
+    #render_trace(trace, xmin, xmax)
+    #savefig("synthetic_data.png")
     return trace
 end
 
@@ -183,7 +195,7 @@ end
     if split
 
         # split
-        println("splitting, starting from k=$k")
+        #println("splitting, starting from k=$k")
 
         j = @read_discrete_from_proposal(:j) # the cluster to split
         u1 = @read_continuous_from_proposal(:u1)
@@ -210,7 +222,7 @@ end
         # merge
 
         j = @read_discrete_from_proposal(:j) # the cluster to merge with the last cluster
-        println("merging, starting from k=$k")
+        #println("merging, starting from k=$k")
         mu1 = @read_continuous_from_model((:mu, j))
         mu2 = @read_continuous_from_model((:mu, k))
         var1 = @read_continuous_from_model((:var, j))
@@ -246,11 +258,30 @@ end
 function test_split_merge_move()
     Random.seed!(1)
     trace = generate_synthetic_two_mixture_data()
-    #display(get_choices(trace))
+    merged_trace = trace
+    num_acc_merge = 0
     for rep in 1:1000
         new_trace, acc = split_merge_move(trace)
-        println("acc: $acc")
+        if acc && new_trace[:k] == 1
+            num_acc_merge += 1
+            println("mu: $(new_trace[(:mu, 1)]), var: $(new_trace[(:var, 1)])")
+            merged_trace = new_trace
+        end
     end
+    println("num_acc_merge: $num_acc_merge")
+    @assert num_acc_merge > 0
+
+    figure(figsize=(6, 2))
+    xmin = -30.0
+    xmax = 30.0
+    subplot(1, 2, 1)
+    render_trace(trace, xmin, xmax)
+    gca().get_yaxis().set_visible(false)
+    subplot(1, 2, 2)
+    render_trace(merged_trace, xmin, xmax)
+    gca().get_yaxis().set_visible(false)
+    tight_layout()
+    savefig("rjmcmc.png")
 end
 
 test_split_merge_move()
