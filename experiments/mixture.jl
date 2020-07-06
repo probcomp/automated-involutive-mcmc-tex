@@ -70,7 +70,7 @@ end
 function render_trace(trace, xmin, xmax)
     # histogram
     xs = get_xs(trace)
-    (hist_data, ) = hist(xs, bins=collect(range(xmin, stop=xmax, length=50)), color="gray")
+    (hist_data, ) = hist(xs, bins=collect(range(xmin, stop=xmax, length=50)), color="LightGray")
     (ymin, ymax) = gca().get_ylim()
 
     # density plot
@@ -78,15 +78,16 @@ function render_trace(trace, xmin, xmax)
     densities = get_densities_at(trace, test_xs)
     max_density = maximum(densities)
     scale = ymax / max_density
-    plot(test_xs, densities * scale, color="orange", linewidth=4, zorder=1)
+    plot(test_xs, densities * scale, color="black", linewidth=4, zorder=1)
     
     # individual component density plot
+    colors = ["red", "orange", "blue"]
     #if trace[:k] > 1
         for j in 1:trace[:k]
-            densities = [marginal_density(1, [1.0], [trace[(:mu, j)]], [trace[(:var, j)]], x) for x in test_xs]
+            densities = [marginal_density(1, [1.0], [trace[(:mu, j)]], [trace[(:var, j)]], x) for x in test_xs] * trace[:weights][j]
             max_density = maximum(densities)
-            scale = ymax / max_density
-            plot(test_xs, densities * scale, color="red", linewidth=2, zorder=2)
+            #scale = ymax / max_density
+            plot(test_xs, densities * scale, color=colors[j], linewidth=2, zorder=2)
         end
     #end
 end
@@ -109,12 +110,14 @@ function generate_synthetic_two_mixture_data()
     Random.seed!(1)
     n = 100
     constraints = choicemap()
-    constraints[:k] = 2
-    constraints[:weights] = [0.5, 0.5]
+    constraints[:k] = 3
+    constraints[:weights] = [0.4, 0.4, 0.2]
     constraints[(:mu, 1)] = -10.0
     constraints[(:mu, 2)] = 10.0
+    constraints[(:mu, 3)] = 20.0
     constraints[(:var, 1)] = 50.0
     constraints[(:var, 2)] = 50.0
+    constraints[(:var, 3)] = 50.0
     trace, = generate(model, (n,), constraints)
     #figure()
     #xmin = -30.0
@@ -247,31 +250,49 @@ end
 
 function test_split_merge_move()
     Random.seed!(1)
-    trace = generate_synthetic_two_mixture_data()
-    merged_trace = trace
+    three_cluster_trace = generate_synthetic_two_mixture_data()
+    two_cluster_trace = three_cluster_trace
     num_acc_merge = 0
     for rep in 1:1000
-        new_trace, acc = split_merge_move(trace)
-        if acc && new_trace[:k] == 1
+        new_trace, acc = split_merge_move(three_cluster_trace)
+        if acc && new_trace[:k] == 2
             num_acc_merge += 1
             println("mu: $(new_trace[(:mu, 1)]), var: $(new_trace[(:var, 1)])")
-            merged_trace = new_trace
+            two_cluster_trace = new_trace
         end
     end
     println("num_acc_merge: $num_acc_merge")
     @assert num_acc_merge > 0
 
-    figure(figsize=(6, 2))
+    one_cluster_trace = two_cluster_trace
+    num_acc_merge = 0
+    for rep in 1:1000
+        new_trace, acc = split_merge_move(two_cluster_trace)
+        if acc && new_trace[:k] == 1
+            num_acc_merge += 1
+            println("mu: $(new_trace[(:mu, 1)]), var: $(new_trace[(:var, 1)])")
+            one_cluster_trace = new_trace
+        end
+    end
+    println("num_acc_merge: $num_acc_merge")
+    @assert num_acc_merge > 0
+
+    figure(figsize=(8, 2))
     xmin = -30.0
     xmax = 30.0
-    subplot(1, 2, 1)
-    render_trace(trace, xmin, xmax)
+    subplot(1, 3, 1)
+    render_trace(three_cluster_trace, xmin, xmax)
     gca().get_yaxis().set_visible(false)
-    subplot(1, 2, 2)
-    render_trace(merged_trace, xmin, xmax)
+    subplot(1, 3, 2)
+    render_trace(two_cluster_trace, xmin, xmax)
+    gca().get_yaxis().set_visible(false)
+    subplot(1, 3, 3)
+    render_trace(one_cluster_trace, xmin, xmax)
     gca().get_yaxis().set_visible(false)
     tight_layout()
     savefig("rjmcmc.png")
+
+
 end
 
 test_split_merge_move()
