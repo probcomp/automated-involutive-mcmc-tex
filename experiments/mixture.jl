@@ -67,7 +67,7 @@ function get_densities_at(trace, xs)
     return [marginal_density(k, weights, means, vars, x) for x in xs]
 end
 
-function render_trace(trace, xmin, xmax)
+function render_trace(trace, xmin, xmax, colors)
     # histogram
     xs = get_xs(trace)
     (hist_data, ) = hist(xs, bins=collect(range(xmin, stop=xmax, length=50)), color="LightGray")
@@ -81,7 +81,6 @@ function render_trace(trace, xmin, xmax)
     plot(test_xs, densities * scale, color="black", linewidth=4, zorder=1)
     
     # individual component density plot
-    colors = ["red", "orange", "blue"]
     #if trace[:k] > 1
         for j in 1:trace[:k]
             densities = [marginal_density(1, [1.0], [trace[(:mu, j)]], [trace[(:var, j)]], x) for x in test_xs] * trace[:weights][j]
@@ -100,7 +99,8 @@ function show_prior_data()
     figure()
     xmin = -30.0
     xmax = 30.0
-    render_trace(trace, xmin, xmax)
+    colors = ["red", "orange", "blue"]
+    render_trace(trace, xmin, xmax, colors)
     savefig("prior_sample.png")
 end
 
@@ -281,13 +281,13 @@ function test_split_merge_move()
     xmin = -30.0
     xmax = 30.0
     subplot(1, 3, 1)
-    render_trace(three_cluster_trace, xmin, xmax)
+    render_trace(three_cluster_trace, xmin, xmax, ["red", "purple", "blue"])
     gca().get_yaxis().set_visible(false)
     subplot(1, 3, 2)
-    render_trace(two_cluster_trace, xmin, xmax)
+    render_trace(two_cluster_trace, xmin, xmax, ["red", "orange", "blue"])
     gca().get_yaxis().set_visible(false)
     subplot(1, 3, 3)
-    render_trace(one_cluster_trace, xmin, xmax)
+    render_trace(one_cluster_trace, xmin, xmax, ["red", "orange", "blue"])
     gca().get_yaxis().set_visible(false)
     tight_layout()
     savefig("rjmcmc.png")

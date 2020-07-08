@@ -100,7 +100,35 @@ differentiable programming languages.
 
 \subsection{Traces}
 
-\input{headline-figure}
+\begin{figure*}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/mixture.pdf}
+    \caption{
+Example of reversible jump MCMC~\citep{green1995reversible} implemented using involutive MCMC in Gen.
+The example implements a `split-merge move' in a infinite Gaussian mixture model~\citep{richardson1997bayesian} using three Gen programs:
+(1) a probabilistic program $\mathtt{p}$ encoding the generative model (shown in b),
+(2) a probabilistic program $\mathtt{q}$ encoding an auxiliary probability distribution (shown in c),
+and (3) a differentiable program $\mathtt{h}$ that encodes an involution on the space of pairs of traces of $\mathtt{p}$ and $\mathtt{q}$ (shown in d).
+Gen's involutive MCMC operator (shown in e) automatically computes the acceptance probability.
+}
+    \label{fig:mixture}
+\end{figure*}
+
+\begin{figure*}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/structure-learning.pdf}
+    \caption{
+A mixture kernel implemented using involutive MCMC in Gen, applied to infer the covariance function of a Gaussian process.
+The prior on covariance functions is based on a probabilistic context-free grammar.
+Each component kernel in the mixture replaces a subtree of the covariance function parse tree with a new subtree.
+The mixture kernel chooses a random subtree to replace via a random walk on the parse tree.
+The mixture kernel is composed from three Gen programs:
+(1) a probabilistic program $\mathtt{p}$ encoding the generative model (shown in a),
+(2) a probabilistic program $\mathtt{q}$ encoding an auxiliary probability distribution (shown in b), and
+(3) a differentiable program $\mathtt{h}$ that encodes an involution (shown in d).
+}
+    \label{fig:structure-learning}
+\end{figure*}
 
 \section{INVOLUTIVE MCMC WITH TRACES}
 
