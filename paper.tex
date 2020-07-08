@@ -31,6 +31,7 @@
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{amsthm}
+\usepackage{algorithm}
 \usepackage{algorithmicx}
 \usepackage{algpseudocode}
 %\newcommand{\disc}{\mathrm{disc}}
@@ -38,6 +39,9 @@
 %\newcommand{\tr}{\mathtt{tr}}
 %\newcommand{\model}{\mathcal{P}}
 %\newcommand{\proposal}{\mathcal{Q}}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{lemma}[theorem]{Lemma}
 
 \begin{document}
 
@@ -130,19 +134,77 @@ The mixture kernel is composed from three Gen programs:
     \label{fig:structure-learning}
 \end{figure*}
 
-\section{INVOLUTIVE MCMC WITH TRACES}
+\section{INVOLUTIVE MCMC}
+Let $p$ denote the target probability density with respect to some $\sigma$-finite measure $\mu_X$ on a set $X$.
+For each $x$ such that $p(x) > 0$, let $q_x$ denote a probability density with respect to some $\sigma$-finite measure $\mu_U$ on a set $U$.
+Let $\mu := \mu_X \times \mu_U$ denote the product measure on the space $X \times U$, and let $\pi(x, u) := p(x) q_x(u)$ and $Z := \{(x, u) : \pi(x, u) > 0\}$.
+Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$.
 
+\begin{algorithm}[h]
 \begin{algorithmic}
-\Require Target distribution $p$, proposal distribution $q$, involution $h(u, t)$, previous state $x$.
 \Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $x$}
     \State $u \sim q(\cdot; x)$ \Comment{Sample auxiliary variables}
     \State $(x', u') \gets f(x, u)$ \Comment{Apply involution}
+    %\State $\alpha \gets
+        %\frac{p(x') q(u'; x')}{p(x) q(u; x)} \left| \left[ \frac{\partial h(u, t)}{\partial (u, t)} \right] \right|$
+    % TODO or should we show the Radon-Nikodym derivative?
     \State $\alpha \gets
-        \frac{p(x') q(u'; x')}{p(x) q(u; x)} \left| \left[ \frac{\partial h(u, t)}{\partial (u, t)} \right] \right|$
+        \displaystyle \frac{p(x') q_{x'}(u')}{p(x) q_{x}(u)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, u)\right)^{-1}$
+    % TODO check it
     \State $r \sim \mathrm{Uniform}(0, 1)$
     \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
 \EndProcedure
 \end{algorithmic}
+\caption{Involutive MCMC}
+\label{alg:involutive-mcmc}
+\end{algorithm}
+
+\begin{lemma}\label{lemma:involution-detailed-balance} % TODO cite
+For $p$, $q$, and $f$ satisfying the properties above, let $k'$ denote the following transition kernel on $Z$:
+\[
+k'_z(A) := [f(z) \in A] \alpha(z) + [z \in A](1 - \alpha(z))
+\]
+The transition kernel $k'$ on $Z$ defined by the involution $f$ satisfies detailed balance with respect to $\pi$:
+\[
+\int_B k'_z(A) \pi(dz) = \int_A k'_z(B) \pi(dz) \mbox{ for all } A, B \in \Sigma_Z
+\]
+And in particular it is stationary with respect to $\pi$:
+\[
+\int_Z k'_z(A) \pi(dz) = \pi(A) \mbox{ for all } A \in \Sigma_Z
+\]
+\end{lemma}
+\begin{proof}
+\end{proof}
+
+\begin{theorem}\label{theorem:stationarity}
+The transition kernel $k$ on $X$ defined by Algorithm~\ref{alg:involutive-mcmc} for valid $p$, $q$, and $f$:
+\[
+k_x(A) := \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \;\; \mbox{for all} \;\; A \in \Sigma_X, x \in X
+\]
+is stationary with respect to $p$.
+\end{theorem}
+\begin{proof}
+By Lemma~\citep{lemma:involution-detailed-balance}, the transition kernel $k'$ is stationary with respect to $\pi$:
+\[
+%\int_B k'_{z}(B) \pi(z) \mu(dz) = \pi(B) \mbox{ for all } z \in X \times U, B \in \Sigma_Z
+\]
+It suffices to show that
+\begin{align*}
+\int_X k_x(A) p(x) \mu_X(dx) &= p(A) \mbox{ for all } A \in \Sigma_X\\
+\int_X \left( \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \right) p(x) \mu_X(dx) &= p(A)\\
+\int_{X \times U} k'_{x,u}(A \times U) q_x(u) p(x) \mu(dz) &= p(A)
+\end{align*}
+By Lemma~\citep{lemma:involution-detailed-balance}, setting $B := X \times U$, the left-hand-side is:
+\[
+\pi(X \times U) = \int_X \int_U p(x) q_x(u) \mu(
+\]
+\end{proof}
+\paragraph{Detailed balance of the involution}
+%Let $q_
+
+\paragraph{Stationarity}
+
+\paragraph{Conditional distribution and observations fixed}
 
 % TODO PyTorch implementation??
 
@@ -246,5 +308,115 @@ $(\mu \circ h^{-1})$ is $\sigma$-finite if $Z$ is the countable union of $(mu \c
 
 $\sigma$-finite means 
 
+\section{Detailed balance}
+
+Can we employ Theorem 2 of Tierney 1998? How does this relate to how the algorithm is described.
+Tierney already employs it for the involution-based move for the joint space of model and proposal traces (see page 4, bullet point 2 'deterministic proposals').
+But employing it for the composite move that includes the proposal and involution is more complex.
+The elements are:
+\begin{enumerate}
+\item $x, y \in X$ and $(X, \Sigma_X, \mu_X)$, where $x$ are traces of the model, and $\pi(x)$ is the model (target) density.
+\item $u \in U$ and $(U, \Sigma_U, \mu_U)$, where $u$ are traces of the proposal and $q_{x}(u)$ is the proposal density.
+\item An involution $h : X \times U \to X \times U$ (properly restricted to the support of $\pi(x) q_{x}(u)$.
+\end{enumerate}
+We want to provide a detailed balance result on $(X, \Sigma_X, \mu_X)$, proving detailed balance with respect to $\pi(x)$.
+Tierney's proposal kernel is defined by a family of measures $Q_{x} : \Sigma_X \to [0, \infty)$.
+In our case, this is:
+\[
+Q_{x}(A) := \int_U [h(x, u)_1 \in A] q_{x}(du) = \int_U [h(x, u)_1 \in A] q_{x}(u) \mu_U(du)
+\]
+Tierney's transition kernel with acceptance probability $\alpha(x \to y)$ is defined by a family of measures $P_x : \Sigma_X \to [0, \infty)$ (Equation 1 of Tierney):
+\[
+P_x(A) = \int_A \alpha(x \to y) Q_x(dy) + [x \in A] \int_X (1 - \alpha(x \to y)) Q_x(dy) \mbox{ for } A \in \Sigma_X
+\]
+Detailed balance (Tierney equation 2) is expressed as an equality between two measures on $X \times X$, denoted $(\pi P)_{\to}$ and $(\pi P)_{\gets}$.
+\[
+(\pi P)_{\to}(A, B) = (\pi P)_{\gets}(A, B)
+\]
+where
+\[
+(\pi P)_{\to}(A, B) := \int_A \left( \int_B P_x(dy) \right) \pi(dx)
+\]
+and
+\[
+(\pi P)_{\gets}(A, B) := \int_B \left( \int_A P_x(dy) \right) \pi(dx)
+\]
+Tierney Proposition 1 relies on a $\sigma$-finite measure $\mu$ on the product space $(X \times X, \Sigma_X \times \Sigma_X$), which is constructed as
+the measure induced by first sampling $x$ according to $\pi$ and then sampling $y$ according to the proposal $Q_x$:
+\[
+\mu(A, B) := \int_A \left( \int_B Q_x(dy) \right) \pi(dx) \;\;\; \mu^T(A, B) := \mu(B, A)
+\]
+In our case, this is:
+\[
+\mu(A, B) := \int_A \left( \int_U [h(x, u)_1 \in B] q_{x}(du) \right) \pi(dx) = \int_A \left( \int_U [h(x, u) \in B \times U] q_{x}(du) \right) \pi(dx)
+\]
+\paragraph{Show that $\mu$ is $\sigma$-finite (a requirement for Tierney Proposition 1)}
+$X \times X$ needs to be the countable union of measurable sets with finite measure $\mu(X \times X)$.
+It should build on the fact that $\pi$ and $q_x$ are $\sigma$-finite.
+%Can we use the fact that the composition of two $\sigma$-finite kernels is itself $\sigma$-finite (where the first kernel is $\pi$ and has a trivial index space)?
+%Apparently 
+%If so, then it would suffice to show that $Q$ is a $\sigma$-finite kernel, which is true if all $Q_x$ are $\sigma$-finite measures.
+
+\paragraph{Characterize $R$, and $\mu_R$ is the restriction of $\mu$ to $R$, and $\mu_R^T$ is as above}
+
+
+\paragraph{Characterize the following Radon-Nikodym derivative of $\mu_R$ with respect to $\mu_R^T$}
+\[
+r(x, y) = \frac{d\mu_R}{d\mu_R^T}(x, y)
+\]
+We need to show that:
+\begin{enumerate}
+\item $\alpha$ is $\mu$-almost everywhere zero on $R^c$
+\item $\alpha(x, y) r(x, y) = \alpha(y, x)$
+\end{enumerate}
+Then, according to Tierney Proposition 1, there exists a (unique up to null-sets) symmetric set $R \in \Sigma_X \times \Sigma_X$ such that $\mu$ and $\mu^T$ are mutually absolutely continuous.
+%(TODO: constructing $R$ for our kernel is a key step).
+
+\subsection{Special case of involution on discrete + diffeomorphism}
+
+\section{Using Tierney's result for deterministic proposals}
+
+\paragraph{Step 1: determine the acceptance ratio based on Tierney's involution construction}
+(page 4 of Tierney 1998)
+$T$ is the involution and $E$ is the joint space $X \times U$.
+Define the measure $\pi'$ by $\pi'(A) = \pi(T^{-1}(A))$ for all $A \in \Sigma_X$
+and let $\nu(dx) = \pi(dx) + \pi'(dx)$.
+Let $h(x)$ be a density for $\pi(dx)$ with respect to $\nu(dx)$ (( TODO this is they key step )).
+
+\paragraph{Step 2: prove stationarity for the end-to-end kernel}
+Using stationarity of the involutive kernel, which derives from Step 1.
+
+\section{Proof of detailed balance for involution}
+Detailed balance is proven by applying a result from~\citet{tierney1998note} for general Metropolis-Hastings moves with deterministic proposals, and using the measure $h(z) := \pi(z) / (\pi(z) + \pi'(z))$ where $\pi'$ 
+% See top of page 4, bullet point 2, of Tierney 1998 note
+
+\section{Proof of stationarity for involution}
+Stationarity derives from detailed balance by setting $B := Z$ in the detailed balance equation, and using $k'_z(Z) = \alpha(z) + (1 - \alpha(z)) =1$, so the right-hand side simplifies to $\int_A \pi(dz) = \pi(A)$.
+
+\section{Proof of stationarity for end-to-end kernel}
+We are given that the involution is stationary with respect to (the measure induced by) $\pi(x, u) := p(x) q_x(u)$:
+\[
+\int_Z k'_z(A) \pi(z) \mu(dz) = \pi(A) \mbox{ for all } A \in \Sigma_Z
+\]
+It suffices to show that the end-to-end kernel $k$ is stationary with respect to (the measure induced by) $p(x)$:
+\[
+\int_X k_x(A) p(x) \mu_X(dx) = p(A) \mbox{ for all } A \in \Sigma_X
+\]
+The kernel $k$ on $X$ defined by Algorithm~\ref{alg:involutive-mcmc} for valid $p$, $q$, and $f$:
+\[
+k_x(A) := \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \;\; \mbox{for all} \;\; A \in \Sigma_X, x \in X
+\]
+is stationary with respect to $p$.
+\begin{align*}
+    \int_X k_x(A) p(x) \mu_X(dx) &= p(A) \mbox{ for all } A \in \Sigma_X\\
+    \int_X \left( \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \right) p(x) \mu_X(dx) &= p(A)\\
+    \int_{X \times U} k'_{x,u}(A \times U) q_x(u) p(x) \mu(dz) &= p(A)\\
+    \int_{X \times U} k'_{x,u}(A \times U) \pi(z) \mu(dz) &= p(A)\\
+    \pi(A \times U) &= p(A)\\
+    \int_{A \times U} q_x(u) p(x) \mu(dz) &= p(A)\\
+    \int_A \left( \int_U q_x(u) \mu_U(du) \right) p(x) \mu_X(dx) &= p(A)\\
+    \int_A p(x) \mu_X(dx) &= p(A)
+\end{align*}
+% TODO characterize the various conditions
 
 \end{document}
