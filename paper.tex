@@ -386,12 +386,72 @@ Let $h(x)$ be a density for $\pi(dx)$ with respect to $\nu(dx)$ (( TODO this is 
 \paragraph{Step 2: prove stationarity for the end-to-end kernel}
 Using stationarity of the involutive kernel, which derives from Step 1.
 
+\section{Derivation of pushforward Radon-Nikodym derivative for special case}
+TODO: Do some special case where it simplifies to a Jacobian determinant.
+Maybe the case where the involution is composed of an involution on discrete part and a diffeomorphism on the continuous part.
+
 \section{Proof of detailed balance for involution}
-Detailed balance is proven by applying a result from~\citet{tierney1998note} for general Metropolis-Hastings moves with deterministic proposals, and using the measure $h(z) := \pi(z) / (\pi(z) + \pi'(z))$ where $\pi'$ 
-% See top of page 4, bullet point 2, of Tierney 1998 note
+\citet{tierney1998note} gives a class of MCMC kernels based on involutions that satisfy detailed balance.
+Specifically, given an involution $T : Z \to Z$, they denote the pushforward of $\pi$ under $T$ by $\pi'$:
+$\pi'(A) := \pi(T^{-1}(A))$.
+They let $\nu(A) := \pi(A) + \pi'(A)$.
+They let $h(z)$ denote `a density for $\pi$ with respect to $\nu$'.
+Then, they set:
+\[
+\alpha(x \to T(x)) \frac{h(x)}{h(T(x))} = \alpha(T(x) \to x)
+\]
+To use this result, it suffices to show that $h$ simplifes to the following, when $\pi$ and $\pi'$ are $\sigma$-finite and have densities with respect to the same reference measure $\mu$:
+\[
+\frac{h(z)}{h(T(z))}= \frac{\pi(z)}{\pi(T(z))} \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)^{-1}
+\]
+(note that $T$ is our $f$).
+What is $h(z)$, the density of $\pi$ with respect to $\nu(A) := \pi(A) + \pi'(A)$?
+Well, if $\pi$ and $\pi'$ have densities with respect to $\mu$, then so does $\nu$, and it is $\nu(z) = \pi(z) + \pi'(z)$.
+Then, the density of $\pi$ with respect to $\nu$ is:
+\[
+h(z) = \frac{\pi(z)}{\nu(z)} = \frac{\pi(z)}{\pi(z) + \pi'(z)}
+\]
+It suffices to show that:
+\[
+\frac{h(z)}{h(T(z))} = \frac{\pi(z)}{\pi(T(z))} \frac{\pi(T(z)) + \pi'(T(z))}{\pi(z) + \pi'(z)}
+= \frac{\pi(z)}{\pi(T(z))} \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)^{-1}
+\]
+It suffices to show that:
+\[
+\frac{\pi(T(z)) + \pi'(T(z))}{\pi(z) + \pi'(z)} = \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)^{-1}
+\]
+Let $a(z) = \pi(z) + \pi'(z)$, and note that $a$ is a density with respect to $\mu$.
+Then, the ratio above is:
+\[
+\frac{\pi(T(z)) + \pi'(T(z))}{\pi(z) + \pi'(z)} = \frac{a(T(z))}{a(z)}
+\]
+Consider the measure $a$ on $Z$ and the pushforward measure $a \circ T^{-1}$ on $Z$.
+It suffices to show that
+\[ 
+1 = \frac{d (a \circ T^{-1})}{d a} = \frac{a(T(z))}{a(z)} \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)
+\]
+$\frac{d (a \circ T^{-1})}{d a} = 1$ follows from the fact that $a$ and $a \circ T^{-1}$ are actually the same measure:
+\begin{align}
+a(B) &= \pi(B) + \pi'(B) = \pi(B) + \pi(T^{-1}(B))\\
+(a \circ T^{-1})(B) &= \pi(T^{-1}(B)) + \pi(T{-1}(T^{-1}(B))) = \pi(T^{-1}(B)) + \pi(B)
+\end{align}
+Using the chain rule (TODO check this!):
+\[
+1 = \frac{d (a \circ T^{-1})}{d a}
+=   \frac{d (a \circ T^{-1})}{d (\mu \circ T^{-1})}
+    \frac{d (\mu \circ T^{-1})}{d \mu}
+    \frac{d \mu}{d a}
+= a(T(z))  \frac{d (\mu \circ T^{-1})}{d \mu} \frac{1}{a(z)}
+\]
+Note that $a$ is actually equivalent to Tierney's $\nu$.
+The non-obvious part is the first factor:
+\[
+\frac{d (a \circ T^{-1})}{d (\mu \circ T^{-1})}(z) = \frac{d a}{d \mu} (T(z))
+\]
+TODO: prove me!
 
 \section{Proof of stationarity for involution}
-Stationarity derives from detailed balance by setting $B := Z$ in the detailed balance equation, and using $k'_z(Z) = \alpha(z) + (1 - \alpha(z)) =1$, so the right-hand side simplifies to $\int_A \pi(dz) = \pi(A)$.
+Stationarity follows from detailed balance by setting $B := Z$ in the detailed balance equation, and using $k'_z(Z) = \alpha(z) + (1 - \alpha(z)) =1$, so the right-hand side simplifies to $\int_A \pi(dz) = \pi(A)$.
 
 \section{Proof of stationarity for end-to-end kernel}
 We are given that the involution is stationary with respect to (the measure induced by) $\pi(x, u) := p(x) q_x(u)$:
@@ -417,6 +477,6 @@ is stationary with respect to $p$.
     \int_A \left( \int_U q_x(u) \mu_U(du) \right) p(x) \mu_X(dx) &= p(A)\\
     \int_A p(x) \mu_X(dx) &= p(A)
 \end{align*}
-% TODO characterize the various conditions
+% TODO characterize the various assumptions that allow us to e.g. rearrange the order of integration, etc.
 
 \end{document}
