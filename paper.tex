@@ -149,7 +149,7 @@ Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward 
         %\frac{p(x') q(u'; x')}{p(x) q(u; x)} \left| \left[ \frac{\partial h(u, t)}{\partial (u, t)} \right] \right|$
     % TODO or should we show the Radon-Nikodym derivative?
     \State $\alpha \gets
-        \displaystyle \frac{p(x') q_{x'}(u')}{p(x) q_{x}(u)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, u)\right)^{-1}$
+        \displaystyle \frac{p(x') q_{x'}(u')}{p(x) q_{x}(u)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, u)\right)$
     % TODO check it
     \State $r \sim \mathrm{Uniform}(0, 1)$
     \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
@@ -400,55 +400,53 @@ Then, they set:
 \[
 \alpha(x \to T(x)) \frac{h(x)}{h(T(x))} = \alpha(T(x) \to x)
 \]
-To use this result, it suffices to show that $h$ simplifes to the following, when $\pi$ and $\pi'$ are $\sigma$-finite and have densities with respect to the same reference measure $\mu$:
+Our definition of $\alpha$ satisfies:
 \[
-\frac{h(z)}{h(T(z))}= \frac{\pi(z)}{\pi(T(z))} \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)^{-1}
+\frac{\alpha(z \to T(z))}{\alpha(T(z) \to z)} = \frac{\pi(T(z))}{\pi(z)} \left( \frac{d (\mu \circ T^{-1})}{d \mu} (z) \right)
+\]
+Therefore, to use Tierney's result, it suffices to show that (when $\pi$ and $\pi'$ are $\sigma$-finite and have densities with respect to the same reference measure $\mu$):
+\[
+\frac{h(T(z))}{h(z)}= \frac{\pi(T(z))}{\pi(z)} \left( \frac{d (\mu \circ T^{-1})}{d \mu} (z) \right)
 \]
 (note that $T$ is our $f$).
 What is $h(z)$, the density of $\pi$ with respect to $\nu(A) := \pi(A) + \pi'(A)$?
-Well, if $\pi$ and $\pi'$ have densities with respect to $\mu$, then so does $\nu$, and it is $\nu(z) = \pi(z) + \pi'(z)$.
-Then, the density of $\pi$ with respect to $\nu$ is:
+Well, if $\pi$ and $\pi'$ have densities with respect to $\mu$, then so does $\nu$, and it is $\nu(z) = \pi(z) + \pi'(z)$, so the density of $\pi$ with respect to $\nu$ is:
 \[
-h(z) = \frac{\pi(z)}{\nu(z)} = \frac{\pi(z)}{\pi(z) + \pi'(z)}
+h(z) = \frac{\pi(z)}{\nu(z)} %= \frac{\pi(z)}{\pi(z) + \pi'(z)}
+\]
+and therefore:
+\[
+\frac{h(T(z))}{h(z)} = \frac{\pi(T(z))}{\pi(z)} \cdot \frac{\nu(z)}{\nu(T(z))}
 \]
 It suffices to show that:
 \[
-\frac{h(z)}{h(T(z))} = \frac{\pi(z)}{\pi(T(z))} \frac{\pi(T(z)) + \pi'(T(z))}{\pi(z) + \pi'(z)}
-= \frac{\pi(z)}{\pi(T(z))} \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)^{-1}
+\frac{\nu(T(z))}{\nu(z)} = \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)^{-1}
 \]
-It suffices to show that:
-\[
-\frac{\pi(T(z)) + \pi'(T(z))}{\pi(z) + \pi'(z)} = \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)^{-1}
-\]
-Let $a(z) = \pi(z) + \pi'(z)$, and note that $a$ is a density with respect to $\mu$.
-Then, the ratio above is:
-\[
-\frac{\pi(T(z)) + \pi'(T(z))}{\pi(z) + \pi'(z)} = \frac{a(T(z))}{a(z)}
-\]
-Consider the measure $a$ on $Z$ and the pushforward measure $a \circ T^{-1}$ on $Z$.
-It suffices to show that
-\[ 
-1 = \frac{d (a \circ T^{-1})}{d a} = \frac{a(T(z))}{a(z)} \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)
-\]
-$\frac{d (a \circ T^{-1})}{d a} = 1$ follows from the fact that $a$ and $a \circ T^{-1}$ are actually the same measure:
+First, note that $\nu$ and $\nu \circ T^{-1}$ are the same measure:
 \begin{align}
-a(B) &= \pi(B) + \pi'(B) = \pi(B) + \pi(T^{-1}(B))\\
-(a \circ T^{-1})(B) &= \pi(T^{-1}(B)) + \pi(T{-1}(T^{-1}(B))) = \pi(T^{-1}(B)) + \pi(B)
+\nu(A) &= \pi(A) + \pi'(A) = \pi(A) + \pi(T^{-1}(A))\\
+(\nu \circ T^{-1})(A) &= \pi(T^{-1}(A)) + \pi(T^{-1}(T^{-1}(A))) = \pi(T^{-1}(A)) + \pi(A)
 \end{align}
-Using the chain rule (TODO check this!):
+Therefore,
 \[
-1 = \frac{d (a \circ T^{-1})}{d a}
-=   \frac{d (a \circ T^{-1})}{d (\mu \circ T^{-1})}
-    \frac{d (\mu \circ T^{-1})}{d \mu}
-    \frac{d \mu}{d a}
-= a(T(z))  \frac{d (\mu \circ T^{-1})}{d \mu} \frac{1}{a(z)}
+\frac{d (\nu \circ T^{-1})}{d \nu}(z) = 1 \mbox{ for all } z
 \]
-Note that $a$ is actually equivalent to Tierney's $\nu$.
-The non-obvious part is the first factor:
+Expanding $d(\nu \circ T^{-1}) / d \nu$ using the chain rule:
+\begin{align}
+1 &= \frac{d (\nu \circ T^{-1})}{d \nu}(z)\\
+&=   \frac{d (\nu \circ T^{-1})}{d (\mu \circ T^{-1})}(z) \cdot
+    \frac{d (\mu \circ T^{-1})}{d \mu}(z) \cdot
+    \frac{d \mu}{d \nu}(z)\\
+&= \nu(T(z))  \frac{d (\mu \circ T^{-1})}{d \mu} \frac{1}{\nu(z)}
+\end{align}
+where in the second step we used that
 \[
-\frac{d (a \circ T^{-1})}{d (\mu \circ T^{-1})}(z) = \frac{d a}{d \mu} (T(z))
+\frac{d (\nu \circ T^{-1})}{d (\mu \circ T^{-1})}(z) = \frac{d \nu}{d \mu}(T(z)) = \nu(T(z))
 \]
-TODO: prove me!
+To show this, use (i) $\nu \circ T^{-1} = \nu$, (ii) the definition of Radon-Nikodym derivative $d \nu / d \mu$ and (iii) and Theorem 3.6.1 in Bogachev with $g := d\nu / d\mu$:
+\begin{align}
+(\nu \circ T^{-1})(A) = \nu(A) &= \int_A \frac{d \nu}{d \mu}(z) \mu(dz) = \int_A \frac{d \nu}{d \mu} (T(z)) ( \mu \circ T^{-1} )(dz)
+\end{aling}
 
 \section{Proof of stationarity for involution}
 Stationarity follows from detailed balance by setting $B := Z$ in the detailed balance equation, and using $k'_z(Z) = \alpha(z) + (1 - \alpha(z)) =1$, so the right-hand side simplifies to $\int_A \pi(dz) = \pi(A)$.
