@@ -102,7 +102,7 @@ differentiable programming languages.
 
 \section{BACKGROUND AND RELATED WORK}
 
-\subsection{Traces}
+%\subsection{Traces}
 
 \begin{figure*}[ht]
     \centering
@@ -158,53 +158,61 @@ Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward 
 \caption{Involutive MCMC}
 \label{alg:involutive-mcmc}
 \end{algorithm}
+See Section~\ref{sec:radon-nikodym-special-case} for a derivation of the Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d \mu$ for a special case, when the involution $f$ can be factored into (i) an involution on a countable partition of $Z$ and (ii) a family of continuously differentiable bijection on Euclidean spaces.
 
-\begin{lemma}\label{lemma:involution-detailed-balance} % TODO cite
-For $p$, $q$, and $f$ satisfying the properties above, let $k'$ denote the following transition kernel on $Z$:
-\[
-k'_z(A) := [f(z) \in A] \alpha(z) + [z \in A](1 - \alpha(z))
-\]
-The transition kernel $k'$ on $Z$ defined by the involution $f$ satisfies detailed balance with respect to $\pi$:
-\[
-\int_B k'_z(A) \pi(dz) = \int_A k'_z(B) \pi(dz) \mbox{ for all } A, B \in \Sigma_Z
-\]
-And in particular it is stationary with respect to $\pi$:
-\[
-\int_Z k'_z(A) \pi(dz) = \pi(A) \mbox{ for all } A \in \Sigma_Z
-\]
-\end{lemma}
-\begin{proof}
-\end{proof}
-
-\begin{theorem}\label{theorem:stationarity}
-The transition kernel $k$ on $X$ defined by Algorithm~\ref{alg:involutive-mcmc} for valid $p$, $q$, and $f$:
-\[
-k_x(A) := \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \;\; \mbox{for all} \;\; A \in \Sigma_X, x \in X
-\]
-is stationary with respect to $p$.
+\begin{theorem}[Involutive MCMC is stationary]
+For $p$, $q$, and $f$ satisfying the requirements above, Algorithm~\ref{alg:involutive-mcmc} defines a probability kernel on $X$ that is stationary with respect to the distribution $p$.
 \end{theorem}
 \begin{proof}
-By Lemma~\citep{lemma:involution-detailed-balance}, the transition kernel $k'$ is stationary with respect to $\pi$:
-\[
-%\int_B k'_{z}(B) \pi(z) \mu(dz) = \pi(B) \mbox{ for all } z \in X \times U, B \in \Sigma_Z
-\]
-It suffices to show that
-\begin{align*}
-\int_X k_x(A) p(x) \mu_X(dx) &= p(A) \mbox{ for all } A \in \Sigma_X\\
-\int_X \left( \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \right) p(x) \mu_X(dx) &= p(A)\\
-\int_{X \times U} k'_{x,u}(A \times U) q_x(u) p(x) \mu(dz) &= p(A)
-\end{align*}
-By Lemma~\citep{lemma:involution-detailed-balance}, setting $B := X \times U$, the left-hand-side is:
-\[
-\pi(X \times U) = \int_X \int_U p(x) q_x(u) \mu(
-\]
+The proof is presented in stages in the appendix (see Section~\ref{sec:involution-detailed-balance}, Section~\ref{sec:involution-is-stationary}, and Section~\ref{sec:involutive-mcmc-is-stationary}).
 \end{proof}
-\paragraph{Detailed balance of the involution}
-%Let $q_
 
-\paragraph{Stationarity}
-
-\paragraph{Conditional distribution and observations fixed}
+%\begin{lemma}\label{lemma:involution-detailed-balance} % TODO cite
+%For $p$, $q$, and $f$ satisfying the properties above, let $k'$ denote the following transition kernel on $Z$:
+%\[
+%k'_z(A) := [f(z) \in A] \alpha(z) + [z \in A](1 - \alpha(z))
+%\]
+%The transition kernel $k'$ on $Z$ defined by the involution $f$ satisfies detailed balance with respect to $\pi$:
+%\[
+%\int_B k'_z(A) \pi(dz) = \int_A k'_z(B) \pi(dz) \mbox{ for all } A, B \in \Sigma_Z
+%\]
+%And in particular it is stationary with respect to $\pi$:
+%\[
+%\int_Z k'_z(A) \pi(dz) = \pi(A) \mbox{ for all } A \in \Sigma_Z
+%\]
+%\end{lemma}
+%\begin{proof}
+%\end{proof}
+%
+%\begin{theorem}\label{theorem:stationarity}
+%The transition kernel $k$ on $X$ defined by Algorithm~\ref{alg:involutive-mcmc} for valid $p$, $q$, and $f$:
+%\[
+%k_x(A) := \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \;\; \mbox{for all} \;\; A \in \Sigma_X, x \in X
+%\]
+%is stationary with respect to $p$.
+%\end{theorem}
+%\begin{proof}
+%By Lemma~\citep{lemma:involution-detailed-balance}, the transition kernel $k'$ is stationary with respect to $\pi$:
+%\[
+%%\int_B k'_{z}(B) \pi(z) \mu(dz) = \pi(B) \mbox{ for all } z \in X \times U, B \in \Sigma_Z
+%\]
+%It suffices to show that
+%\begin{align*}
+%\int_X k_x(A) p(x) \mu_X(dx) &= p(A) \mbox{ for all } A \in \Sigma_X\\
+%\int_X \left( \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \right) p(x) \mu_X(dx) &= p(A)\\
+%\int_{X \times U} k'_{x,u}(A \times U) q_x(u) p(x) \mu(dz) &= p(A)
+%\end{align*}
+%By Lemma~\citep{lemma:involution-detailed-balance}, setting $B := X \times U$, the left-hand-side is:
+%\[
+%\pi(X \times U) = \int_X \int_U p(x) q_x(u) \mu(
+%\]
+%\end{proof}
+%\paragraph{Detailed balance of the involution}
+%%Let $q_
+%
+%\paragraph{Stationarity}
+%
+%\paragraph{Conditional distribution and observations fixed}
 
 % TODO PyTorch implementation??
 
@@ -232,25 +240,26 @@ All acknowledgments go at the end of the paper, including thanks to reviewers wh
 \onecolumn
 \section*{APPENDIX}
 
-\subsection{Distributions on traces}
-% TODO rewrite this section..
-Define target density $\pi$ (XXX below it is called $p$, fix this) on the joint space $X \times U$, where $X$ are traces of the model and $X$ are traces of the proposal, in terms of the density $p(x)$ and the family of densities $q_x(u)$ as $\pi(x, u) := p(x) q_u(x)$.
-
-% TODO rename the joint target density to \pi below
-We want to show stationarity with respect to $\pi$, using stationarity of the involution with respect to the joint density (below).
-\begin{equation}
-\int_X p(x) \ell_x(A) \mu(dx) = p(A) \mbox{ for all } A \in \Sigma
-\end{equation}
-where $\ell_x(A)$ is the probability of transitioning into set $A$ from $x$, and is given by:
-\begin{equation}
-\ell_x(A) := \int_U k_{(x, u)}(A \times U) \mu(du)
-\end{equation}
-where $k_{(x, u)}$ is the measure on $X \times U$ that is induced by applying the involution $h$ to the state $(x, u)$.
+%\subsection{Distributions on traces}
+%% TODO rewrite this section..
+%Define target density $\pi$ (XXX below it is called $p$, fix this) on the joint space $X \times U$, where $X$ are traces of the model and $X$ are traces of the proposal, in terms of the density $p(x)$ and the family of densities $q_x(u)$ as $\pi(x, u) := p(x) q_u(x)$.
+%
+%% TODO rename the joint target density to \pi below
+%We want to show stationarity with respect to $\pi$, using stationarity of the involution with respect to the joint density (below).
+%\begin{equation}
+%\int_X p(x) \ell_x(A) \mu(dx) = p(A) \mbox{ for all } A \in \Sigma
+%\end{equation}
+%where $\ell_x(A)$ is the probability of transitioning into set $A$ from $x$, and is given by:
+%\begin{equation}
+%\ell_x(A) := \int_U k_{(x, u)}(A \times U) \mu(du)
+%\end{equation}
+%where $k_{(x, u)}$ is the measure on $X \times U$ that is induced by applying the involution $h$ to the state $(x, u)$.
 % TODO checkme
 
 
-\subsection{Derivation of the pushforward Radon-Nikodym derivative for a special case}
-We consider the special case in which the involution $f$ can be factored into an involution on a countable set $I$ and a family of bijections on $\mathbb{R}^{n_i}$ for some $n_i$ for each $i \in I$.
+\subsection{Derivation of the pushforward Radon-Nikodym derivative for a special case} \label{sec:radon-nikodym-special-case}
+Implementing Algorithm~\ref{alg:involutive-mcmc} requires computing the Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d \mu$.
+This section derives that function for the special case in which the involution $f$ can be factored into an involution on a countable set $I$ and a family of bijections on $\mathbb{R}^{n_i}$ for some $n_i$ for each $i \in I$.
 Suppose $Z = \{(i, \mathbf{x}) : i \in I, \mathbf{x} \in \mathbb{R}^{n_i}\}$.
 Suppose $f_1$ is an involution on $I$ and $n_i = n_{f_1(i)}$ and $f_2$ is a family of continuously differentiable bijections indexed by $i \in I$, such that $f_{2,i} : \mathbb{R}^{n_i} \to \mathbb{R}^{n_i}$.
 Also suppose that $f_{2,i} = f_{2,f_1(i)}^{-1}$ for all $i \in I$. That is,
@@ -298,73 +307,88 @@ Expanding the left-hand side:
 \end{align}
 where the final step uses Borgachev Theorem 3.7.1 with $g := 1$, and $F := f_{2,i}$.
 
-\subsection{Proof of detailed balance for involution}
+\subsection{Proof of detailed balance for involution} \label{sec:involution-detailed-balance}
 \citet{tierney1998note} gives a class of MCMC kernels based on involutions that satisfy detailed balance.
-Specifically, given an involution $T : Z \to Z$, they denote the pushforward of $\pi$ under $T$ by $\pi'$:
-$\pi'(A) := \pi(T^{-1}(A))$.
-They let $\nu(A) := \pi(A) + \pi'(A)$.
-They let $h(z)$ denote `a density for $\pi$ with respect to $\nu$'.
-Then, they set:
-\[
-\alpha(x \to T(x)) \frac{h(x)}{h(T(x))} = \alpha(T(x) \to x)
-\]
-Our definition of $\alpha$ satisfies:
-\[
-\frac{\alpha(z \to T(z))}{\alpha(T(z) \to z)} = \frac{\pi(T(z))}{\pi(z)} \left( \frac{d (\mu \circ T^{-1})}{d \mu} (z) \right)
-\]
-Therefore, to use Tierney's result, it suffices to show that (when $\pi$ and $\pi'$ are $\sigma$-finite and have densities with respect to the same reference measure $\mu$):
-\[
-\frac{h(T(z))}{h(z)}= \frac{\pi(T(z))}{\pi(z)} \left( \frac{d (\mu \circ T^{-1})}{d \mu} (z) \right)
-\]
-(note that $T$ is our $f$).
-What is $h(z)$, the density of $\pi$ with respect to $\nu(A) := \pi(A) + \pi'(A)$?
-Well, if $\pi$ and $\pi'$ have densities with respect to $\mu$, then so does $\nu$, and it is $\nu(z) = \pi(z) + \pi'(z)$, so the density of $\pi$ with respect to $\nu$ is:
-\[
-h(z) = \frac{\pi(z)}{\nu(z)} %= \frac{\pi(z)}{\pi(z) + \pi'(z)}
-\]
-and therefore:
-\[
-\frac{h(T(z))}{h(z)} = \frac{\pi(T(z))}{\pi(z)} \cdot \frac{\nu(z)}{\nu(T(z))}
-\]
+We reproduce the result in our notation:
+\begin{lemma}[Detailed balance for involution move~\citep{tierney1998note}]
+Let $(Z, \Sigma, \pi)$ denote a measure space.
+Suppose $f$ is a one-to-one function from $Z$ onto $Z$ such that $f^{-1} = f$.
+Consider the probability kernel $k$ defined by $k_z(A) := [f(z) \in A] \alpha(z, f(z)) + [z \in A] (1 - \alpha(z, f(z)))$ (where $\alpha(z, f(z))$ gives the probability of accepting a proposed transition from $z$ to $f(z)$).
+Let $\nu(dz) := \pi(dz) + (\pi \circ f^{-1})(dz)$.
+Let $h(z)$ be a density for $\pi$ with respect to $\nu$.
+Let $A := \{z \in Z : h(z) > 0 \mbox{ and } h(f(z)) > 0\}$.
+$k$ satisfies detailed balance with respect to $\pi$ if and only if:
+\begin{enumerate}
+\item $\alpha(z, f(z)) = 0$ for $\pi$-almost all $z \not \in A$
+\item $\alpha(z, f(z)) \frac{h(z)}{h(f(z))} = \alpha(f(z), z)$
+\end{enumerate}
+\end{lemma}
+
+Now we apply Lemma~\ref{lemma:tierney-involution} to our setting where $\pi$ is $\sigma$-finite, there exists a $\sigma$-finite reference measure $\mu$ for measurable space $(Z, \Sigma)$ such that $\pi$ is absolutely continuous with respect to $\mu$, and where the pushforward of $\mu$ by $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$.
+(One step in the proof---Equation~\ref{eq:mu-is-absolutely-continuous-with-respect-to-nu}---will also require that $\mu$ is also absolutely continuous with respect to $\pi$, which is possible if we restrict $Z$ to the support of $\pi$, $\{z : (d \pi / d \mu)(z) > 0\}$, which must be in the $\sigma$-algebra $\Sigma$).
+
+In our setting, $\alpha$ is defined as:
+\begin{equation}
+\alpha(z, f(z)) := \mbox{min}\left\{1, \frac{\frac{d \pi}{d \mu}(f(z))}{\frac{d \pi}{d \mu}(z)} \cdot \frac{d (\mu \circ f^{-1})}{d \mu}(z)\right\}
+\end{equation}
+This definition of $\alpha$ satisfies:
+\begin{equation}
+\alpha(z, f(z)) \frac{\frac{d \pi}{d \mu}(z)}{\frac{d \pi}{d \mu}(f(z))} \cdot \left( \frac{d (\mu \circ f^{-1})}{d \mu} (z)\right)^{-1}= \alpha(f(z), z)
+%\frac{\alpha(z, f(z))}{\alpha(f(z), z)} = \frac{\pi(T(z))}{\pi(z)} \left( \frac{d (\mu \circ T^{-1})}{d \mu} (z) \right)
+\end{equation}
+Therefore, to apply Lemma~\ref{lemma:tierney-involution}, it suffices to show $\pi$ has density with respect to $\nu$ (denoted $h(z)$) such that:
+\begin{equation}
+\frac{h(z)}{h(f(z))} = \frac{\frac{d \pi}{d \mu}(z)}{\frac{d \pi}{d \mu}(f(z))} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (z)\right)^{-1}
+\end{equation}
+(TODO: be careful with the zero cases and support.)\\ % $ TODO
+Since $\pi$ and $\pi \circ f^{-1}$ are both absolutely continuous with respect to $\mu$, $\nu$ is also absolutely continuous with respect to $\mu$, and has density:
+\begin{equation}
+\frac{d \nu}{d \mu}(z) = \frac{d \pi}{d \mu}(z) + \frac{d (\pi \circ f^{-1})}{d \mu}(z) 
+\end{equation}
+$\pi$ is absolutely continuous with respect to $\nu$, and therefore:
+\begin{equation}
+\frac{d \pi}{d \mu}(z) = \frac{d \pi}{d \nu}(z) \cdot \frac{d \nu}{d \mu}(z)
+\end{equation}
+Therefore,
+\begin{equation}
+h(z)
+:= \frac{d \pi}{d \nu}(z)
+= \frac{\frac{d \pi}{d \mu}(z)}{\frac{d \nu}{d \mu}(z)}
+\;\; \mbox{ for } z \mbox{ s.t. } (d \nu / d \mu)(z) > 0
+\end{equation}
+Therefore:%(TODO: be careful with zeros)
+\begin{equation}
+\frac{h(z)}{h(f(z))} = \frac{\frac{d \pi}{d \mu}(z)}{\frac{d \pi}{d \mu}(f(z))} \cdot \frac{\frac{d \nu}{d \mu}(f(z))}{\frac{d \nu}{d \mu}(z)}
+\end{equation}
 It suffices to show that:
 \[
-\frac{\nu(T(z))}{\nu(z)} = \left( \frac{d (\mu \circ T^{-1})}{d \mu} \right)^{-1}
+\frac{\frac{d \nu}{d \mu}(f(z))}{\frac{d \nu}{d \mu}(z)} = \left(\frac{d (\mu \circ f^{-1})}{d \mu}(z)\right)^{-1}
 \]
-First, note that $\nu$ and $\nu \circ T^{-1}$ are the same measure:
-\begin{align}
-\nu(A) &= \pi(A) + \pi'(A) = \pi(A) + \pi(T^{-1}(A))\\
-(\nu \circ T^{-1})(A) &= \pi(T^{-1}(A)) + \pi(T^{-1}(T^{-1}(A))) = \pi(T^{-1}(A)) + \pi(A)
-\end{align}
-Therefore,
-\[
-\frac{d (\nu \circ T^{-1})}{d \nu}(z) = 1 \mbox{ for all } z
-\]
-Expanding $d(\nu \circ T^{-1}) / d \nu$ using the chain rule:
-\begin{align}
-1 &= \frac{d (\nu \circ T^{-1})}{d \nu}(z)\\
-&=   \frac{d (\nu \circ T^{-1})}{d (\mu \circ T^{-1})}(z) \cdot
-    \frac{d (\mu \circ T^{-1})}{d \mu}(z) \cdot
-    \frac{d \mu}{d \nu}(z)\\
-&= \nu(T(z))  \frac{d (\mu \circ T^{-1})}{d \mu} \frac{1}{\nu(z)}
-\end{align}
-where in the second step we used that
+
+First, we prove a Lemma:
+\begin{lemma} \label{lemma:reference-measure-pushforward}
+If $(Z, \Sigma)$ is a measurable space and $f : Z \to Z$ is a measurable function that is an involution, $\nu$ and $\mu$ are $\sigma$-finite measures such that $\nu$ is absolutely continuous with respect to $\mu$, and such that the pushforward measures $\nu \circ f^{-1}$ and $\mu \circ f^{-1}$ are both $\sigma$-finite, then
+$\nu \circ f^{-1}$ is absolutely continuous with respect to $\mu \circ f^{-1}$ and
 \begin{equation}
-\frac{d (\nu \circ T^{-1})}{d (\mu \circ T^{-1})}(z) = \frac{d \nu}{d \mu}(T(z)) = \nu(T(z))
+\frac{d (\nu \circ f^{-1})}{d (\mu \circ f^{-1})}(z) = \frac{d \nu}{d \mu}(f(z))
 \end{equation}
-To show this, we use the definition of the Radon-Nikodym derivative $d (\nu \circ T^{-1}) / d (\mu \circ T^{-1})$.
-To show that $z \mapsto (d \nu / d \mu)(T(z))$ is this Radon-Nikodym derivative, it suffices to show that for all measurable $A$:
+\end{lemma}
+\begin{proof}
+First, $\nu \circ f^{-1}$ is absolutely continuous with respect to $\mu \circ f^{-1}$ because
+$(\mu \circ f^{-1})(A) = 0$ implies $\mu(f^{-1}(A)) = 0$ implies $\nu(f^{-1}(A)) = 0$ implies $(\nu \circ f^{-1})(A) = 0$.
+To show that $z \mapsto (d \nu / d \mu)(f(z))$ is the Radon-Nikodym derivative $d (\nu \circ f^{-1}) / d (\mu \circ f^{-1})$, it suffices to show that for all $A \in \Sigma$:
 \begin{equation}
-\int_A \left( \frac{d \nu}{d \mu} (T(z)) \right) ( \mu \circ T^{-1} )(dz) = (\nu \circ T^{-1})(A) := \nu(T^{-1}(A))
+\int_A \left( \frac{d \nu}{d \mu} (f(z)) \right) ( \mu \circ f^{-1} )(dz) = (\nu \circ f^{-1})(A) := \nu(f^{-1}(A))
 \end{equation}
-Applying Theorem 3.6.1 in Bogachev with $Y := A$, $y := z$, $x := z'$, $X := T^{-1}(A)$, $f := T$, and $g(y) := (d\nu / d\mu)(T(y))$:
+Applying Theorem 3.6.1 in Bogachev with $Y := A$, $y := z$, $x := z'$, $X := f^{-1}(A)$, and $g(y) := (d\nu / d\mu)(f(y))$:
 \begin{align}
-\int_A \left( \frac{d \nu}{d \mu} (T(z)) \right) ( \mu \circ T^{-1} )(dz)
+\int_A \left( \frac{d \nu}{d \mu} (f(z)) \right) ( \mu \circ f^{-1} )(dz)
 &= \int_Y g(y) ( \mu \circ f^{-1} )(dy)\\
 &= \int_X g(f(x)) \mu(dx) \;\;\;\; [\mbox{Bogachev Theorem 3.6.1}]\\
-&= \int_{T^{-1}(A)} (d\nu / d\mu)(T(T(z'))) \mu(dz')\\
-&= \int_{T^{-1}(A)} (d\nu / d\mu)(z') \mu(dz')\\
-&= \int_{T^{-1}(A)} \nu(dz')
-= \nu(T^{-1}(A))
+&= \int_{f^{-1}(A)} (d\nu / d\mu)(f(f(z'))) \mu(dz')\\
+&= \int_{f^{-1}(A)} (d\nu / d\mu)(z') \mu(dz')\\
+&= \int_{f^{-1}(A)} \nu(dz')
+= \nu(f^{-1}(A))
 \end{align}
 % NOTE Bogachev's theorem uses domains of integration which are the whole
 % sample spaces for the two sigma algebras.  I think that the theorem should
@@ -372,10 +396,32 @@ Applying Theorem 3.6.1 in Bogachev with $Y := A$, $y := z$, $x := z'$, $X := T^{
 % sigma algebra and measure that are restricted to to any nonempty measurable
 % set.
 
-\subsection{Proof of stationarity for involution}
+\end{proof}
+
+Now, note that $\nu$ and $\nu \circ f^{-1}$ are the same measure:
+\begin{align}
+\nu(A) &= \pi(A) + \pi'(A) = \pi(A) + \pi(f^{-1}(A))\\
+(\nu \circ f^{-1})(A) &= \pi(f^{-1}(A)) + \pi(f^{-1}(f^{-1}(A))) = \pi(f^{-1}(A)) + \pi(A)
+\end{align}
+Therefore,
+\[
+\frac{d (\nu \circ f^{-1})}{d \nu}(z) = 1 \mbox{ for all } z
+\]
+Expanding $d(\nu \circ f^{-1}) / d \nu$ using the chain rule:
+\begin{align}
+1 &= \frac{d (\nu \circ f^{-1})}{d \nu}(z)\\
+&=   \frac{d (\nu \circ f^{-1})}{d (\mu \circ f^{-1})}(z) \cdot
+    \frac{d (\mu \circ f^{-1})}{d \mu}(z) \cdot
+    \frac{d \mu}{d \nu}(z) \label{eq:mu-is-absolutely-continuous-with-respect-to-nu}\\
+&= \frac{d \nu}{d \mu}(f(z)) \cdot \frac{d (\mu \circ f^{-1})}{d \mu}(z) \cdot \frac{d \mu}{d \mu}(z) \;\;\;\; [\mbox{Lemma~\ref{lemma:reference-measure-pushforward}}]\\
+&= \frac{d \nu}{d \mu}(f(z)) \cdot \frac{d (\mu \circ f^{-1})}{d \mu}(z) \cdot \frac{1}{\frac{d \nu}{d \mu}(z)}\\
+\left(\frac{d (\mu \circ f^{-1})}{d \mu}(z)\right)^{-1} &= \frac{\frac{d \nu}{d \mu}(f(z))}{\frac{d \nu}{d \mu}(z)}
+\end{align}
+
+\subsection{Proof of stationarity for involution} \label{sec:involution-is-stationary}
 Stationarity follows from detailed balance by setting $B := Z$ in the detailed balance equation, and using $k'_z(Z) = \alpha(z) + (1 - \alpha(z)) =1$, so the right-hand side simplifies to $\int_A \pi(dz) = \pi(A)$.
 
-\subsection{Proof of stationarity for end-to-end kernel}
+\subsection{Proof of stationarity for end-to-end kernel} \label{sec:involutive-mcmc-is-stationary}
 We are given that the involution is stationary with respect to (the measure induced by) $\pi(x, u) := p(x) q_x(u)$:
 \[
 \int_Z k'_z(A) \pi(z) \mu(dz) = \pi(A) \mbox{ for all } A \in \Sigma_Z
