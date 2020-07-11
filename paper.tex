@@ -136,19 +136,21 @@ The mixture kernel is composed from three Gen programs:
 
 \section{INVOLUTIVE MCMC}
 
-% problem: what if the return value of p determines the control flow of q_x?
-% then the reference measure on 
-%Let $(Z, 
+Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$.
+Let $p : X \to [0, \infty)$ be a probability density with respect to $\mu_P$ and for each $t \in X$ such that $p(t) > 0$ let $q_t : Y \to [0, \infty)$ be probability density with respect to $\mu_Q$.
+We call $p$ the \emph{target density} and we call $q_t$ \emph{auxiliary densities}.
+Let $\pi(t, u) := p(t) q_t(u)$ and $Z := \{(t, u) : \pi(t, u) > 0 \}$.
+Suppose $Z \in \Sigma_P \otimes \Sigma_Q$ (the product $\sigma$-algebra), so that $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigma$-algebra on $Z$ and let $\mu : \Sigma \to [0, \infty)$ with $\mu(A) := (\mu_P \times \mu_Q)(A)$
+(note that $\mu$ is $\sigma$-finite since $\mu_P \times \mu_Q$ is $\sigma$-finite. % TODO: prove this 
+Suppose that $\pi$ is a probability density with respect to $\mu$. % TODO is this guaranteed?
 
-Let $p$ denote the target probability density with respect to some $\sigma$-finite measure $\mu_X$ on a set $X$.
-For each $x$ such that $p(x) > 0$, let $q_x$ denote a probability density with respect to some $\sigma$-finite measure $\mu_U$ on a set $U$.
-Let $\mu := \mu_X \times \mu_U$ denote the product measure on the space $X \times U$, and let $\pi(x, u) := p(x) q_x(u)$ and $Z := \{(x, u) : \pi(x, u) > 0\}$.
 Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$.
+Let $u \sim q_t(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_t(u) \mu_Q(du)$ for $A \in \Sigma_Q$.
 
 \begin{algorithm}[h]
 \begin{algorithmic}
-\Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $x$}
-    \State $u \sim q(\cdot; x)$ \Comment{Sample auxiliary variables}
+\Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $t$}
+    \State $u \sim q_t(\cdot)$ \Comment{Sample auxiliary variables}
     \State $(x', u') \gets f(x, u)$ \Comment{Apply involution}
     %\State $\alpha \gets
         %\frac{p(x') q(u'; x')}{p(x) q(u; x)} \left| \left[ \frac{\partial h(u, t)}{\partial (u, t)} \right] \right|$
@@ -203,14 +205,15 @@ TODO: show a discrete probabilistic prgram with the table of traces it could sam
 % measure version
 \paragraph{Handling continuous distributions}
 For programs that can sample from continuous probability distributions, the formalism needs to be extended.
-pecifically, we define the $\mathcal{S}$ to be the set of all possible \emph{trace structures} as a (possibly countably infinite) set of finite sets of addresses, denoted $\mathcal{S} \subseteq P(\mathcal{A})$, where $\mathcal{A}$ is the set of all addresses.
+pecifically, we define the $\mathcal{S}$ to be the set of all possible \emph{trace structures} as a (possibly countably infinite) set of finite sets of addresses, denoted $\mathcal{S} \subseteq \mathcal{P}(\mathcal{A})$, where $\mathcal{A}$ is the set of all addresses.
 For each address $a \in \mathcal{A}$ we assign a reference measure space $(X_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite.
-The set of all traces of a probabilistic program is the set $\mathcal{T} := \cup_{S \in \mathcal{S}} \{(S, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a\}\}$.
-The \emph{reference measure space} for a probabilistic program is $(\mathcal{T}, \Sigma, \mu)$ where
-$\Sigma$ is the $\sigma$-algebra that contains sets $\cup_{S \in \mathcal{S}}\{ B_S \} \in \mathcal{P}(\mathcal{T})$ such that $B_S$ is an element of the product $\sigma$-algebra $\Sigma_S := \otimes_{a \in S} \Sigma_a$,
+The set of all traces of a probabilistic program is the set $T := \cup_{S \in \mathcal{S}} \{(S, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a\}\}$.
+The \emph{reference measure space} for a probabilistic program is $(T, \Sigma, \mu)$ where
+$\Sigma$ is the $\sigma$-algebra that contains sets $\cup_{S \in \mathcal{S}}\{ B_S \} \in \mathcal{P}(T)$ such that $B_S$ is an element of the product $\sigma$-algebra $\Sigma_S := \otimes_{a \in S} \Sigma_a$,
 and where $\mu(\cup_{S \in \mathcal{S}}\{ B_S \}) := \sum_{S \in \mathcal{S}} \mu_S(B_S)$ where $\mu_S$ is the product measure $\times_{a \in S} \mu_a$.
 
-We assume that a probabilistic program denotes a reference measure space $\mu$ and a density $p(t)$ on traces $t$ with respect to the reference measure, such that $p$ and $\mu$ are mutually absolutely continuous.
+We assume that a probabilistic program $P$ denotes a reference measure space $(T_P, \Sigma_P, \mu_P)$ and a measure $P(dt)$ that is mutually absolutely continuous with respect to $\mu_P$, with density 
+$p : T \to [0, \infty)$ on traces $t \in T$.
 We do not give the denotational semantics of a probabilistic programming language with this property, but instead refer to POPL paper for an example of a denotational semantics. % TODO what about requirement that the support of each random choice is constant? (this is implied by the definition of reference measure)
 
 TODO: Give an example of a probabilistic program in Gen's dynamic modeling language that includes continuous random choices, and the vbase measure and a density for it.
@@ -227,6 +230,12 @@ p(t) \;\; \pi(z)
 \]
 
 \paragraph{Extending one probabilistic program with another}
+A second probabilistic program that is parametrized by (i.e. takes as input) traces of the first probabilistic program $P$.
+The reference measure space of the second probabilistic program for $t \in T_P$ is denoted $(T_{Q,t}, \Sigma_{Q,t}, \mu_{P,t})$.
+We define $Z := \{(t, u) : t \in T_P, u \in T_{Q,t}$ and we define $\pi(z) := p(t) q_t(u)$.
+We require that $(Z, \Sigma, \mu)$ is a probabilistic program reference measure and $\pi$ is a probability density with respect to $\mu$ that is mutually absolutely continuous.
+The combined program is $P \circ Q$.
+
 Given a 
 
 % the only place where this matters is in the 'gibbs move' argument.. (8.4)
@@ -349,8 +358,8 @@ $k$ satisfies detailed balance with respect to $\pi$ if and only if:
 \end{enumerate}
 \end{lemma}
 
-Now we apply Lemma~\ref{lemma:tierney-involution} to our setting where $\pi$ is $\sigma$-finite, there exists a $\sigma$-finite reference measure $\mu$ for measurable space $(Z, \Sigma)$ such that $\pi$ is absolutely continuous with respect to $\mu$, and where the pushforward of $\mu$ by $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$.
-(One step in the proof---Equation~\ref{eq:mu-is-absolutely-continuous-with-respect-to-nu}---will also require that $\mu$ is also absolutely continuous with respect to $\pi$, which is possible if we restrict $Z$ to the support of $\pi$, $\{z : (d \pi / d \mu)(z) > 0\}$, which must be in the $\sigma$-algebra $\Sigma$).
+Now we apply Lemma~\ref{lemma:tierney-involution} to our setting where $\pi$ is $\sigma$-finite, there exists a $\sigma$-finite reference measure $\mu$ for measurable space $(Z, \Sigma)$ such that $\pi$ is mutually absolutely continuous with respect to $\mu$, and where the pushforward of $\mu$ by $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$.
+%(One step in the proof---Equation~\ref{eq:mu-is-absolutely-continuous-with-respect-to-nu}---will also require that $\mu$ is also absolutely continuous with respect to $\pi$, which is possible if we restrict $Z$ to the support of $\pi$, $\{z : (d \pi / d \mu)(z) > 0\}$, which must be in the $\sigma$-algebra $\Sigma$).
 
 In our setting, $\alpha$ is defined as:
 \begin{equation}
@@ -365,7 +374,6 @@ Therefore, to apply Lemma~\ref{lemma:tierney-involution}, it suffices to show $\
 \begin{equation}
 \frac{h(z)}{h(f(z))} = \frac{\frac{d \pi}{d \mu}(z)}{\frac{d \pi}{d \mu}(f(z))} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (z)\right)^{-1}
 \end{equation}
-(TODO: be careful with the zero cases and support.)\\ % $ TODO
 Since $\pi$ and $\pi \circ f^{-1}$ are both absolutely continuous with respect to $\mu$, $\nu$ is also absolutely continuous with respect to $\mu$, and has density:
 \begin{equation}
 \frac{d \nu}{d \mu}(z) = \frac{d \pi}{d \mu}(z) + \frac{d (\pi \circ f^{-1})}{d \mu}(z) 
@@ -374,14 +382,14 @@ $\pi$ is absolutely continuous with respect to $\nu$, and therefore:
 \begin{equation}
 \frac{d \pi}{d \mu}(z) = \frac{d \pi}{d \nu}(z) \cdot \frac{d \nu}{d \mu}(z)
 \end{equation}
+Because $(d \pi / d \mu)(z) > 0$ for all $z \in Z$, $(d \nu / d \mu)(z) > 0$ for all $z \in Z$.
 Therefore,
 \begin{equation}
 h(z)
 := \frac{d \pi}{d \nu}(z)
 = \frac{\frac{d \pi}{d \mu}(z)}{\frac{d \nu}{d \mu}(z)}
-\;\; \mbox{ for } z \mbox{ s.t. } (d \nu / d \mu)(z) > 0
 \end{equation}
-Therefore:%(TODO: be careful with zeros)
+Therefore:
 \begin{equation}
 \frac{h(z)}{h(f(z))} = \frac{\frac{d \pi}{d \mu}(z)}{\frac{d \pi}{d \mu}(f(z))} \cdot \frac{\frac{d \nu}{d \mu}(f(z))}{\frac{d \nu}{d \mu}(z)}
 \end{equation}
@@ -444,95 +452,101 @@ Expanding $d(\nu \circ f^{-1}) / d \nu$ using the chain rule:
 \end{align}
 
 \subsection{Proof of stationarity for involution} \label{sec:involution-is-stationary}
-Stationarity follows from detailed balance by setting $B := Z$ in the detailed balance equation, and using $k'_z(Z) = \alpha(z) + (1 - \alpha(z)) =1$, so the right-hand side simplifies to $\int_A \pi(dz) = \pi(A)$.
+Detailed balance of the the involution kernel with respect to the measure induced by $\pi$ implies:
+\begin{equation}
+\int_B \pi(z) k'_z(A) \mu(dz) = \int_A \pi(z) k'_z(B) \mu(dz) \;\; \mbox{ for all } A, B \in \Sigma
+\end{equation}
+Stationarity with respect to $\pi$ follows by substituting $Z$ for $B$:
+\begin{align}
+\int_Z \pi(z) k'_z(A) \mu(dz) &= \int_A \pi(z) k'_z(Z) \mu(dz) = \int_A \pi(z) \mu(dz) \;\; \mbox{ for all } A \in \Sigma\\
+\end{align}
 
 \subsection{Proof of stationarity for end-to-end kernel} \label{sec:involutive-mcmc-is-stationary}
 We are given that the involution is stationary with respect to (the measure induced by) $\pi(x, u) := p(x) q_x(u)$:
-\[
-\int_Z k'_z(A) \pi(z) \mu(dz) = \pi(A) \mbox{ for all } A \in \Sigma_Z
-\]
-It suffices to show that the end-to-end kernel $k$ is stationary with respect to (the measure induced by) $p(x)$:
-\[
-\int_X k_x(A) p(x) \mu_X(dx) = p(A) \mbox{ for all } A \in \Sigma_X
-\]
-The kernel $k$ on $X$ defined by Algorithm~\ref{alg:involutive-mcmc} for valid $p$, $q$, and $f$:
-\[
-k_x(A) := \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \;\; \mbox{for all} \;\; A \in \Sigma_X, x \in X
-\]
-is stationary with respect to $p$.
+\begin{equation}
+\int_Z k'_z(A) \pi(z) \mu(dz) = \int_A \pi(z) \mu(dz) \mbox{ for all } A \in \Sigma
+\end{equation}
+The end-to-end kernel is defined fir all $x \in X_P$ such that $p(x) > 0$ as:
+\begin{equation}
+k_x(A) := \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \;\; \mbox{for all} \;\; A \in \Sigma_P, x \in X
+\end{equation}
+Stationarity of the end-to-end kernel with respect to the measure induced by $p$ is:
+\begin{equation}
+\int_X k_x(A) p(x) \mu_P(dx) = \int_A p(x) \mu_P(dx) \mbox{ for all } A \in \Sigma_P
+\end{equation}
+Expanding:
 \begin{align*}
-    \int_X k_x(A) p(x) \mu_X(dx) &= p(A) \mbox{ for all } A \in \Sigma_X\\
-    \int_X \left( \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \right) p(x) \mu_X(dx) &= p(A)\\
-    \int_{X \times U} k'_{x,u}(A \times U) q_x(u) p(x) \mu(dz) &= p(A)\\
-    \int_{X \times U} k'_{x,u}(A \times U) \pi(z) \mu(dz) &= p(A)\\
-    \pi(A \times U) &= p(A)\\
-    \int_{A \times U} q_x(u) p(x) \mu(dz) &= p(A)\\
-    \int_A \left( \int_U q_x(u) \mu_U(du) \right) p(x) \mu_X(dx) &= p(A)\\
-    \int_A p(x) \mu_X(dx) &= p(A)
+    \int_X k_x(A) p(x) \mu_P(dx) &= \int_X \left( \int_U k'_{x,u}(A \times U) q_x(u) \mu_Q(du) \right) p(x) \mu_P(dx)\\
+    &= \int_{X \times U} k'_{x,u}(A \times U) q_x(u) p(x) (\mu_P \times \mu_Q)(dz) \;\; [\mbox{ Tonelli's theorem }]\\ % TODO check
+    &= \int_{Z} k'_{x,u}(\{(x', u') \in Z : x' \in A\}) \pi(z) \mu(dz)\\ % TODO justify
+    &= \int_{\{(x, u) \in Z : x \in A\}} \pi(z) \mu(dz)\;\;\; [\mbox{ Stationarity of $k'$ with respect to $\pi$}]\\
+    &= \int_{\{(x, u) \in Z : x \in A\}} q_x(u) p(x) \mu(dz)\\
+    &= \int_A \left( \int_U q_x(u) \mu_Q(du) \right) p(x) \mu_P(dx)\\
+    &= \int_A p(x) \mu_P(dx)
 \end{align*}
 % TODO characterize the various assumptions that allow us to e.g. rearrange the order of integration, etc.
 
-\paragraph{Proof of stationarity}
-We need the composition of the two programs to define a valid probabilistic program with density $\pi$ that is absolutely continuous with respect to the refernce measure $\mu$.
-We also need there to be a particular relationship between $\pi$ and $p$.
-The involution part of the kernel is a kernel on the combined space $(Z, \Sigma_Z, \mu)$.
-\[
-k'_z(B_Z) = [f(z) \in B_Z] \alpha(z) + [z \in B_Z] (1 - \alpha(z))
-\]
-The kernel of Algorithm 1 is defined by:
-\[
-k_t(B_T) := \int_{U_t} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,t}(du)
-\]
-We want to show it is stationary:
-\begin{align}
-\int_T k_t(B_T) p(t) \mu_P(dt) &= p(B_T) \mbox{ for all } B_T \in \Sigma_P\\
-\int_T \left( \int_{U_t} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,t}(du) \right) p(t) \mu_P(dt) &= p(B_T)\\
-\sum_{i} \int_{T_C} \left( \int_{U_t} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,t}(du) \right) p(i, t_c) \mu_{P_C,i}(dt_c) &= p(B_T)\\ % separate out discrete part of t (i) and continuous part of t (t_c)
-\sum_{i} \int_{T_C} \left( \int_{U_i} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,i}(du) \right) p(i, t_c) \mu_{P_C,i}(dt_c) &= p(B_T)\\ % use that the reference measure mu_{Q,t} only depends on the discrete part
-..\\
-\int_{Z} \pi(t, u) k'_{t,u}(\{(t', u') \in Z : t' \in B_T\}) \mu(dz) &= p(B_T)\\
-\pi(\{(t', u') \in Z : t' \in B_T\}) &= p(B_T)\\
-\end{align}
-
-the set of addresses $\mathcal{A}$ is partitioned into two spaces $\mathcal{A}_1$ and $\mathcal{A}_2$\\
-
-each structure $S$ partitions into two structures $S_1$ and $S_2$
-
-then $Z := \cup_{S \in \mathcal{S}} \{(S, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a \}$\\
-
-Space for $Z$:
-\[
-\cup_{S \in \mathcal{S}} \{((\mathcal{A}_1 \cap S) \cup (\mathcal{A}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in \times_{a \in S_1} X_a, \mathbf{x_2} \in \times_{a \in S_2} X_a\}
-\]
-
-Space for $T$:
-\[
-\cup_{S_1 \in \mathcal{S}} \{(S_1, \mathbf{x_1}) : \mathbf{x_1} \in \times_{a \in S_1}\}
-\]
-
-\begin{align}
-\pi(
-\cup_{S \in \mathcal{S} : A_1 \cap S = S_1} \{(S_1 \cup (\mathcal{A}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in B_{S_1}, \mathbf{x_2} \in \times_{a \in S_2} X_a\}
-) &= p(B_T)\\
-\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{a \in S_2} X_a} \pi(S_1, S_2, \mathbf{x}_1, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
-\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{a \in S_2} X_a} p(S_1, \mathbf{x}_1) q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
-\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
-\sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T)\\
-\int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
-\end{align}
-It suffices to show that
-\begin{align}
-\sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) = 1 \mbox{ for all } (S_1, \mathbf{x}_1) \in T
-\end{align}
-It suffices to show that for each $(S_1, \mathbf{x}_1) \in T$, we have that $q_{(S_1, \mathbf{x}_1)}$ is the density of a (terminating with probability one) probabilistic program with structruers $\mathcal{S}_2$ such that
-\[
-\mathcal{S}_2 = \{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}\}
-\]
-
-\[
-B_1 = \cup_{S_1 \in \mathcal{S}_1} \{(S_1, \mathbf{x}_1) : \mathbf{x}_1 \in B_{S_1}\}\;\;\; \mbox{where} \;\; B_{S_1} \in \otimes_{a \in S_1} \Sigma_{a} \;\;\; [\mbox{Measurable set } B_1]
-\]
-% TODO the proof above should have a sum over S_1
+%\paragraph{Proof of stationarity}
+%We need the composition of the two programs to define a valid probabilistic program with density $\pi$ that is absolutely continuous with respect to the refernce measure $\mu$.
+%We also need there to be a particular relationship between $\pi$ and $p$.
+%The involution part of the kernel is a kernel on the combined space $(Z, \Sigma_Z, \mu)$.
+%\[
+%k'_z(B_Z) = [f(z) \in B_Z] \alpha(z) + [z \in B_Z] (1 - \alpha(z))
+%\]
+%The kernel of Algorithm 1 is defined by:
+%\[
+%k_t(B_T) := \int_{U_t} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,t}(du)
+%\]
+%We want to show it is stationary:
+%\begin{align}
+%\int_T k_t(B_T) p(t) \mu_P(dt) &= p(B_T) \mbox{ for all } B_T \in \Sigma_P\\
+%\int_T \left( \int_{U_t} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,t}(du) \right) p(t) \mu_P(dt) &= p(B_T)\\
+%\sum_{i} \int_{T_C} \left( \int_{U_t} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,t}(du) \right) p(i, t_c) \mu_{P_C,i}(dt_c) &= p(B_T)\\ % separate out discrete part of t (i) and continuous part of t (t_c)
+%\sum_{i} \int_{T_C} \left( \int_{U_i} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,i}(du) \right) p(i, t_c) \mu_{P_C,i}(dt_c) &= p(B_T)\\ % use that the reference measure mu_{Q,t} only depends on the discrete part
+%..\\
+%\int_{Z} \pi(t, u) k'_{t,u}(\{(t', u') \in Z : t' \in B_T\}) \mu(dz) &= p(B_T)\\
+%\pi(\{(t', u') \in Z : t' \in B_T\}) &= p(B_T)\\
+%\end{align}
+%
+%the set of addresses $\mathcal{A}$ is partitioned into two spaces $\mathcal{A}_1$ and $\mathcal{A}_2$\\
+%
+%each structure $S$ partitions into two structures $S_1$ and $S_2$
+%
+%then $Z := \cup_{S \in \mathcal{S}} \{(S, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a \}$\\
+%
+%Space for $Z$:
+%\[
+%\cup_{S \in \mathcal{S}} \{((\mathcal{A}_1 \cap S) \cup (\mathcal{A}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in \times_{a \in S_1} X_a, \mathbf{x_2} \in \times_{a \in S_2} X_a\}
+%\]
+%
+%Space for $T$:
+%\[
+%\cup_{S_1 \in \mathcal{S}} \{(S_1, \mathbf{x_1}) : \mathbf{x_1} \in \times_{a \in S_1}\}
+%\]
+%
+%\begin{align}
+%\pi(
+%\cup_{S \in \mathcal{S} : A_1 \cap S = S_1} \{(S_1 \cup (\mathcal{A}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in B_{S_1}, \mathbf{x_2} \in \times_{a \in S_2} X_a\}
+%) &= p(B_T)\\
+%\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{a \in S_2} X_a} \pi(S_1, S_2, \mathbf{x}_1, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
+%\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{a \in S_2} X_a} p(S_1, \mathbf{x}_1) q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
+%\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
+%\sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T)\\
+%\int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
+%\end{align}
+%It suffices to show that
+%\begin{align}
+%\sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) = 1 \mbox{ for all } (S_1, \mathbf{x}_1) \in T
+%\end{align}
+%It suffices to show that for each $(S_1, \mathbf{x}_1) \in T$, we have that $q_{(S_1, \mathbf{x}_1)}$ is the density of a (terminating with probability one) probabilistic program with structruers $\mathcal{S}_2$ such that
+%\[
+%\mathcal{S}_2 = \{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}\}
+%\]
+%
+%\[
+%B_1 = \cup_{S_1 \in \mathcal{S}_1} \{(S_1, \mathbf{x}_1) : \mathbf{x}_1 \in B_{S_1}\}\;\;\; \mbox{where} \;\; B_{S_1} \in \otimes_{a \in S_1} \Sigma_{a} \;\;\; [\mbox{Measurable set } B_1]
+%\]
+%% TODO the proof above should have a sum over S_1
 
 
 
