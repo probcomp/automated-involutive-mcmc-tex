@@ -135,6 +135,11 @@ The mixture kernel is composed from three Gen programs:
 \end{figure*}
 
 \section{INVOLUTIVE MCMC}
+
+% problem: what if the return value of p determines the control flow of q_x?
+% then the reference measure on 
+%Let $(Z, 
+
 Let $p$ denote the target probability density with respect to some $\sigma$-finite measure $\mu_X$ on a set $X$.
 For each $x$ such that $p(x) > 0$, let $q_x$ denote a probability density with respect to some $\sigma$-finite measure $\mu_U$ on a set $U$.
 Let $\mu := \mu_X \times \mu_U$ denote the product measure on the space $X \times U$, and let $\pi(x, u) := p(x) q_x(u)$ and $Z := \{(x, u) : \pi(x, u) > 0\}$.
@@ -167,58 +172,78 @@ For $p$, $q$, and $f$ satisfying the requirements above, Algorithm~\ref{alg:invo
 The proof is presented in stages in the appendix (see Section~\ref{sec:involution-detailed-balance}, Section~\ref{sec:involution-is-stationary}, and Section~\ref{sec:involutive-mcmc-is-stationary}).
 \end{proof}
 
-%\begin{lemma}\label{lemma:involution-detailed-balance} % TODO cite
-%For $p$, $q$, and $f$ satisfying the properties above, let $k'$ denote the following transition kernel on $Z$:
-%\[
-%k'_z(A) := [f(z) \in A] \alpha(z) + [z \in A](1 - \alpha(z))
-%\]
-%The transition kernel $k'$ on $Z$ defined by the involution $f$ satisfies detailed balance with respect to $\pi$:
-%\[
-%\int_B k'_z(A) \pi(dz) = \int_A k'_z(B) \pi(dz) \mbox{ for all } A, B \in \Sigma_Z
-%\]
-%And in particular it is stationary with respect to $\pi$:
-%\[
-%\int_Z k'_z(A) \pi(dz) = \pi(A) \mbox{ for all } A \in \Sigma_Z
-%\]
-%\end{lemma}
-%\begin{proof}
-%\end{proof}
-%
-%\begin{theorem}\label{theorem:stationarity}
-%The transition kernel $k$ on $X$ defined by Algorithm~\ref{alg:involutive-mcmc} for valid $p$, $q$, and $f$:
-%\[
-%k_x(A) := \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \;\; \mbox{for all} \;\; A \in \Sigma_X, x \in X
-%\]
-%is stationary with respect to $p$.
-%\end{theorem}
-%\begin{proof}
-%By Lemma~\citep{lemma:involution-detailed-balance}, the transition kernel $k'$ is stationary with respect to $\pi$:
-%\[
-%%\int_B k'_{z}(B) \pi(z) \mu(dz) = \pi(B) \mbox{ for all } z \in X \times U, B \in \Sigma_Z
-%\]
-%It suffices to show that
-%\begin{align*}
-%\int_X k_x(A) p(x) \mu_X(dx) &= p(A) \mbox{ for all } A \in \Sigma_X\\
-%\int_X \left( \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \right) p(x) \mu_X(dx) &= p(A)\\
-%\int_{X \times U} k'_{x,u}(A \times U) q_x(u) p(x) \mu(dz) &= p(A)
-%\end{align*}
-%By Lemma~\citep{lemma:involution-detailed-balance}, setting $B := X \times U$, the left-hand-side is:
-%\[
-%\pi(X \times U) = \int_X \int_U p(x) q_x(u) \mu(
-%\]
-%\end{proof}
-%\paragraph{Detailed balance of the involution}
-%%Let $q_
-%
-%\paragraph{Stationarity}
-%
-%\paragraph{Conditional distribution and observations fixed}
+\section{PROBABILISTIC PROGRAMMING WITH TRACES}
+
+Probabilistic programs are programs that define probability distributions.
+Probabilistic programs can be used to define standard joint probability distributions over vectors of random-variables, as well as more complex probability distributions with uncertainty over the structure in which the set of random variables itself random.
+Involutive MCMC can be applied for target probability distributions on non-standard reference measures, including models with structure uncertainty.
+For example, reversible jump MCMC, which is a special case of involutive MCMC, can be applied to switch between different model structures.
+This section describes a framework for probabilistic programming that is expressive enough to represent probability distributions with structure uncertainty.
+
+\paragraph{Traces}
+In our framework, a probabilistic program defines a probability distribution on finite dictionaries that map the name of a `random choice' to its value.
+Following standard terminology in probabilistic programming~\citep{?}, we call these dictionaries \emph{traces} because they can be sampled by running a probabilistic program, and `tracing' the execution the program by recording the value of eacn random choice encountered.
+In the probabilistic programming language used in this paper, the user assigns a unique name or \emph{address} to each random choice using a special syntax:
+
+TODO: include example of tilde syntax
+
+TODO: introduce the mathematical notation for a trace
+
+\paragraph{A probabilistic program encodes a probability distribution on traces}
+For probabilistic programs that only sample individual random choices from discrete probability distributions, the meaning of the program can be described by a probability mass function that assigns a probailtiy to every possible trace.
+
+TODO: Give a simple example of a probabilistic program with discrete random chocies and stochastic control flow, and the resulting probabiilty distribution.
+TODO: describe the two variants of tilde syntax
+
+Note that traces are always finite, but there can be no upper bound.
+For example, for this program, there is a countably infinite number of possible traces:
+
+TODO: show a discrete probabilistic prgram with the table of traces it could sample
+
+% measure version
+\paragraph{Handling continuous distributions}
+For programs that can sample from continuous probability distributions, the formalism needs to be extended.
+pecifically, we define the $\mathcal{S}$ to be the set of all possible \emph{trace structures} as a (possibly countably infinite) set of finite sets of addresses, denoted $\mathcal{S} \subseteq P(\mathcal{A})$, where $\mathcal{A}$ is the set of all addresses.
+For each address $a \in \mathcal{A}$ we assign a reference measure space $(X_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite.
+The set of all traces of a probabilistic program is the set $\mathcal{T} := \cup_{S \in \mathcal{S}} \{(S, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a\}\}$.
+The \emph{reference measure space} for a probabilistic program is $(\mathcal{T}, \Sigma, \mu)$ where
+$\Sigma$ is the $\sigma$-algebra that contains sets $\cup_{S \in \mathcal{S}}\{ B_S \} \in \mathcal{P}(\mathcal{T})$ such that $B_S$ is an element of the product $\sigma$-algebra $\Sigma_S := \otimes_{a \in S} \Sigma_a$,
+and where $\mu(\cup_{S \in \mathcal{S}}\{ B_S \}) := \sum_{S \in \mathcal{S}} \mu_S(B_S)$ where $\mu_S$ is the product measure $\times_{a \in S} \mu_a$.
+
+We assume that a probabilistic program denotes a reference measure space $\mu$ and a density $p(t)$ on traces $t$ with respect to the reference measure, such that $p$ and $\mu$ are mutually absolutely continuous.
+We do not give the denotational semantics of a probabilistic programming language with this property, but instead refer to POPL paper for an example of a denotational semantics. % TODO what about requirement that the support of each random choice is constant? (this is implied by the definition of reference measure)
+
+TODO: Give an example of a probabilistic program in Gen's dynamic modeling language that includes continuous random choices, and the vbase measure and a density for it.
+
+% step 1: *assert* that the composition of p and then q defines a probabilistic program with ref meas mu and mut. abs. cont. pi(z) [ok] (( do this without ascribing separate semantics to p and q?? ))
+% step 2: show detailed balance on the joint space ... [ok]
+% step 3: show stationarity on the joint space [ok, easy from detailed balance]
+% step 4: show stationarity with respect to space of p.... ((requires ascribing semantics to p, but maybe not q??)
+% - this would be straightforward for a product space, but our space is more complicated?
+% - need to assert relationship between p and pi, ... 
+
+\[
+p(t) \;\; \pi(z)
+\]
+
+\paragraph{Extending one probabilistic program with another}
+Given a 
+
+% the only place where this matters is in the 'gibbs move' argument.. (8.4)
+
+We need $p$ to be a density with respect to some reference measure space $(T_P, \Sigma_{P}, \mu_P)$.
+We need $q_t$ to be a density with respect to some reference measure $\mu_{Q,t}$ for each $t \in T_P$.
+Such that the function $\pi(t, u) := p(x) q_t(u)$ is a density $\pi(x, u)$ with respect to some reference measure $\mu$, and $\pi$ is mutually absolutely continuous with $\mu$.
+(this can be constructed by using hierarchical addresses `model' and `proposal' for the random choics made in the two programs).
+
+\paragraph{Conditioning}
+
+\section{DIFFERENTIABLE PROGRAMMING WITH TRACES}
 
 % TODO PyTorch implementation??
 
 \section{AUTOMATIC ACCEPTANCE PROBABILITY CALCULATION}
 
-\subsection{Exploiting Jacobian Sparsity}
 
 % TODO can only show this for a special case -- discrete involution + continuous?, or some more general case?
 
@@ -310,7 +335,7 @@ where the final step uses Borgachev Theorem 3.7.1 with $g := 1$, and $F := f_{2,
 \subsection{Proof of detailed balance for involution} \label{sec:involution-detailed-balance}
 \citet{tierney1998note} gives a class of MCMC kernels based on involutions that satisfy detailed balance.
 We reproduce the result in our notation:
-\begin{lemma}[Detailed balance for involution move~\citep{tierney1998note}]
+\begin{lemma}[Detailed balance for involution move~\citep{tierney1998note}] \label{lemma:tierney-involution}
 Let $(Z, \Sigma, \pi)$ denote a measure space.
 Suppose $f$ is a one-to-one function from $Z$ onto $Z$ such that $f^{-1} = f$.
 Consider the probability kernel $k$ defined by $k_z(A) := [f(z) \in A] \alpha(z, f(z)) + [z \in A] (1 - \alpha(z, f(z)))$ (where $\alpha(z, f(z))$ gives the probability of accepting a proposed transition from $z$ to $f(z)$).
@@ -446,5 +471,75 @@ is stationary with respect to $p$.
     \int_A p(x) \mu_X(dx) &= p(A)
 \end{align*}
 % TODO characterize the various assumptions that allow us to e.g. rearrange the order of integration, etc.
+
+\paragraph{Proof of stationarity}
+We need the composition of the two programs to define a valid probabilistic program with density $\pi$ that is absolutely continuous with respect to the refernce measure $\mu$.
+We also need there to be a particular relationship between $\pi$ and $p$.
+The involution part of the kernel is a kernel on the combined space $(Z, \Sigma_Z, \mu)$.
+\[
+k'_z(B_Z) = [f(z) \in B_Z] \alpha(z) + [z \in B_Z] (1 - \alpha(z))
+\]
+The kernel of Algorithm 1 is defined by:
+\[
+k_t(B_T) := \int_{U_t} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,t}(du)
+\]
+We want to show it is stationary:
+\begin{align}
+\int_T k_t(B_T) p(t) \mu_P(dt) &= p(B_T) \mbox{ for all } B_T \in \Sigma_P\\
+\int_T \left( \int_{U_t} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,t}(du) \right) p(t) \mu_P(dt) &= p(B_T)\\
+\sum_{i} \int_{T_C} \left( \int_{U_t} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,t}(du) \right) p(i, t_c) \mu_{P_C,i}(dt_c) &= p(B_T)\\ % separate out discrete part of t (i) and continuous part of t (t_c)
+\sum_{i} \int_{T_C} \left( \int_{U_i} q_{t}(u) k'_{(t, u)}(\{(t', u') \in Z : t' \in B_T\}) \mu_{Q,i}(du) \right) p(i, t_c) \mu_{P_C,i}(dt_c) &= p(B_T)\\ % use that the reference measure mu_{Q,t} only depends on the discrete part
+..\\
+\int_{Z} \pi(t, u) k'_{t,u}(\{(t', u') \in Z : t' \in B_T\}) \mu(dz) &= p(B_T)\\
+\pi(\{(t', u') \in Z : t' \in B_T\}) &= p(B_T)\\
+\end{align}
+
+the set of addresses $\mathcal{A}$ is partitioned into two spaces $\mathcal{A}_1$ and $\mathcal{A}_2$\\
+
+each structure $S$ partitions into two structures $S_1$ and $S_2$
+
+then $Z := \cup_{S \in \mathcal{S}} \{(S, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a \}$\\
+
+Space for $Z$:
+\[
+\cup_{S \in \mathcal{S}} \{((\mathcal{A}_1 \cap S) \cup (\mathcal{A}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in \times_{a \in S_1} X_a, \mathbf{x_2} \in \times_{a \in S_2} X_a\}
+\]
+
+Space for $T$:
+\[
+\cup_{S_1 \in \mathcal{S}} \{(S_1, \mathbf{x_1}) : \mathbf{x_1} \in \times_{a \in S_1}\}
+\]
+
+\begin{align}
+\pi(
+\cup_{S \in \mathcal{S} : A_1 \cap S = S_1} \{(S_1 \cup (\mathcal{A}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in B_{S_1}, \mathbf{x_2} \in \times_{a \in S_2} X_a\}
+) &= p(B_T)\\
+\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{a \in S_2} X_a} \pi(S_1, S_2, \mathbf{x}_1, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
+\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{a \in S_2} X_a} p(S_1, \mathbf{x}_1) q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
+\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
+\sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T)\\
+\int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
+\end{align}
+It suffices to show that
+\begin{align}
+\sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) = 1 \mbox{ for all } (S_1, \mathbf{x}_1) \in T
+\end{align}
+It suffices to show that for each $(S_1, \mathbf{x}_1) \in T$, we have that $q_{(S_1, \mathbf{x}_1)}$ is the density of a (terminating with probability one) probabilistic program with structruers $\mathcal{S}_2$ such that
+\[
+\mathcal{S}_2 = \{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}\}
+\]
+
+\[
+B_1 = \cup_{S_1 \in \mathcal{S}_1} \{(S_1, \mathbf{x}_1) : \mathbf{x}_1 \in B_{S_1}\}\;\;\; \mbox{where} \;\; B_{S_1} \in \otimes_{a \in S_1} \Sigma_{a} \;\;\; [\mbox{Measurable set } B_1]
+\]
+% TODO the proof above should have a sum over S_1
+
+
+
+% NOTE for each $t$ there is a different reference measure...
+% we need to restrict q so that for each discrete part of $t$, the reference measure is the same
+% (which implies that the same sets of random choices are made?)
+% that will allow us to 
+
 
 \end{document}
