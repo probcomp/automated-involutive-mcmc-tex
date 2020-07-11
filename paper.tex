@@ -202,7 +202,7 @@ TODO: show a discrete probabilistic prgram with the table of traces it could sam
 For programs that can sample from continuous probability distributions, the formalism needs to be extended.
 Let $\mathcal{A}$ denote a set of addresses.
 For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
-Let $T := \cup_{A \subseteq \mathcal{A} : |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a\}\}$ denote the set of all finite traces (i.e. dictionaries) from addresses in $\mathcal{A}$ to their values.
+Let $T := \cup_{A \subseteq \mathcal{A} : |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in \times_{a \in A} V_a\}\}$ denote the set of all finite traces (i.e. dictionaries) from addresses in $\mathcal{A}$ to their values.
 For each finite $A \subseteq \mathcal{A}$, let $\Sigma_A := \otimes_{a \in A} \Sigma_a$ (the product $\sigma$-algebra over $\Sigma_a$ for $a \in A$), and let $\mu_A := \times_{a \in A} \mu_a$ (the product measure).
 Let $\Sigma \subseteq \mathcal{P}(T)$ be the $\sigma$-algebra formed by sets of the form $B := \cup_{A \subseteq \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in B_A\}$ for some $B_A \in \Sigma_A$ for each $A$.
 Let $\mu : \Sigma \to [0, \infty)$ be a measure on measurable space $(T, \Sigma)$ defined by $\mu(B) := \sum_{A \subseteq \mathcal{A}, |A| < \infty} \mu_A(B_A)$.
@@ -229,19 +229,37 @@ TODO: somewhere, talk about hierarchical addresses
 \subsection{Involutive MCMC with probabilistic programs}
 
 To define model the auxiliary densitites used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
-The model reference measure $(X, \Sigma_P, \mu_P)$ and density required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure on traces as defined above and density $p$ (so that $X := T$).
-To define the auxiliary densities, we require a probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
+The model reference measure $(X, \Sigma_P, \mu_P)$ and density that were required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure and density $p$ on traces as defined above (so that $X := T$).
+To define the auxiliary densities, we use a second probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
 The set of possible inputs to $Q$ is $\{x \in T : p(x) > 0\}$, and for each such $x$ the probabilistic program $Q$ defines a density $q_x : T \to [0, \infty)$ with respect to the reference measure on traces.\footnote{
 Note that we the same measure space $(T, \Sigma, \mu)$ on traces for both the model and auxiliary probabilistic program.
 If both programs sample some random choice at the same address $a$ and require different measure spaces $(V_a, \Sigma_a, \mu_a)$ for the address, this can be handled formally by making the addresses sampled by the two programs disjoint by prepending either the prefix `p.' or `q.' to addresses.
 This is only required for book-keeping in the formalism, and these prefixes do not need to be actually added to the addresses used in the programs.}
 
-Full support requirement (that for all structures and assignments to discrete random variables within the support, the other addresses have complete support).
-Also for a pair of programs.
-Use it guarantee that $X := \{(t, u) : \pi(t, u) > 0\} \in \Sigma_P \otimes \Sigma_Q$?
+The involutive MCMC framework of Section~\ref{sec:involutive-mcmc} requires that $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu_P \times \mu_Q$-measurable.
+We now give a sufficient condition for this to hold.
+Let $D \subseteq \mathcal{A}$ denote the subset of addresses that are discrete (i.e. where $V_a$ is a countable set and $\mu_a$ is the counting measure).
+For $\mathbf{x} \in \times_{a \in A} V_a$ let $\mathbf{x} = (\mathbf{d}, \mathbf{c})$ where $\mathbf{d} \in \times_{a \in A \cap D} V_a$ and $\mathbf{c} = \times_{a \in A \setminus D} V_a$, so that $\mathbf{d}$ is the discrete part of $\mathbf{x}$ and $\mathbf{c}$ is the non-discrete part.
+ %TODO make this a proposition
+\begin{lemma}
+Suppose that $p$ and $q$ are such that $p(A, (\mathbf{d}, \mathbf{c})) > 0$ implies
+$p(A, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{a \in A \setminus D} V_a$,
+and that $q_x(A, (\mathbf{d}, \mathbf{c})) > 0$ where $x = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}})$ implies that
+$q_{x'}(A, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{a \in A \setminus D} V_a$ and all $x' = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}}')$ where $\tilde{\mathbf{c}}' \in \prod_{a \in \tilde{A} \setminus D} V_a$.
+Then, $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu \times \mu$-measurable where $\mu$ is the reference measure on traces.
+\end{lemma}
+\begin{proof}
+For $p$ and $q$ satisfying these conditions,
+$Z = \cup_{(A_1,A_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \{((A_1, (\mathbf{d}_1, \mathbf{c}_1)), (A_2, (\mathbf{d}_2, \mathbf{c}_2))) : \mathbf{c}_1 \in \times_{a \in A_1 \setminus D} V_a, \mathbf{c}_2 \in \times_{a \in A_2 \setminus D} V_a\}$ for some countable set $E \subseteq \{(A_1, A_2, \mathbf{d}_1, \mathbf{d}_2) : A_1, A_2 \subseteq \mathcal{A}, |A_1| < \infty, |A_2| < \infty, \mathbf{d}_1 \in \times_{a \in A_1 \cap D} V_a, \mathbf{d}_2 \in \times_{a \in A_2 \cap D} V_a\}$ of address sets and discrete choice values for both programs.
+The measure of $Z$ is
+$(\mu \times \mu)(Z) = \sum_{(A_1,A_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \prod_{a \in (A_1 \setminus D) \cup (A_2 \setminus D)} \mu_a(V_a)$.
+% TODO double check me.,
+\end{proof}
 
+Intuitively, this requirement means that for both the model probabilistic program $P$ and the auxiliary probabilistic program $Q$, the support of a random choice that is not discrete cannot depend on the value of another non-discrete random choice.
+Additionally, the support of non-discrete random choices in $Q$ cannot depend on the value of non-discrete random choices in the input $x$, which is a trace of $P$.
 
-\paragraph{Conditioning}
+%\paragraph{Conditioning}
 
 \section{DIFFERENTIABLE PROGRAMMING WITH TRACES}
 
