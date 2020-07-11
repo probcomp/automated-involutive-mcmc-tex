@@ -134,29 +134,24 @@ The mixture kernel is composed from three Gen programs:
     \label{fig:structure-learning}
 \end{figure*}
 
-\section{INVOLUTIVE MCMC}
-
+\section{INVOLUTIVE MCMC} \label{sec:involutive-mcmc}
 Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$.
-Let $p : X \to [0, \infty)$ be a probability density with respect to $\mu_P$ and for each $t \in X$ such that $p(t) > 0$ let $q_t : Y \to [0, \infty)$ be probability density with respect to $\mu_Q$.
-We call $p$ the \emph{target density} and we call $q_t$ \emph{auxiliary densities}.
-Let $\pi(t, u) := p(t) q_t(u)$ and $Z := \{(t, u) : \pi(t, u) > 0 \}$.
-Suppose $Z \in \Sigma_P \otimes \Sigma_Q$ (the product $\sigma$-algebra), so that $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigma$-algebra on $Z$ and let $\mu : \Sigma \to [0, \infty)$ with $\mu(A) := (\mu_P \times \mu_Q)(A)$
-(note that $\mu$ is $\sigma$-finite since $\mu_P \times \mu_Q$ is $\sigma$-finite. % TODO: prove this 
-Suppose that $\pi$ is a probability density with respect to $\mu$. % TODO is this guaranteed?
+Let $p : X \to [0, \infty)$ be a probability density with respect to $\mu_P$ and for each $x \in X$ such that $p(x) > 0$ let $q_x : Y \to [0, \infty)$ be probability density with respect to $\mu_Q$.
+We call $p$ the \emph{model density} and we call $q_x$ \emph{auxiliary densities}.
+Let $\pi(x, y) := p(x) q_x(y)$ and $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0 \}$.
+Suppose that $Z \in \Sigma_P \otimes \Sigma_Q$ ($Z$ is a $\mu_P \times \mu_Q$-measurable set).
+Then $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigma$-algebra on $Z$ and $\mu : \Sigma \to [0, \infty)$ with $\mu(A) := (\mu_P \times \mu_Q)(A)$ is a $\sigma$-finite measure on measurable space $(Z, \Sigma)$.
 
 Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$.
-Let $u \sim q_t(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_t(u) \mu_Q(du)$ for $A \in \Sigma_Q$.
+Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
 
 \begin{algorithm}[h]
 \begin{algorithmic}
-\Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $t$}
-    \State $u \sim q_t(\cdot)$ \Comment{Sample auxiliary variables}
-    \State $(x', u') \gets f(x, u)$ \Comment{Apply involution}
-    %\State $\alpha \gets
-        %\frac{p(x') q(u'; x')}{p(x) q(u; x)} \left| \left[ \frac{\partial h(u, t)}{\partial (u, t)} \right] \right|$
-    % TODO or should we show the Radon-Nikodym derivative?
+\Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $x$}
+    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
+    \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
     \State $\alpha \gets
-        \displaystyle \frac{p(x') q_{x'}(u')}{p(x) q_{x}(u)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, u)\right)$
+        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)$
     % TODO check it
     \State $r \sim \mathrm{Uniform}(0, 1)$
     \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
@@ -182,16 +177,16 @@ Involutive MCMC can be applied for target probability distributions on non-stand
 For example, reversible jump MCMC, which is a special case of involutive MCMC, can be applied to switch between different model structures.
 This section describes a framework for probabilistic programming that is expressive enough to represent probability distributions with structure uncertainty.
 
-\paragraph{Traces}
+\subsection{Traces}
 In our framework, a probabilistic program defines a probability distribution on finite dictionaries that map the name of a `random choice' to its value.
 Following standard terminology in probabilistic programming~\citep{?}, we call these dictionaries \emph{traces} because they can be sampled by running a probabilistic program, and `tracing' the execution the program by recording the value of eacn random choice encountered.
 In the probabilistic programming language used in this paper, the user assigns a unique name or \emph{address} to each random choice using a special syntax:
 
 TODO: include example of tilde syntax
 
-TODO: introduce the mathematical notation for a trace
+TODO: introduce the mathematical notation for a concrete trace (i.e. $\{a \mapsto 1, b \mapsto 2\}$).
 
-\paragraph{A probabilistic program encodes a probability distribution on traces}
+\subsection{A probabilistic program encodes a probability distribution on traces}
 For probabilistic programs that only sample individual random choices from discrete probability distributions, the meaning of the program can be described by a probability mass function that assigns a probailtiy to every possible trace.
 
 TODO: Give a simple example of a probabilistic program with discrete random chocies and stochastic control flow, and the resulting probabiilty distribution.
@@ -203,20 +198,23 @@ For example, for this program, there is a countably infinite number of possible 
 TODO: show a discrete probabilistic prgram with the table of traces it could sample
 
 % measure version
-\paragraph{Handling continuous distributions}
+\subsection{Handling Continuous Distributions}
 For programs that can sample from continuous probability distributions, the formalism needs to be extended.
-pecifically, we define the $\mathcal{S}$ to be the set of all possible \emph{trace structures} as a (possibly countably infinite) set of finite sets of addresses, denoted $\mathcal{S} \subseteq \mathcal{P}(\mathcal{A})$, where $\mathcal{A}$ is the set of all addresses.
-For each address $a \in \mathcal{A}$ we assign a reference measure space $(X_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite.
-The set of all traces of a probabilistic program is the set $T := \cup_{S \in \mathcal{S}} \{(S, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a\}\}$.
-The \emph{reference measure space} for a probabilistic program is $(T, \Sigma, \mu)$ where
-$\Sigma$ is the $\sigma$-algebra that contains sets $\cup_{S \in \mathcal{S}}\{ B_S \} \in \mathcal{P}(T)$ such that $B_S$ is an element of the product $\sigma$-algebra $\Sigma_S := \otimes_{a \in S} \Sigma_a$,
-and where $\mu(\cup_{S \in \mathcal{S}}\{ B_S \}) := \sum_{S \in \mathcal{S}} \mu_S(B_S)$ where $\mu_S$ is the product measure $\times_{a \in S} \mu_a$.
+Let $\mathcal{A}$ denote a set of addresses.
+For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
+Let $T := \cup_{A \subseteq \mathcal{A} : |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a\}\}$ denote the set of all finite traces (i.e. dictionaries) from addresses in $\mathcal{A}$ to their values.
+For each finite $A \subseteq \mathcal{A}$, let $\Sigma_A := \otimes_{a \in A} \Sigma_a$ (the product $\sigma$-algebra over $\Sigma_a$ for $a \in A$), and let $\mu_A := \times_{a \in A} \mu_a$ (the product measure).
+Let $\Sigma \subseteq \mathcal{P}(T)$ be the $\sigma$-algebra formed by sets of the form $B := \cup_{A \subseteq \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in B_A\}$ for some $B_A \in \Sigma_A$ for each $A$.
+Let $\mu : \Sigma \to [0, \infty)$ be a measure on measurable space $(T, \Sigma)$ defined by $\mu(B) := \sum_{A \subseteq \mathcal{A}, |A| < \infty} \mu_A(B_A)$.
 
-We assume that a probabilistic program $P$ denotes a reference measure space $(T_P, \Sigma_P, \mu_P)$ and a measure $P(dt)$ that is mutually absolutely continuous with respect to $\mu_P$, with density 
-$p : T \to [0, \infty)$ on traces $t \in T$.
-We do not give the denotational semantics of a probabilistic programming language with this property, but instead refer to POPL paper for an example of a denotational semantics. % TODO what about requirement that the support of each random choice is constant? (this is implied by the definition of reference measure)
+A probabilistic program $P$ denotes a probability density $p : T \to [0, \infty)$ with respect to a reference measure $\mu$ on traces.
+Describing the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper.
+We refer to the reader to~\citet{popl} for an example of denotational semantics of a probabilistic programming language that uses explicit addresses for random-choices.
 
-TODO: Give an example of a probabilistic program in Gen's dynamic modeling language that includes continuous random choices, and the vbase measure and a density for it.
+This formalism is capable of expressing probabilistic programs that use continuous distributions by setting the reference measure space $(V_a, \Sigma_a, \mu_a)$ for some addresses $a$ to use the Lebesgue-measure.
+For example, consider the following probabilistic program:
+
+TODO: Give an example of a probabilistic program in Gen's dynamic modeling language that includes continuous random choices, and show the reference measure on traces and its density.
 
 % step 1: *assert* that the composition of p and then q defines a probabilistic program with ref meas mu and mut. abs. cont. pi(z) [ok] (( do this without ascribing separate semantics to p and q?? ))
 % step 2: show detailed balance on the joint space ... [ok]
@@ -225,25 +223,23 @@ TODO: Give an example of a probabilistic program in Gen's dynamic modeling langu
 % - this would be straightforward for a product space, but our space is more complicated?
 % - need to assert relationship between p and pi, ... 
 
-\[
-p(t) \;\; \pi(z)
-\]
+TODO: somewhere, talk about hierarchical addresses
+%\paragraph{Hierarchical addresses}
 
-\paragraph{Extending one probabilistic program with another}
-A second probabilistic program that is parametrized by (i.e. takes as input) traces of the first probabilistic program $P$.
-The reference measure space of the second probabilistic program for $t \in T_P$ is denoted $(T_{Q,t}, \Sigma_{Q,t}, \mu_{P,t})$.
-We define $Z := \{(t, u) : t \in T_P, u \in T_{Q,t}$ and we define $\pi(z) := p(t) q_t(u)$.
-We require that $(Z, \Sigma, \mu)$ is a probabilistic program reference measure and $\pi$ is a probability density with respect to $\mu$ that is mutually absolutely continuous.
-The combined program is $P \circ Q$.
+\subsection{Involutive MCMC with probabilistic programs}
 
-Given a 
+To define model the auxiliary densitites used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
+The model reference measure $(X, \Sigma_P, \mu_P)$ and density required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure on traces as defined above and density $p$ (so that $X := T$).
+To define the auxiliary densities, we require a probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
+The set of possible inputs to $Q$ is $\{x \in T : p(x) > 0\}$, and for each such $x$ the probabilistic program $Q$ defines a density $q_x : T \to [0, \infty)$ with respect to the reference measure on traces.\footnote{
+Note that we the same measure space $(T, \Sigma, \mu)$ on traces for both the model and auxiliary probabilistic program.
+If both programs sample some random choice at the same address $a$ and require different measure spaces $(V_a, \Sigma_a, \mu_a)$ for the address, this can be handled formally by making the addresses sampled by the two programs disjoint by prepending either the prefix `p.' or `q.' to addresses.
+This is only required for book-keeping in the formalism, and these prefixes do not need to be actually added to the addresses used in the programs.}
 
-% the only place where this matters is in the 'gibbs move' argument.. (8.4)
+Full support requirement (that for all structures and assignments to discrete random variables within the support, the other addresses have complete support).
+Also for a pair of programs.
+Use it guarantee that $X := \{(t, u) : \pi(t, u) > 0\} \in \Sigma_P \otimes \Sigma_Q$?
 
-We need $p$ to be a density with respect to some reference measure space $(T_P, \Sigma_{P}, \mu_P)$.
-We need $q_t$ to be a density with respect to some reference measure $\mu_{Q,t}$ for each $t \in T_P$.
-Such that the function $\pi(t, u) := p(x) q_t(u)$ is a density $\pi(x, u)$ with respect to some reference measure $\mu$, and $\pi$ is mutually absolutely continuous with $\mu$.
-(this can be constructed by using hierarchical addresses `model' and `proposal' for the random choics made in the two programs).
 
 \paragraph{Conditioning}
 
@@ -342,6 +338,29 @@ Expanding the left-hand side:
 where the final step uses Borgachev Theorem 3.7.1 with $g := 1$, and $F := f_{2,i}$.
 
 \subsection{Proof of detailed balance for involution} \label{sec:involution-detailed-balance}
+
+\begin{lemma}
+Given $\sigma$-finite measures $(X_P, \Sigma_P, \mu_P)$ and $(X_Q, \Sigma_Q, \mu_Q)$,
+if $X \in \Sigma_P \otimes \Sigma_Q$ then $\Sigma = \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq X\}$ is a $\sigma$-algebra on $X$, and $\mu : \Sigma \to [0, \infty)$ given by $\mu(A) := (\mu_P \times \mu_Q)(A)$ is $\sigma$-finite measure on measurable space $(X, \Sigma)$.
+\end{lemma}
+\begin{proof}
+TODO: write out the detailed steps, proving each property of a $\sigma$-algebra%$ TODO
+\end{proof}
+
+\begin{lemma}
+$\pi : X \to [0, \infty)$ is a probability density with respect to $\mu$ and the measure induced by $\pi$ and the measure $\mu$ are mutually absolutely continuous 
+\end{lemma}
+\begin{proof}
+% TODO need to show that pi is measurable by the product measure?
+\begin{equation}
+\int_X \pi(x) \mu(dx) = \int_{X_P \times X_Q} \pi(x) (\mu_P \times \mu_Q)(dx) = \int_{X_P} p(t) \left( \int_{X_Q} q_t(u) \mu_Q(du) \right) \mu_P(dt) = 1
+\end{equation}
+
+%(note that $\mu$ is $\sigma$-finite since $\mu_P \times \mu_Q$ is $\sigma$-finite. % TODO: prove this 
+%Suppose that $\pi$ is a probability density with respect to $\mu$. % TODO is this guaranteed?
+\end{proof}
+
+
 \citet{tierney1998note} gives a class of MCMC kernels based on involutions that satisfy detailed balance.
 We reproduce the result in our notation:
 \begin{lemma}[Detailed balance for involution move~\citep{tierney1998note}] \label{lemma:tierney-involution}
