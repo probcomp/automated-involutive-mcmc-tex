@@ -73,6 +73,11 @@
 \newtheorem{lemma}[theorem]{Lemma}
 \newcommand{\true}{{\mathtt{T}}}
 \newcommand{\false}{{\mathtt{F}}}
+\newcommand{\reals}{\mathbb{R}}
+\newcommand{\naturals}{\mathbb{N}}
+\newcommand{\integers}{\mathbb{Z}}
+\newcommand{\normal}{\mathcal{N}}
+\newcommand{\unif}{\mathcal{U}}
 
 \begin{document}
 
@@ -347,11 +352,11 @@ When this function is invoked it encodes the following probability distribution 
 \end{array}
 \]
 
-
-% measure version
 \subsection{Handling Continuous Distributions}
-For programs that can sample from continuous probability distributions, the formalism needs to be extended.
-Let $\mathcal{A}$ denote a set of addresses.
+For programs that can sample from continuous probability distributions, the formalism needs to be generalized.
+Instead of a probability mass function on traces, a probabilistic program defines a probability density function on traces with respect to a certain reference measure.
+
+Let $\mathcal{A}$ denote a countable set of all possible addresses.
 For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
 Let $T := \cup_{A \subseteq \mathcal{A} : |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in \times_{a \in A} V_a\}\}$ denote the set of all finite traces (i.e. dictionaries) from addresses in $\mathcal{A}$ to their values.
 For each finite $A \subseteq \mathcal{A}$, let $\Sigma_A := \otimes_{a \in A} \Sigma_a$ (the product $\sigma$-algebra over $\Sigma_a$ for $a \in A$), and let $\mu_A := \times_{a \in A} \mu_a$ (the product measure).
@@ -359,31 +364,50 @@ Let $\Sigma \subseteq \mathcal{P}(T)$ be the $\sigma$-algebra formed by sets of 
 Let $\mu : \Sigma \to [0, \infty)$ be a measure on measurable space $(T, \Sigma)$ defined by $\mu(B) := \sum_{A \subseteq \mathcal{A}, |A| < \infty} \mu_A(B_A)$.
 
 A probabilistic program $P$ denotes a probability density $p : T \to [0, \infty)$ with respect to a reference measure $\mu$ on traces.
-Describing the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper.
-We refer to the reader to~\citet{popl} for an example of denotational semantics of a probabilistic programming language that uses explicit addresses for random-choices.
+Describing the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper, and we refer to the reader to~\citet{popl} for an example of denotational semantics of a probabilistic programming language that uses explicit addresses for random-choices.
 
-This formalism is capable of expressing probabilistic programs that use continuous distributions by setting the reference measure space $(V_a, \Sigma_a, \mu_a)$ for some addresses $a$ to use the Lebesgue-measure.
-For example, consider the following probabilistic program:
-
-TODO: Give an example of a probabilistic program in Gen's dynamic modeling language that includes continuous random choices, and show the reference measure on traces and its density.
+The measure-theoretic formalism above is capable of expressing probabilistic programs that use continuous distributions by setting the reference measure space $(V_a, \Sigma_a, \mu_a)$ for some addresses $a$ to use the Lebesgue-measure.
+For example, consider the following probabilistic program, which encodes a generative model for data generated from a polynomial with unknown degree and unknown coefficients:
 \noindent
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-@gen function foo(x1, x2, x3)
-  a = ({:a} ~ bernoulli(x1))
-  b = ({:b} ~ bernoulli(x2))
-  c = ({:c} ~ bernoulli(x3))
-  {:d} ~ bernoulli((a && b && c) ? 0.9 : 0.1)
-  return a && b && c && d
+@gen function polynomials(x_coords)
+    degree ~ |geometric(0.5)|
+    noise ~ |inv_gamma(1, 1)|
+    coeffs = [ ({("c", i)} ~ |normal(0, 2)|)
+               for i in 0:degree ]
+    for i=1:length(x_coords)
+        x = x_coords[i]
+        mu = coeffs' * x.^(0:length(coeffs)-1)
+        {("y", i)} ~ |normal(mu, noise + 0.1)|
+    end
 end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-
-
-TODO: somewhere, talk about hierarchical addresses
-%\paragraph{Hierarchical addresses}
+The addresses used by this generative function are:
+\[
+\mathcal{A} := \begin{array}{c}
+\{\mathtt{:}\mathtt{noise}, \mathtt{:}\mathtt{degree}\} \bigcup
+\{(\mathtt{"c"}, i) : i \in \integers_{\ge 0}\} \bigcup\\
+\{(\mathtt{"y"}, i) : i \in \integers_{> 0}\}
+\end{array}
+\]
+(Note that $\mathcal{A}$ could contain additional addresses that the program never samples.)
+The random choice at address $\mathtt{:}\mathtt{degree}$ is discrete with $V_a = \integers_{\ge 0}$ and the other random choices are continuous.
+Address $\mathtt{:}\mathtt{:noise}$ has $V_a = \reals_{> 0}$ and $(\mathtt{"c"}, i)$ and $(\mathtt{"y"}, i)$ have $V_a = \reals$, and all of these use the Lebesgue measure. % TODO double-check this
+The density with respect to the reference measure $\mu$ is:
+\begin{align*}
+p(x) =
+\begin{array}{l}
+p_{\mathrm{geometric}(0.5)}(x[\mathtt{:}\mathtt{degree}]) \cdot\\
+p_{\mathrm{inversegamma}(1, 1)}(x[\mathtt{:}\mathtt{noise}]) \cdot\\
+\prod_{0=1}^{x[\mathtt{:}\mathtt{degree}]} p_{\mathrm{normal}(0,1)}(x[(\mathtt{"c"}, i)])\cdot\\
+\prod_{i=1}^n p_{\mathrm{normal}(m(t, i), 0.1 + x[\mathtt{noise}])}(x[(\mathtt{"y"}, i)])
+\end{array}
+\end{align*}
+where $m(t, i) := \sum_{j=0}^{x[\mathtt{:}\mathtt{degree}]} \mathtt{xcoords}[i]^j \cdot x[(\mathtt{"c"}, j)]$.
 
 \subsection{Involutive MCMC with probabilistic programs}
 
