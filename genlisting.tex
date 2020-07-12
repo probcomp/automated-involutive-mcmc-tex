@@ -1,0 +1,31 @@
+%!TEX root = ./paper.tex
+
+\lstset{
+  basicstyle=\ttfamily,
+  columns=fullflexible,
+  keepspaces=true,
+  %upquote=true,
+  % Define . and % and @ as letters to include them in keywords.
+  alsoletter={\.,\%,\#, \@, \?, \/, \~},
+  % First type of keywords.
+  % Use \bfseries\textcolor{OliveGreen} to get bolded text.
+  %morekeywords=[1]{function, if, else, end, for, begin, in, const, struct, \~},
+  %morekeywords=[1]{\~},
+  %keywordstyle=[1]\color{red},
+  % Second type of keywords.
+  % Use \bfseries\textcolor{OliveGreen} to get bolded text.
+   %morekeywords=[2]{\@probabilistic, \@choice},
+  %keywordstyle=[2]\textcolor{Blue},
+  % Add strings
+  showstringspaces=False,
+  %stringstyle=\ttfamily\color{NavyBlue},
+  %stringstyle=\ttfamily\bfseries\color{red},
+  %morestring=[b]{"},
+  %morestring=[b]{'},
+  morecomment=[l]{\#},
+  commentstyle=\color{Gray}\ttfamily,
+  moredelim=[s][\color{addresscolor}]{\{}{\}},
+  %moredelim=[is][\color{distcolor}]{|}{|}
+  moredelim=[is][]{|}{|}
+  % l is for line comment
+}

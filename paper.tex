@@ -26,14 +26,43 @@
 % graphics
 \usepackage{float}
 \usepackage{graphicx}
+\usepackage[usenames,dvipsnames,svgnames]{xcolor}
 
 % math and stuff
 \usepackage{amssymb}
 \usepackage{amsmath}
 \usepackage{amsthm}
+\usepackage{bm}
 \usepackage{algorithm}
 \usepackage{algorithmicx}
 \usepackage{algpseudocode}
+
+% use straight double quotes in math mode
+\DeclareMathSymbol{\mathdblquotechar}{\mathalpha}{letters}{`"}
+\newcommand{\mathdblquote}{\mathtt{\mathdblquotechar}}
+\begingroup\lccode`~=`"\lowercase{\endgroup
+  \let~\mathdblquote
+}
+\AtBeginDocument{\mathcode`"="8000 }
+
+% code listings
+\usepackage{listings}
+\lstset{
+    literate={~} {$\color{black} \bm{\sim}$}{1}
+}
+\usepackage[framemethod=tikz]{mdframed}
+\input{genlisting}
+%\definecolor{codegray}{gray}{0.96}Z
+\definecolor{addresscolor}{RGB}{22, 88, 12}
+\definecolor{distcolor}{RGB}{40, 12, 88}
+\definecolor{gencode}{RGB}{255,235,150}
+%^\definecolor{jlcode}{RGB}{255, 247, 247}
+\definecolor{jlcode}{RGB}{255,210,210}
+%\definecolor{dslcode}{RGB}{247, 255, 230}
+\definecolor{dslcode}{RGB}{220,242,255}
+\usepackage{colortbl}
+
+
 %\newcommand{\disc}{\mathrm{disc}}
 %\newcommand{\cont}{\mathrm{cont}}
 %\newcommand{\tr}{\mathtt{tr}}
@@ -42,6 +71,8 @@
 \newtheorem{theorem}{Theorem}[section]
 \newtheorem{corollary}{Corollary}[theorem]
 \newtheorem{lemma}[theorem]{Lemma}
+\newcommand{\true}{{\mathtt{T}}}
+\newcommand{\false}{{\mathtt{F}}}
 
 \begin{document}
 
@@ -160,10 +191,12 @@ Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \m
 \caption{Involutive MCMC}
 \label{alg:involutive-mcmc}
 \end{algorithm}
+
 See Section~\ref{sec:radon-nikodym-special-case} for a derivation of the Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d \mu$ for a special case, when the involution $f$ can be factored into (i) an involution on a countable partition of $Z$ and (ii) a family of continuously differentiable bijection on Euclidean spaces.
 
 \begin{theorem}[Involutive MCMC is stationary]
-For $p$, $q$, and $f$ satisfying the requirements above, Algorithm~\ref{alg:involutive-mcmc} defines a probability kernel on $X$ that is stationary with respect to the distribution $p$.
+Algorithm~\ref{alg:involutive-mcmc} defines a probability kernel $k$ on $X$ that is stationary with respect to the model probability distribution.
+That is, $\int_X k_x(B) p(x) d\mu_X(dx) = \int_B p(x) d\mu_X(dx)$ for all $B \in \Sigma_X$.
 \end{theorem}
 \begin{proof}
 The proof is presented in stages in the appendix (see Section~\ref{sec:involution-detailed-balance}, Section~\ref{sec:involution-is-stationary}, and Section~\ref{sec:involutive-mcmc-is-stationary}).
@@ -177,25 +210,143 @@ Involutive MCMC can be applied for target probability distributions on non-stand
 For example, reversible jump MCMC, which is a special case of involutive MCMC, can be applied to switch between different model structures.
 This section describes a framework for probabilistic programming that is expressive enough to represent probability distributions with structure uncertainty.
 
-\subsection{Traces}
-In our framework, a probabilistic program defines a probability distribution on finite dictionaries that map the name of a `random choice' to its value.
-Following standard terminology in probabilistic programming~\citep{?}, we call these dictionaries \emph{traces} because they can be sampled by running a probabilistic program, and `tracing' the execution the program by recording the value of eacn random choice encountered.
-In the probabilistic programming language used in this paper, the user assigns a unique name or \emph{address} to each random choice using a special syntax:
+In our framework, a probabilistic program defines a probability distribution on finite dictionaries that map the identifer for a random choice (called its \emph{address}) to its value.
+Following standard terminology~\citep{?}, we call these dictionaries \emph{traces} because they are often sampled by running a probabilistic program, and `tracing' the execution the program by recording the value of eacn random choice encountered.
+The next section makes the concept of a trace more concrete using code in a probabilistic programming language.
 
-TODO: include example of tilde syntax
+\subsection{A Probabilistic Programming Language}
 
-TODO: introduce the mathematical notation for a concrete trace (i.e. $\{a \mapsto 1, b \mapsto 2\}$).
+The probabilistic programming language used in this paper is based on the dynamic modeling language in the Gen probabilistic programming system~\citep{gen-pldi}.
+In this language, user tags each random choice with an explicit address in the code, as part of a \emph{random-choice expression} of the following form:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+{<address>} ~ <distribution>
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+The left-hand side of the expression (green) specifies the address of the choice, and the right-hand side specifies the probability distribution to be sampled from.
+For example, the following expression samples a non-negative integer from a geometric distribution and the value gets recorded in the trace at the address \texttt{"a"}:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+{"a"} ~ geometric(0.5)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+In addition to being recorded in the trace, the sampled value is returned to the running program.
+That is, the random choice expression evaluates to the sampled value.
+For example, the expression below evaluates to a an even non-negative integer:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+({"a"} ~ geometric(0.5)) * 2
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+Probabilistic programs are typically constructed by combining multiple random choice expressions with regular Julia code (Gen is embedded in the Julia programming language~\citep{julia}).
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+a = ({"a"} ~ geometric(0.5))
+{"b"} ~ bernoulli(a / (a + 1))
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+This probabilistic program has an unbounded (countably infinite) number of possible traces it could produce.
+One possible trace samples the value 1 at $\texttt{"a"}$ and the Boolean value $\false$ at \texttt{"b"}, and we denote this trace by $\{\mathtt{"a"} \mapsto 1, \mathtt{"b"} \mapsto \false\}$.
+Note that the variable to which the first choice was assigned happens to be the same as the address.
+This is not required, and often the random choice has no variable name in the program, as in the second random choice with address \texttt{"b"}.
+But to reduce possibe unecessary typing, the following optional syntactic sugar will simultaneously assign the value to the program variable $\mathtt{a}$ and record it at trace address $\mathtt{a}$.\footnote{
+More precisely, the address is the Julia symbol (interned string) \texttt{a}, constructed with Julia syntax \texttt{:a}.}
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+a ~ geometric(0.5)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+Probabilistic programs can make use of familiar control flow constructs, like loops and branching.
+Stochastic control flow is also possible:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+i = 1
+while ({i} ~ bernoulli(0.5))
+    i = i + 1
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+Note that for the probabilistic program to be valid, we require that every address is used at most once within every possible execution.
 
-\subsection{A probabilistic program encodes a probability distribution on traces}
-For probabilistic programs that only sample individual random choices from discrete probability distributions, the meaning of the program can be described by a probability mass function that assigns a probailtiy to every possible trace.
+For probabilistic programs that sample from discrete probability distributions like those used above, the meaning of the program is a probability mass function $p$ that assigns a probability to every possible trace.
+For example, for the program with the \texttt{while} loop above, the distribution is:
+\[
+\begin{array}{c|c}
+    x & p(x)\\
+    \hline
+    \{1 \mapsto \false\} & 0.5\\
+    \{1 \mapsto \true, 2 \mapsto \false\} & 0.5^2\\
+    \{1 \mapsto \true, 2 \mapsto \true, 3 \mapsto \false\} & 0.5^3\\
+    .. & ..
+\end{array}
+\]
+We assume that probabilistic programs halt with probability $1$, meaning that the sum of probabilities over all (finite) traces is one.
+Note that traces are always finite, but there may be an infinite number of possible traces, as in the previous example.
 
-TODO: Give a simple example of a probabilistic program with discrete random chocies and stochastic control flow, and the resulting probabiilty distribution.
-TODO: describe the two variants of tilde syntax
+In order to construct more complex distributions, we wrap probabilistic programs in functions, called
+`generative functions' in Gen.
+These functions can then be invoked by other functions, including recursively, which allows programs encode probability distributions on more complex and combinatorial objects.
+When invoking such a function, we give an \emph{address namespace} under which every random choice made in that function should be recorded.
+This helps prevent addresses of choices defined in different functions from colliding.
+The syntax for calling a generative function and assigning the address namespace is the same as that of random choice expressions.
+For example:
+\begin{center}
+\begin{tabular}{c}
+\begin{lstlisting}[basicstyle=\small\ttfamily]
+@gen function g()
+  if ({"go"} ~ bernoulli(0.2))
+    n1 = ({"L"} ~ g())
+    n2 = ({"R"} ~ g())
+    return n1 + n2 + 1
+  else
+    return 1
+  end
+end
+\end{lstlisting}
+\end{tabular}
+\end{center}
+Because this is a recursive function, a the trace is populated with a hierarchy of addresses.
+For example, the first random choice in the first recursive call has address \texttt{"L"."go"}.
+When this function is invoked it encodes the following probability distribution on traces (quotation marks omitted from addresses to improve readability):
+\[
+\begin{array}{c|c}
+    x & p(x)\\
+    \hline
+    \left\{\mathtt{go} \mapsto \false\right\} & 0.8\\
+& \\
+    \left\{\begin{array}{c}
+        \mathtt{go} \mapsto \true, \mathtt{L}.\mathtt{go} \mapsto \false, \mathtt{R}.\mathtt{go} \mapsto \false
+    \end{array}\right\} & 0.2 \cdot 0.8^2\\
+& \\
+    \left\{\begin{array}{c}
+        \mathtt{go} \mapsto \true,
+        \mathtt{L}.\mathtt{go} \mapsto \true,
+        \mathtt{R}.\mathtt{go} \mapsto \false,\\
+        \mathtt{L}.\mathtt{L}.\mathtt{go} \mapsto \false,
+        \mathtt{L}.\mathtt{R}.\mathtt{go} \mapsto \false
+    \end{array}\right\}& 0.2^2 \cdot 0.8^3\\
+     .. & ..
+\end{array}
+\]
 
-Note that traces are always finite, but there can be no upper bound.
-For example, for this program, there is a countably infinite number of possible traces:
-
-TODO: show a discrete probabilistic prgram with the table of traces it could sample
 
 % measure version
 \subsection{Handling Continuous Distributions}
@@ -215,20 +366,28 @@ This formalism is capable of expressing probabilistic programs that use continuo
 For example, consider the following probabilistic program:
 
 TODO: Give an example of a probabilistic program in Gen's dynamic modeling language that includes continuous random choices, and show the reference measure on traces and its density.
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@gen function foo(x1, x2, x3)
+  a = ({:a} ~ bernoulli(x1))
+  b = ({:b} ~ bernoulli(x2))
+  c = ({:c} ~ bernoulli(x3))
+  {:d} ~ bernoulli((a && b && c) ? 0.9 : 0.1)
+  return a && b && c && d
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
 
-% step 1: *assert* that the composition of p and then q defines a probabilistic program with ref meas mu and mut. abs. cont. pi(z) [ok] (( do this without ascribing separate semantics to p and q?? ))
-% step 2: show detailed balance on the joint space ... [ok]
-% step 3: show stationarity on the joint space [ok, easy from detailed balance]
-% step 4: show stationarity with respect to space of p.... ((requires ascribing semantics to p, but maybe not q??)
-% - this would be straightforward for a product space, but our space is more complicated?
-% - need to assert relationship between p and pi, ... 
 
 TODO: somewhere, talk about hierarchical addresses
 %\paragraph{Hierarchical addresses}
 
 \subsection{Involutive MCMC with probabilistic programs}
 
-To define model the auxiliary densitites used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
+To define the model and auxiliary densitites used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
 The model reference measure $(X, \Sigma_P, \mu_P)$ and density that were required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure and density $p$ on traces as defined above (so that $X := T$).
 To define the auxiliary densities, we use a second probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
 The set of possible inputs to $Q$ is $\{x \in T : p(x) > 0\}$, and for each such $x$ the probabilistic program $Q$ defines a density $q_x : T \to [0, \infty)$ with respect to the reference measure on traces.\footnote{
