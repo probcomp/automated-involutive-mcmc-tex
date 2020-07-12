@@ -171,6 +171,9 @@ The mixture kernel is composed from three Gen programs:
 \end{figure*}
 
 \section{INVOLUTIVE MCMC} \label{sec:involutive-mcmc}
+This section gives a measure-theoretic formulation of involutive MCMC on general state spaces.
+This generality is necessary for applications of involutive MCMC to models with structure uncertainty and for describing how involutive MCMC can be automated using probabilistic programming.
+
 Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$.
 Let $p : X \to [0, \infty)$ be a probability density with respect to $\mu_P$ and for each $x \in X$ such that $p(x) > 0$ let $q_x : Y \to [0, \infty)$ be probability density with respect to $\mu_Q$.
 We call $p$ the \emph{model density} and we call $q_x$ \emph{auxiliary densities}.
@@ -543,6 +546,8 @@ If an address is present in the input model trace and is needed to form a comple
 This significantly reduces the amount of code that has to be written when only a small subset of the model trace is being modified during the application of the involution MCMC move (which is common in applications of reversible jump MCMC).
 As a simple example, if there are $N$ latent variables, and the move only updates 1 of them, then the involution needs to contain only $O(1)$ lines of code instead of $O(N)$ lines.
 
+TODO: show an example
+
 \subsection{Reasoning About Involutions}
 Recall the ealier code snippet that maps from polar to cartesian coordinates.
 This code snippet defines a bijection from one coordinate system to another.
@@ -608,6 +613,15 @@ end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
+
+\subsection{The Radon-Nikodym Derivative}
+
+The differentiable programming language introduced in this section assumes that the reference measure of each random choice address is either the counting measure (corresponding to the $\mathtt{:}\mathtt{discrete}$ tag in \texttt{@read} and \texttt{@write} operations) or a Lebesgue measure ($\mathtt{:}\mathtt{continuous}$ tag).
+Consider a bijection $f : Z \to Z$ (recall that every involution is a bijection).
+If the space $Z$ can be partitioned into a countable number of sets $Z_1, Z_2, \ldots$, such that the each element of the partition is in one-to-one correspondence with another element ($f_1 : \{Z_1, Z_2, \ldots\} \to \{Z_1, Z_2, \ldots\}$ for some bijection $f_1$), and such that $f_{2,i} : Z_i \to Z_{f_1(i)}$ is a continuously differentiable bijection, and such that $f(z) = f_{2,i(z)}(z)$, then a Radon-Nikodym can be constructed from the Jacobian of the function $f_{2,i(z)}$ where $i(z) = Z_j$ for $z \in Z_j$.
+See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
+Applying this to the setting where $Z$ is a set of pairs of traces of probabilistic programs as formalized in the preivous section is straightforward when the partition of $Z$ is the countable disjoint union over all pairs $(A, \mathbf{d})$ where $A \subseteq \mathcal{A}$ are trace structures and $\mathbf{d}$ are assignments to discrete choices.
+
 
 % TODO do a PyTorch implementation??
 
