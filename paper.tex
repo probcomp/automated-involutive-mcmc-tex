@@ -97,7 +97,7 @@
 
 \twocolumn[
 
-\aistatstitle{Automated Involutive MCMC}
+\aistatstitle{Automating Involutive MCMC using Probabilistic and Differentiable Programming}
 
 \aistatsauthor{ Marco Cusumano-Towner \And Alexander K. Lew \And Vikash K. Mansinghka }
 
@@ -619,6 +619,7 @@ end
 The differentiable programming language introduced in this section assumes that the reference measure of each random choice address is either the counting measure (corresponding to the $\mathtt{:}\mathtt{discrete}$ tag in \texttt{@read} and \texttt{@write} operations) or a Lebesgue measure ($\mathtt{:}\mathtt{continuous}$ tag).
 Consider a bijection $f : Z \to Z$ (recall that every involution is a bijection).
 If the space $Z$ can be partitioned into a countable number of sets $Z_1, Z_2, \ldots$, such that the each element of the partition is in one-to-one correspondence with another element ($f_1 : \{Z_1, Z_2, \ldots\} \to \{Z_1, Z_2, \ldots\}$ for some bijection $f_1$), and such that $f_{2,i} : Z_i \to Z_{f_1(i)}$ is a continuously differentiable bijection, and such that $f(z) = f_{2,i(z)}(z)$, then a Radon-Nikodym can be constructed from the Jacobian of the function $f_{2,i(z)}$ where $i(z) = Z_j$ for $z \in Z_j$.
+We denote the Jacobian (determinant) of a function $g$ by $| J g |$.
 See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 Applying this to the setting where $Z$ is a set of pairs of traces of probabilistic programs as formalized in the preivous section is straightforward when the partition of $Z$ is the countable disjoint union over all pairs $(A, \mathbf{d})$ where $A \subseteq \mathcal{A}$ are trace structures and $\mathbf{d}$ are assignments to discrete choices.
 
@@ -627,8 +628,60 @@ Applying this to the setting where $Z$ is a set of pairs of traces of probabilis
 
 \section{AUTOMATIC ACCEPTANCE PROBABILITY CALCULATION} \label{sec:automating}
 
+The general form of the acceptance probability in Algorithm~\ref{alg:involutive-mcmc} is:
+\begin{equation}
+\min\left\{1, \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right) \right\}
+\end{equation}
+For the setting when $p$, $q$, and $f$ are defined using the probabilistic and differentiable programming languages of this section, the probability simplifies to:
+\begin{equation} \label{eq:accept-prob-jacobian}
+\min\left\{1, \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} |J f_{2,i(x,y)} | \right\}
+\end{equation}
+Implementing the computation of this probability by hand is error-prone due to conceptual, arithmetic, and implementation errors; as well as time consuming and tedious.
+This section describes how the computation of this probabability is automated by Gen using probabilistic and differentiable programming techniques.
 
-% TODO can only show this for a special case -- discrete involution + continuous?, or some more general case?
+\subsection{Automatically Computing Probability Density Ratios}
+
+When the model density function $p$ and the auxiliary density functions $q_x$ in Algorithm~\ref{alg:involutive-mcmc} are specified by writing probabilistic programs in the language of Section~\ref{sec:prob-prog-traces}, Gen automatically computes the following ratio of densities, given the previous traces $x$ and $y$ and the proposed traces $x'$ and $y'$:
+\begin{equation} \label{eq:density-ratio}
+\frac{p(x') q_{x'}(y')}{p(x) q_x(y)}
+\end{equation}
+The density $p$ of a probabilistic program with respect to the reference measure $\mu$, evaluated at a trace $x = (A, \mathbf{x})$, is the product of individual densities for each random choice (and similarly for the auxiliary densities and the auxiliary probabilistic program):
+\begin{equation} \label{eq:density-product}
+p((A, \mathbf{x})) = \prod_{a \in A} p_{\sigma_a}(\mathbf{x}[a])
+\end{equation}
+where $\mathbf{x}[a]$ denotes the value of address $a$ in the trace, $p_{\sigma_a}$ is the probability density function for distribution from which random choice $a$ is sampled, given that the state of the program when sampling is $\sigma_a$.
+(See~\citet{popl} for a formal proof for a somewhat more restricted probabilistic programming language.)
+Therefore, the probabilistic programming language can compute the density at a trace $x$ by executing the program, but at each random choice $a$, reading the value of the choice $\mathbf{x}[a]$ instead of sampling it, computing the density at $\mathbf{x}[a]$ and accumulating it into the product above.\footnote{Probabilistic programming implementations use sums of log-densities instead of products for numerical reasons.}
+
+To evaluate this density ratio, we utilize Gen's API for probabilistic programs and traces, which automatically computes the density of a trace of a probabilistic program, whether that trace was sampled from the probabilistic program (as in the case of computing $q_x(y)$ for $y \sim q_{x}(\cdot)$) or when that trace was produced externally from the probabilistic program (as in the case of computing $q_{x'}(y')$, where $y'$ was produced from the involution $f$).
+
+\subsubsection{Incremental Computation of Model Density Ratio}
+While it is possible to compute the ratio of densities in Equation~(\ref{eq:density-ratio}) by separately computing the four densities of the four traces, this scales linearly in the total number of random choices in the traces, because every random choice in each trace needs to be visited to compute the products in Equation~(\ref{eq:density-product}).
+Often, the number of random choices in the auxiliary traces $y$ and $y'$ are constant size $O(1)$ whereas the number of random choices in the model traces $x$ and $x'$ is $O(N)$ where $N$ is the number of data points, or latent components
+(see Figure~\ref{fig:mixture} for an example, where at most two clusters are affected by each application of the MCMC kernel).
+In these cases, the ratio of model trace densities $p(x') / p(x)$ dominates the asymptotic running time of computing the density ratio of Equation~\ref{eq:density-ratio}.
+However, due to conditional independencies in the model, the densities $p(x')$ and $p(x)$ often share common factors that cancel, which affords an opportunity for $O(1)$ computation of the ratio.
+Gen's trace API includes an \emph{incremental update} operation~\citep{gen-paper}, which takes a previous trace $x$, and a partial trace $u$ containing the values of random choices that should be changed (or added if there is stochastic structure in the model), and returns a new trace $x'$.
+This allows for $O(1)$ computation of $p(x') / p(x)$ when the modeling language runtime system is able to detect and exploit the cancellation.
+
+\subsection{Sparsity-Aware Automatic Jacobian Computation}
+
+It is possible to automatically compute the Jacobian determinant in Equation~(\ref{eq:accept-prob-jacobian}) using automatic differentiation of the involution $f$.
+Note that while the involution can manipulate both discrete and continuous random choices, the Jacobian is the matrix of partial derivatives associated with the continuous random choices only.
+The differentiable programming language implementation distinguishes between continuous and discrete choices with the help of the user-provided type tags.
+The sums of the number of continuous dimensions across all addresses in the input and the output traces respectively must match, because otherwise $f$ cannot factor into continuously differentiable bijections $f_{2,i}$, which is necessary for the involutive MCMC acceptance ratio to simplify to Equation~(\ref{eq:accept-prob-jacobian}) (see Section~\ref{sec:radon-nikodym-special-case}).
+
+The Jacobian is computed automatically by applying forward-mode automatic differentiation separately for each continuous random choice in the input traces, which scales as $O(N^2)$ where $N$ is the number of such choices.
+Common determinant implementations based on the LU-decomposition scale on the order $O(N^2)$ for an $N$-by-$N$ matrix.
+Therefore, the basic algorithm computes $|J f_{2,i(x,y)} |$ in $O(N^2)$ where $N$ is the number of continuous addresses in $x$ or $y$.
+
+To derive a more efficeint algorithm, we use the cofactor expansion of the determinant, and observe that any row or column in the Jacobian matrix that contains a single $1$ and all other ($N-1$) entries $0$ implies that the absolute value of the determinant is equivalent to the absolute value of the $N-1$-by-$N-1$ sub-matrix with the corresponding row and column omitted (even if that would remove other nonzero entries from the matrix).
+Applying this rule recursively allows a significant reduction in the size of the determinant computation when the Jacobian matrix possesses sparsity.
+Sparse Jacobians are common in applications of involutive MCMC, and reversible jump MCMC in particular.
+For example, consider the Jacobian for the split-merge move of~\citet{richardson1997bayesian}, implemented in Figure~\ref{fig:mixture}:
+\includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
+In this case, the Jacobian determinant can be simplified to the determinant of a $6$-by-$6$ matrix that does not grow in size with the number of clusters and number of data points, because unaffected clusters and data points have their values \emph{copied} from the input model trace to the output model trace.
+While a reasonable hand-coded implementation of this algorithm would likely exploit this sparsity as well, it would require careful and error-prone reasoning and implementation, which our approach automates.
 
 % TODO show an performance table of moves per second with and without the sparsity reduction (?)
 
