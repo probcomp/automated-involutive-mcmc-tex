@@ -207,7 +207,7 @@ That is, $\int_X k_x(B) p(x) d\mu_X(dx) = \int_B p(x) d\mu_X(dx)$ for all $B \in
 The proof is presented in stages in the appendix (see Section~\ref{sec:involution-detailed-balance}, Section~\ref{sec:involution-is-stationary}, and Section~\ref{sec:involutive-mcmc-is-stationary}).
 \end{proof}
 
-\section{PROBABILISTIC PROGRAMMING WITH TRACES}
+\section{PROBABILISTIC PROGRAMMING WITH TRACES} \label{sec:prob-prog-traces}
 
 Probabilistic programs are programs that define probability distributions.
 Probabilistic programs can be used to define standard joint probability distributions over vectors of random-variables, as well as more complex probability distributions with uncertainty over the structure in which the set of random variables itself random.
@@ -353,8 +353,8 @@ When this function is invoked it encodes the following probability distribution 
 \]
 
 \subsection{Handling Continuous Distributions}
-For programs that can sample from continuous probability distributions, the formalism needs to be generalized.
-Instead of a probability mass function on traces, a probabilistic program defines a probability density function on traces with respect to a certain reference measure.
+To handle programs that sample continuous probability distributions the notion of a probability mass function on traces needs to be generalized to a probability density function on traces with respect to a certain reference measure.
+The probabilistic program still defines a probability distibution (i.e. measure) on traces, but viavia  a density instead of a probability mass function.
 
 Let $\mathcal{A}$ denote a countable set of all possible addresses.
 For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
@@ -365,6 +365,7 @@ Let $\mu : \Sigma \to [0, \infty)$ be a measure on measurable space $(T, \Sigma)
 
 A probabilistic program $P$ denotes a probability density $p : T \to [0, \infty)$ with respect to a reference measure $\mu$ on traces.
 Describing the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper, and we refer to the reader to~\citet{popl} for an example of denotational semantics of a probabilistic programming language that uses explicit addresses for random-choices.
+But, informally, the density of a trace in our formalism (and existing formalisms) is the product of densities of each individual random choice, as an example below illustrates.
 
 The measure-theoretic formalism above is capable of expressing probabilistic programs that use continuous distributions by setting the reference measure space $(V_a, \Sigma_a, \mu_a)$ for some addresses $a$ to use the Lebesgue-measure.
 For example, consider the following probabilistic program, which encodes a generative model for data generated from a polynomial with unknown degree and unknown coefficients:
@@ -409,7 +410,7 @@ p_{\mathrm{inversegamma}(1, 1)}(x[\mathtt{:}\mathtt{noise}]) \cdot\\
 \end{align*}
 where $m(t, i) := \sum_{j=0}^{x[\mathtt{:}\mathtt{degree}]} \mathtt{xcoords}[i]^j \cdot x[(\mathtt{"c"}, j)]$.
 
-\subsection{Involutive MCMC with probabilistic programs}
+\subsection{Specifying the Densities for Involutive MCMC with Probabilistic Programs}
 
 To define the model and auxiliary densitites used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
 The model reference measure $(X, \Sigma_P, \mu_P)$ and density that were required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure and density $p$ on traces as defined above (so that $X := T$).
@@ -441,14 +442,176 @@ $(\mu \times \mu)(Z) = \sum_{(A_1,A_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \prod_{a
 
 Intuitively, this requirement means that for both the model probabilistic program $P$ and the auxiliary probabilistic program $Q$, the support of a random choice that is not discrete cannot depend on the value of another non-discrete random choice.
 Additionally, the support of non-discrete random choices in $Q$ cannot depend on the value of non-discrete random choices in the input $x$, which is a trace of $P$.
+This requirement defines a notion \emph{well-behavedness} for a probabilistic program ($P$) and an additional notion of well-behavedness for a pair of probabilistic programs that are sequenced one after the other ($P$ and $Q$).
+% TODO: prove that if Q satisfeies the criterion, then the composition P circ Q satisfies the single-program criterion..
 
-%\paragraph{Conditioning}
+\subsubsection{Conditional Distributions on Traces}
+The formalism in this section so far defines the model distribution (with respect to which stationarity of the kernel is required) as the distribution on traces of an (unconditioned) probabilistic program $P$ that encodes a generative model.
+However, typically in applications of MCMC the target distribution is obtained by conditioning on evidence.
+Our formalism does not distinguish between latent and observed random choices, and it is straightforward to show that the involution MCMC kernel is stationary with respect to a conditional distribution on the latent part of a partially observed trace as long as the involution does not modify the existence or values of observed random choices (when such conditional distribution is well-defined).
+Gen provides a mechanism for obtaining initial trace(s) with observed random choices fixed deterministically to the observed values.
+% TODO could add more content from my thesis here to make this more formal.
+% (define marginal density, then define conditional distribution)
+% could also do this in an updated version of the tech report..
 
-\section{DIFFERENTIABLE PROGRAMMING WITH TRACES}
+\section{DIFFERENTIABLE PROGRAMMING WITH TRACES} \label{sec:differentiable-programming-traces}
 
-% TODO PyTorch implementation??
+The previous section described how the probability densities ($p$ and $q$) required for involutive MCMC can be specified using probabilistic programs.
+This section introduces a differentiable programming language that can be used to specify the involution $f$ that is used in involutive MCMC.
+The interpreter for the language can compute the Radon-Nikodym derivative required for the acceptance probability using automatic differentiation, which will be discussed in Section~\ref{sec:automating}.
+The language has been implemented as part of the Gen system~\citep{Gen}.
+This section describes the language and informally introduces its semantics.
 
-\section{AUTOMATIC ACCEPTANCE PROBABILITY CALCULATION}
+In Algorithm~\ref{alg:involutive-mcmc} the involution $f : Z \to Z$ maps a pair $(x, y) \in Z$ to a new pair $(x', y') \in Z$.
+When the densities $p$ and $q$ are defined with probabilistic programs, each element of these pairs is a trace.
+Recall that a trace is mathematically, a finite dictionary that maps addresses to values.
+Therefore, the involution is a map from pairs of traces to pairs of traces.
+%To simplify the notation, we can represent a pair of traces $(x, y)$ as a single trace $z$, in which each address in $x$ and $x'$ is prefixed with some unique identifier (e.g. \texttt{model}) and each address in $y$ is prefixed with some unique identifier $y'$ (e.g. \texttt{auxiliary}).
+Then, $Z$ is a set of such trace pairs, and the involution $f$ is a function from $Z$ onto itself that is its own invverse.
+
+\subsection{A Differentiable Programming Language for Manipulating Traces}
+Like the probabilistic programming languages described above, our differentiable language for involutions on traces is embedded based on Julia.
+The differentiable language has specialized expressions for reading values from addresses in a trace, writing values to the addresses in a trace, and copying values from an address in one trace to an address in another trace.
+For example, to read a value from a trace, we use the \texttt{@read} keyword:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+    value = @read(<trace>, <address>, <type>)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+The first argument defines what trace we are reading from.
+The second argument is the address in that trace, which may be hierarchical.\footnote{
+Hierarchical addresses of the form $\mathtt{a.b.c}$ are constructed in the language using the syntax \texttt{a=>b=>c}.}
+The third argument is either $\mathtt{:}\mathtt{discrete}$ or $\mathtt{:}\mathtt{continuous}$, and informs the language runtime whether the random choice at that address is drawn from a discrete or continuous distribution (this information is used to support automatic differentiation, as discussed in Section~\ref{sec:automating}).
+Similarly, to write a value to a trace, we use a \texttt{@write} keyword:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+    @write(<trace>, <address>, <value>, <type>)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+The mathematical behavior of the function is defined simply by writing Julia code that implements it.
+For example, the following code reads the values of parameters in polar coordinates and writes out their values in cartesian coordinates:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+r = @read(trace1, :r, :continuous)
+theta = @read(trace1, :theta, :continuous)
+x = r * sin(theta)
+y = r * cos(theta)
+@write(trace2, :x, x, :continuous)
+@write(trace2, :y, y, :continuous)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+It is also possible to copy values from an address in one trace to an address in another trace:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@copy(<from-trace>, <from-addr>,
+      <to-trace>, <to-addr>)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+As we will see in Section~\ref{sec:automating}, it is preferable to copy when possible instead of reading and then writing, as the additional information can improve the efficiency of automatic differentiation.
+
+The names of the input traces and output traces are defined as part of the function signature, which as the following form, where \texttt{h} is the name of the function being defined.
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@tracefn h from (tr1, tr2) to (tr3, tr4) begin
+    ..
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+ % TODO change it from trace_bijection to tracefn in the figures and implementation...
+Each input and output trace is given a name (e.g. \texttt{tr1}, \texttt{tr2}, \texttt{tr3}, and \texttt{tr4}) and these names must be unique.
+For involution MCMC, the function must have two input traces and two output traces.
+The input trace is the input model trace ($x$), the second input trace is the input auxiliary trace ($y$), the first output trace is the output model trace ($x'$) and the second output trace is the output auxiliary trace ($y'$).
+
+\subsection{Implicit Copies}
+
+If an address is present in the input model trace and is needed to form a complete output model trace but was not written to or copied to in by the function body, then it will be implicitly copied from the previous trace by the runtime implementation.
+This significantly reduces the amount of code that has to be written when only a small subset of the model trace is being modified during the application of the involution MCMC move (which is common in applications of reversible jump MCMC).
+As a simple example, if there are $N$ latent variables, and the move only updates 1 of them, then the involution needs to contain only $O(1)$ lines of code instead of $O(N)$ lines.
+
+\subsection{Reasoning About Involutions}
+Recall the ealier code snippet that maps from polar to cartesian coordinates.
+This code snippet defines a bijection from one coordinate system to another.
+However, it does not define an involution, because applying the function the first time produces a trace containing cartesian coordinates, and applying the function a second time to the resulting trace would fail, because the function reads in polar coordinates from its input trace.
+How can we make the function an involution?
+
+First, the function will need the ability to go from cartesian coordinates to polar coordinates, so the following code for the inverse of the forward transformation must appear in the function somewhere:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+r = (x^2 + y^2)
+theta = atan(y, x)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+To be an involution, the input and output traces must contain some information indicating whether they are using polar or cartesian coordinates, so the involution code knows which of the two transformations to read from, and which addresses to read from and write to.
+Below is a minimal example of the involution, that uses a Boolean address polar.
+Note that the involution negates the value of this address, to indicate that the coordinate system is switching with each application.
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@tracefn h from (tr1, tr2) to (tr3, tr4)
+   polar = @read(tr1, :polar, :discrete)
+   if polar
+      r = @read(tr1, :r, :continuous)
+      theta = @read(tr1, :theta, :continuous)
+      x = r * sin(theta)
+      y = r * cos(theta)
+      @write(tr3, :x, x, :continuous)
+      @write(tr3, :y, y, :continuous)
+   else
+      x = @read(tr1, :x, :continuous)
+      y = @read(tr1, :y, :continuous)
+      r = (x^2 + y^2)
+      theta = atan(y, x)
+      @write(tr3, :r, r, :continuous)
+      @write(tr3, :theta, theta, :continuous)
+   end
+   @write(tr3, :polar, !polar, :discrete)
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+In order to apply this function in the context of involution MCMC, we require probabilistic programs $P$ and $Q$ that define space of input and output traces for the involution.
+A minimal example does not require any auxiliary random choices, so $Q$ can be an empty probabilistic program.
+A minimal toy example of a probabilistic program $P$ that is compatible with the involution \texttt{h} defined above is:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@gen function p()
+    polar ~ bernoulli(0.5)
+    if polar
+        r ~ gamma(1, 1)
+        theta ~ uniform(-pi, pi)
+    else
+        x ~ normal(0, 1)
+        y ~ normal(0, 1)
+    end
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+
+% TODO do a PyTorch implementation??
+
+\section{AUTOMATIC ACCEPTANCE PROBABILITY CALCULATION} \label{sec:automating}
 
 
 % TODO can only show this for a special case -- discrete involution + continuous?, or some more general case?
