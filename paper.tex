@@ -184,6 +184,49 @@ Then $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigm
 Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$.
 Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
 
+% TODO what is a trace? and what is a p? do we need parents?
+%\begin{algorithm}[h]
+%\begin{algorithmic}
+%\Procedure{trimcmc-kernel}{$p$, $q$, $f$, $x$}
+    %\State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary trace}
+    %\State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
+    %\State $w_1 \gets \prod_{a \in A(x)} p_{A(x)}(x_a | x_{\mathrm{Pa}^{A(x)}_a})$
+    %\State $w_2 \gets \prod_{a \in A(y)} q_{x,A(y)}(y_a | x_{\mathrm{Pa}^{A(x)}_a})$
+    %\State $w_3 \gets \prod_{a \in A(x')} p_{A(x')}(x'_a | (x'_b)_{b \in \mathrm{Pa}^{A(x)}_a})$
+    %\State $w_4 \gets \prod_{a \in A(y')} q_{x',A(y')}(y'_b | (y'_b)_{b \in \mathrm{Pa}^{A(x)}_a})$
+    %\State $|J| \gets F.\textproc{jacdetabs}(x, y)$
+    %\State $\alpha \gets
+        %\displaystyle \frac{w_3 \cdot w_4}{w_1 \cdot w_2} \cdot w_5$
+    %\State $r \sim \mathrm{Uniform}(0, 1)$
+    %\State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
+%\EndProcedure
+%
+%\Procedure{$P$.score}{$x$}
+    %%\State \Return $p(x)$ % TODO or product of densities? % TODO state notation is non-standard
+    %% if we don't use this product then what is the point -- why don't we just use p(x)
+    %\State \Return $\prod_{a \in A(x)} p_{\sigma(a)}(x[a])$ (?) TODO % TODO
+%\EndProcedure
+%
+%\Procedure{$Q$.score}{$y$; $x$}
+    %%\State \Return $q_x(y)$ % TODO or product of densities?
+    %\State \Return $\prod_{a \in A(y)} q_{x,\sigma(a)}(y[a])$ (?) TODO % TODO
+%\EndProcedure
+%
+%\Procedure{$F$.jacdetabs}{$x$,$y$}
+    %\For{$a$ in $\textproc{continuous-addresses}(x)$}
+        %\State $J1[a,:] \gets \nabla_{x[a]} \left( F(x, y)_{\mathrm{continuous}} \right)$ (?) TODO % TODO
+    %\EndFor
+    %\For{$a$ in $\textproc{continuous-addresses}(y)$}
+        %\State $J2[a,:] \gets \nabla_{y[a]} \left( F(x, y)_{\mathrm{continuous}} \right)$ (?) TODO % TODO
+    %\EndFor
+    %\State $J \gets \left[\begin{array}{c}J1\\J2\end{array}\right]$
+    %\State \Return $|\det(J)|$
+%\EndProcedure
+%\end{algorithmic}
+%\caption{Trace Involutive MCMC}
+%\label{alg:trimcmc}
+%\end{algorithm}
+
 \begin{algorithm}[h]
 \begin{algorithmic}
 \Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $x$}
@@ -682,7 +725,7 @@ To derive a more efficient algorithm, we use the cofactor expansion of the deter
 Applying this rule recursively allows a significant reduction in the size of the determinant computation when the Jacobian matrix possesses sparsity.
 Sparse Jacobians are common in applications of involutive MCMC, and reversible jump MCMC in particular.
 For example, consider the Jacobian for the split-merge move of~\citet{richardson1997bayesian}, implemented in Figure~\ref{fig:mixture}:
-%\includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
+\includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
 In this case, the Jacobian determinant can be simplified to the determinant of a $6$-by-$6$ matrix that does not grow in size with the number of clusters and number of data points, because unaffected clusters and data points have their values \emph{copied} from the input model trace to the output model trace.
 While a reasonable hand-coded implementation of this algorithm would likely exploit this sparsity as well, it would require careful and error-prone reasoning and implementation, which our approach automates.
 
@@ -826,6 +869,163 @@ and will thus raise an error.
 
 \section{EXAMPLES}
 
+\subsection{Reversible Jump MCMC}
+Reversible jump MCMC~\citep{green1995reversible,hastie2012model} is a special case of involutive MCMC, and 
+the implementation of reversible jump MCMC kernels can be automated using the probabilistic and differentiable programming languages presented in this paper.
+We now review reversible jump MCMC, then show how it can be automated using the techniques presented earlier, and give an example.
+
+The reversible jump MCMC framework involves a set of `models' $k \in \mathcal{K}$, and a prior distribution on models $p(k)$.
+For each model, there is a latent continuous parameter vector $\theta_k \in \mathbb{R}^{n(k)}$ where $n(k)$ is the dimension of model $k$, and a likelihood function $L_{D,k}(\theta_k)$ for each $k$ given data $D$.
+The latent state $x$ is a pair $(k, \theta_k)$ of model and continuous parameter.
+There is a set of \emph{move types} $\mathcal{M}$.
+Each move type $m \in \mathcal{M}$ is associated with an unordered pair of models $(k_1, k_2)$ and a dimensionality $d(m)$ such that $d(m) \ge n(k_1)$ and $d(m) \ge n(k_2)$ (zero, one, or more than one move types maybe assocaite with a given pair of models).
+For each latent state $x = (k, \theta_k)$, there is a probability distribution $q_{x}(m)$ on move types such that $q_{x}(m) > 0$ implies that $k$ is one of the models for move type $m$.
+For each move type $m \in \mathcal{K}$ between $k_1$ and $k_2$ there is a pair of continuously differentiable bijections $h_{m, k_1 \to k_2} : \mathbb{R}^{d(m)} \to \mathbb{R}^{d(m)}$ and $h_{m, k_2 \to k_1} := h_{m, k_1 \to k_2}^{-1}$, and a pair of proposal densities $q_{m,k_1 \to k_2}(u_{k_1 \to k_2})$ and $q_{m,k_2 \to k_1}(u_{k_2 \to k_1})$ where $u_{k_1 \to k_2} \in \mathbb{R}^{d(m) - n(k_1)}$ and $u_{k_2 \to k_1} \in \mathbb{R}^{d(m) - n(k_2)}$.
+A proposal is made from state $x = (k, \theta_k)$ by (i) sampling a move type $m \sim q_{x}(\cdot)$, and (ii) sampling continuous variable $u \sim q_{m,k \to k'}(\cdot)$ for $(k, k')$ associated with $m$, and (iii) computing $(\theta_{k}', u') := h_{m,k \to k'}(\theta_k, u)$, and proposing new state $x' = (k', \theta_k')$.
+The move is accepted with probability:
+\begin{equation}
+{
+\min\left\{ 1,
+\frac{p(k')}{p(k)} \frac{p_{k'}(\theta_{k'})}{p_k(\theta_k)} \frac{L_{D,k'}(\theta_k')}{L_{D,k}(\theta_k)}
+\frac{q_{x'}(m)}{q_{x}(m)}
+\frac{q_{m,k' \to k}(u)}{q_{m,k \to k'}(u)}
+\right\}
+}
+\end{equation}
+
+To represent reversible jump MCMC using involutive MCMC implemented with probabilistic programs, we write a probabilistic program $P$ that encodes the space of models $\mathcal{K}$, the prior distribution on models, $p(k)$, the per-model priors $p_k(\theta_k)$ and the per-model likelihoods $L_{D,k}(\theta_k)$.
+The set of all models $k$ corresponds to the set of all pairs $(A_P, \mathbf{d}_P)$ where $A_P$ represent possible trace structures (i.e. control-flow paths through $P$) and $\mathbf{d}_P$ are the set of assignments to discrete random choices made by $P$.
+The per-model continuous parameters $\theta$ correspond to continuous random choices $\mathbf{c}_P$.
+% TODO explain the likelihood
+An auxiliary probabilistic program $Q$ encodes both the probability distribution on moves types using discrete random choices and possibly stochastic control flow ($(A_Q, \mathbf{d}_Q)$), and the per-move-type probability densities on $u$ using continuous random choices $\mathbf{c}_Q$.
+The involution $f$ factors into an (i) involution $f_1$ on pairs $i = ((A_P, \mathbf{d}_P), (A_Q, \mathbf{d}_Q))$ that defines the association between move types $\mathcal{M}$ and the model pairs ($k_1, k_2$); and (ii) a family of bijections $f_{1,i}$ on the space of pairs $(\mathbf{c}_P, \mathbf{c}_Q)$ of continuous random choices for both programs for fixed values of the discrete random choices and fixed trace structure.
+
+Figure~\ref{fig:mixture} shows a split-merge reversible jump kernel for an infinite Gaussian mixture model~\citep{richardson1997bayesian} implemented using the probabilistic and differentiable programming languages described in this paper.
+Figure~\ref{fig:mixture}(b) shows the infinite Gaussian mixture model, specified as a probabilistic program $P$.
+The program takes the number of data points as input, then samples the number of clusters from a Poisson distribution, then samples cluster parameters and mixture proportions, and finally samples the data points from the resulting finite mixture.
+Figure~\ref{fig:mixture}(c) shows the auxiliary probabilistic program $Q$ for the split-merge kernel.
+This program takes a trace of the model program as input, and randomly decides whether to split a cluster and increase the number of clusters by one or merge two clusters and decrease the number of clusters by one.
+Then, the program randomly picks which cluster to split, or which clusters to merge.
+This kernel always merges the last cluster with a random other cluster; for ergodicity the move can be composed with a simple move (that has acceptance probability $1$) that swaps a random cluster with the last cluster.
+If a split is chosen, then the program also samples the three degrees of freedom necessary to generate the new parameters for the clusters in an invertible manner.
+Figure~\ref{fig:mixture}(d) shows a differentiable program specifying the involution for the split-merge kernel, and Figure~\ref{fig:mixture}(f) shows graphically how this involution acts on pairs of traces.
+The yellow section (1) defines an involution $f_1$ on the discrete random choices that specifies that (i) the \texttt{split} choice should be flipped (so that split moves are always mapped to merge moves and vice versa) and that (ii) the number of clusters should be increased by one for a split move and decreased by one for a merge move, and (iii) which merged cluster corresponds to which split clusters.
+The green section (2) specifies the continuous bijections that govern the transformation of continuous random choices during split moves and the purple section (3) specifies the inverses of these bijections, which govern the transformation of continuous choices during merge moves.
+
+\subsection{State-Dependent Mixture Proposal}
+
+State-dependent mixture proposal.
+Depending on the current state of the model, a different mixture distribution is used for the proposal.
+Implementing such a move requires computing the mixture probability under the forward move and under the reverse move, which may differ.
+
+$q_x(m)$ -- the mixture distribution
+
+$q_m(x')$ -- the proposal we are mixing over
+
+The first part of the auxiliary probabilistic program $Q$ determines which proposal to apply by sampling from a mixture distribution.
+Here, the program picks a random node in the tree, by doing a stochastic walk of the tree that terminates at the chosen node.
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+prev_cov_function = trace[:cov_function]
+path ~ walk_tree(prev_cov_function, ..)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+The first part of the involution copies the random choices corresponding to the mixture from the input auxiliary trace to the output auxiliary trace.
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@copy(q_in, :path, q_out, :path)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+
+The code that walks the tree uses the following recursion, which results in a probability distribution that assigns exponentially lower probability to nodes that are deeper in the tree.
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+if ({:done} ~ bernoulli(0.5))
+  return path
+elseif ({:recurse_left} ~ bernoulli(0.5))
+  path = (path..., :left_node)
+  return ({:left} ~ walk_tree(node.left, path))
+else
+  path = (path..., :right_node)
+  return ({:right} ~ walk_tree(node.right, path))
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+The resulting mixture distributions for two trees are:
+\begin{center}
+\includegraphics[width=0.8\linewidth]{figures/biased-tree-distribution.pdf} % TODO improve quality
+\end{center}
+Because the mixture is specified using a probabilistic program, it is straightforward to modify the program to define a different mixture distribution.
+The code below specifies a mixture distribution that is uniform over all nodes in the tree.
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+n1 = size(node.left); n2 = size(node.right)
+if ({:done} ~ bernoulli(1 / (1 + n1 + n2)))
+  return path
+elseif ({:recurse_left} ~ bernoulli(n1 / (n1+n2))
+  path = (path..., :left_node)
+  return ({:left} ~ walk_tree(node.left, path))
+else
+  path = (path..., :right_node)
+  return ({:right} ~ walk_tree(node.right, path))
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+The resulting distributions are:
+\begin{center}
+\includegraphics[width=0.8\linewidth]{figures/unbiased-tree-distribution.pdf}
+\end{center}
+Note that in the first case, the ratio of mixture probabilities is either $1$, $0.5$, or $2$ depending on whether the previous and new subtrees are leaf or internal nodes.
+In the second case, the ratio of mixture probabilities is the ratio of sizes of the two trees.
+%Automating the computation of the mixture probabilities
+
+
+
+
+The rest of the kernel specifies what happens for each chosen node.
+The second part of the auxiliary probabilistic program $Q$ implements a common motif for Metropolis-Hastings algorithms, where the proposal samples new values for some random choices:
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+new_subtree ~ cov_function_prior()
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+and the involution swaps the old value with the newly proposed value:
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@copy(p_in, subtree_address, q_out, :new_subtree)
+@copy(q_in, :new_subtree, p_out, subtree_address)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+Here the values happen to be trees that themselves have a random number of random choices, but the same motif is also used in simpler applications of Metropolis-Hastings.
+
+
+Here, the proposal we are mixing over is easy to implement -- it involvs resampling a subtree from the prior, so the Jacobian is 1 and there is cancellation between the model and the proposal.
+
+But computing the mixture probabilities is complex, because the mixture is a mixture of either $n_1$ or $n_2$ elements, which depends on the size of the tree.
+
+Show the mixture probabilities in math notation?
+If both subtrees not leaf nodes, then the probabilities are the same.
+If both subtrees are leaf nodes, then the probabilities are different.
+If one subtree is a leaf node and the other is an internal node then the ratio is either $0.5$ or $2$ respectively.
+\begin{equation}
+q
+\end{equation}
+
+TODO: relate to `resimulation Metropolis-Hastings' in general-purpose probabilistic programs.
+
+Of course, it is straightforward to replace the prior with a custom data-driven proposal distribution on subtrees.
 
 \subsubsection*{Acknowledgements}
 All acknowledgments go at the end of the paper, including thanks to reviewers who gave useful comments, to colleagues who contributed to the ideas, and to funding agencies and corporate sponsors that provided financial support.
