@@ -200,7 +200,7 @@ Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \m
 \label{alg:involutive-mcmc}
 \end{algorithm}
 
-See Section~\ref{sec:radon-nikodym-special-case} for a derivation of the Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d \mu$ for a special case, when the involution $f$ can be factored into (i) an involution on a countable partition of $Z$ and (ii) a family of continuously differentiable bijection on Euclidean spaces.
+See Section~\ref{sec:radon-nikodym-special-case} for a derivation of the Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d \mu$ for a special case, when the involution $f$ can be factored into (i) an involution on a countable partition of $Z$ and (ii) a family of continuously differentiable bijections on Euclidean spaces.
 
 \begin{theorem}[Involutive MCMC is stationary]
 Algorithm~\ref{alg:involutive-mcmc} defines a probability kernel $k$ on $X$ that is stationary with respect to the model probability distribution.
@@ -224,7 +224,10 @@ The next section makes the concept of a trace more concrete using code in a prob
 
 \subsection{A Probabilistic Programming Language}
 
-The probabilistic programming language used in this paper is based on the dynamic modeling language in the Gen probabilistic programming system~\citep{gen-pldi}.
+The probabilistic programming language used in this paper is 
+% TODO: why "based on"?
+based on 
+the dynamic modeling language in the Gen probabilistic programming system~\citep{gen-pldi}.
 In this language, user tags each random choice with an explicit address in the code, as part of a \emph{random-choice expression} of the following form:
 \noindent
 \begin{center}
@@ -357,7 +360,7 @@ When this function is invoked it encodes the following probability distribution 
 
 \subsection{Handling Continuous Distributions}
 To handle programs that sample continuous probability distributions the notion of a probability mass function on traces needs to be generalized to a probability density function on traces with respect to a certain reference measure.
-The probabilistic program still defines a probability distibution (i.e. measure) on traces, but viavia  a density instead of a probability mass function.
+The probabilistic program still defines a probability distribution (i.e. measure) on traces, but via  a density instead of a probability mass function.
 
 Let $\mathcal{A}$ denote a countable set of all possible addresses.
 For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
@@ -400,7 +403,7 @@ The addresses used by this generative function are:
 \]
 (Note that $\mathcal{A}$ could contain additional addresses that the program never samples.)
 The random choice at address $\mathtt{:}\mathtt{degree}$ is discrete with $V_a = \integers_{\ge 0}$ and the other random choices are continuous.
-Address $\mathtt{:}\mathtt{:noise}$ has $V_a = \reals_{> 0}$ and $(\mathtt{"c"}, i)$ and $(\mathtt{"y"}, i)$ have $V_a = \reals$, and all of these use the Lebesgue measure. % TODO double-check this
+The address $\mathtt{:}\mathtt{noise}$ has $V_a = \reals_{> 0}$ and $(\mathtt{"c"}, i)$ and $(\mathtt{"y"}, i)$ have $V_a = \reals$, and all of these use the Lebesgue measure. % TODO double-check this
 The density with respect to the reference measure $\mu$ is:
 \begin{align*}
 p(x) =
@@ -801,7 +804,7 @@ end
        @copy(tr1, (:var, i), tr3, (:var, i-1))
      end
      @write(tr3, :k, k-1, :discrete)
-     new_weights = delete_weight(weights, i)
+     new_weights = delete_weight(weights, idx)
    end
    @write(tr3, :weights, new_weights, :continuous)
 end
