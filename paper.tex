@@ -367,7 +367,7 @@ Let $\Sigma \subseteq \mathcal{P}(T)$ be the $\sigma$-algebra formed by sets of 
 Let $\mu : \Sigma \to [0, \infty)$ be a measure on measurable space $(T, \Sigma)$ defined by $\mu(B) := \sum_{A \subseteq \mathcal{A}, |A| < \infty} \mu_A(B_A)$.
 
 A probabilistic program $P$ denotes a probability density $p : T \to [0, \infty)$ with respect to a reference measure $\mu$ on traces.
-Describing the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper, and we refer to the reader to~\citet{popl} for an example of denotational semantics of a probabilistic programming language that uses explicit addresses for random-choices.
+Describing the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper, and we refer to the reader to~\citet{popltraces} for an example of denotational semantics of a probabilistic programming language that uses explicit addresses for random-choices.
 But, informally, the density of a trace in our formalism (and existing formalisms) is the product of densities of each individual random choice, as an example below illustrates.
 
 The measure-theoretic formalism above is capable of expressing probabilistic programs that use continuous distributions by setting the reference measure space $(V_a, \Sigma_a, \mu_a)$ for some addresses $a$ to use the Lebesgue-measure.
@@ -549,7 +549,7 @@ As a simple example, if there are $N$ latent variables, and the move only update
 TODO: show an example
 
 \subsection{Reasoning About Involutions}
-Recall the ealier code snippet that maps from polar to cartesian coordinates.
+Recall the earlier code snippet that maps from polar to cartesian coordinates.
 This code snippet defines a bijection from one coordinate system to another.
 However, it does not define an involution, because applying the function the first time produces a trace containing cartesian coordinates, and applying the function a second time to the resulting trace would fail, because the function reads in polar coordinates from its input trace.
 How can we make the function an involution?
@@ -637,7 +637,7 @@ For the setting when $p$, $q$, and $f$ are defined using the probabilistic and d
 \min\left\{1, \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} |J f_{2,i(x,y)} | \right\}
 \end{equation}
 Implementing the computation of this probability by hand is error-prone due to conceptual, arithmetic, and implementation errors; as well as time consuming and tedious.
-This section describes how the computation of this probabability is automated by Gen using probabilistic and differentiable programming techniques.
+This section describes how the computation of this probability is automated by Gen using probabilistic and differentiable programming techniques.
 
 \subsection{Automatically Computing Probability Density Ratios}
 
@@ -650,7 +650,7 @@ The density $p$ of a probabilistic program with respect to the reference measure
 p((A, \mathbf{x})) = \prod_{a \in A} p_{\sigma_a}(\mathbf{x}[a])
 \end{equation}
 where $\mathbf{x}[a]$ denotes the value of address $a$ in the trace, $p_{\sigma_a}$ is the probability density function for distribution from which random choice $a$ is sampled, given that the state of the program when sampling is $\sigma_a$.
-(See~\citet{popl} for a formal proof for a somewhat more restricted probabilistic programming language.)
+(See~\citet{popltraces} for a formal proof for a somewhat more restricted probabilistic programming language.)
 Therefore, the probabilistic programming language can compute the density at a trace $x$ by executing the program, but at each random choice $a$, reading the value of the choice $\mathbf{x}[a]$ instead of sampling it, computing the density at $\mathbf{x}[a]$ and accumulating it into the product above.\footnote{Probabilistic programming implementations use sums of log-densities instead of products for numerical reasons.}
 
 To evaluate this density ratio, we utilize Gen's API for probabilistic programs and traces, which automatically computes the density of a trace of a probabilistic program, whether that trace was sampled from the probabilistic program (as in the case of computing $q_x(y)$ for $y \sim q_{x}(\cdot)$) or when that trace was produced externally from the probabilistic program (as in the case of computing $q_{x'}(y')$, where $y'$ was produced from the involution $f$).
@@ -675,17 +675,149 @@ The Jacobian is computed automatically by applying forward-mode automatic differ
 Common determinant implementations based on the LU-decomposition scale on the order $O(N^2)$ for an $N$-by-$N$ matrix.
 Therefore, the basic algorithm computes $|J f_{2,i(x,y)} |$ in $O(N^2)$ where $N$ is the number of continuous addresses in $x$ or $y$.
 
-To derive a more efficeint algorithm, we use the cofactor expansion of the determinant, and observe that any row or column in the Jacobian matrix that contains a single $1$ and all other ($N-1$) entries $0$ implies that the absolute value of the determinant is equivalent to the absolute value of the $N-1$-by-$N-1$ sub-matrix with the corresponding row and column omitted (even if that would remove other nonzero entries from the matrix).
+To derive a more efficient algorithm, we use the cofactor expansion of the determinant, and observe that any row or column in the Jacobian matrix that contains a single $1$ and all other ($N-1$) entries $0$ implies that the absolute value of the determinant is equivalent to the absolute value of the $N-1$-by-$N-1$ sub-matrix with the corresponding row and column omitted (even if that would remove other nonzero entries from the matrix).
 Applying this rule recursively allows a significant reduction in the size of the determinant computation when the Jacobian matrix possesses sparsity.
 Sparse Jacobians are common in applications of involutive MCMC, and reversible jump MCMC in particular.
 For example, consider the Jacobian for the split-merge move of~\citet{richardson1997bayesian}, implemented in Figure~\ref{fig:mixture}:
-\includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
+%\includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
 In this case, the Jacobian determinant can be simplified to the determinant of a $6$-by-$6$ matrix that does not grow in size with the number of clusters and number of data points, because unaffected clusters and data points have their values \emph{copied} from the input model trace to the output model trace.
 While a reasonable hand-coded implementation of this algorithm would likely exploit this sparsity as well, it would require careful and error-prone reasoning and implementation, which our approach automates.
 
 % TODO show an performance table of moves per second with and without the sparsity reduction (?)
 
 \section{A DYNAMIC CHECK FOR DETECTING BUGS}
+
+Due to the automation described in the previous section, users of Gen can implement involutive MCMC algorithms by writing probabilistic programs for $p$ and $q$ and a differentiable program for the involution $f$, avoiding the need to derive and implement the accept/reject formula by hand. 
+This eliminates certain classes of errors that could otherwise be difficult to root out in hand-coded implementations of MCMC algorithms. However, it is still of course possible to implement $p$, $q$, or $f$ incorrectly, introducing bugs that may invalidate the correctness proofs for the involutive MCMC algorithm.
+
+
+Fortunately, the factorization of diverse algorithms into a common template, involving an explicitly represented model, auxiliary distribution, and involution, enables simple and automated debugging checks that can catch a wide variety of such errors dynamically. These checks are not complete, but anecdotally, we have found that they often alert users to subtle bugs in the design or implementation of an algorithm. The checks are summarized in Algorithm~\ref{alg:dynamic-check}.
+
+
+\begin{algorithm}[h]
+\begin{algorithmic}
+\Procedure{imcmc-dynamic-check}{$p$, $q$, $f$}
+    \State $x \sim p(\cdot)$ \Comment{Sample state from prior}
+    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
+    \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
+    \State {\bf assert} $p(x')q_{x'}(y') > 0$ \Comment{Support check}
+    \State {\bf assert} $f(x', y') = (x, y)$ \Comment{Involution check}
+    \State {\bf assert} $|\text{Rd}^{\textit{cont}}_{f,x,y}| = |\text{Wr}^{\textit{cont}}_{f,x,y}|$ \Comment{Dimension check}
+\EndProcedure
+\end{algorithmic}
+\caption{Dynamic Check for Bugs}
+\label{alg:dynamic-check}
+\end{algorithm}
+
+To test the user's algorithm, Gen first samples a model trace $x$ from the model prior $p$, and auxiliary randomness $y$ from the kernel $q_x$. It then runs three tests:
+
+\begin{enumerate}
+\item \textbf{Support check.} The \textit{support check} runs the involution $f$ on $(x, y)$ and checks that the resulting pair of traces, $(x', y')$, are within the set $Z$ of positive-density elements for $\pi$.
+
+\item \textbf{Involution check.} The \textit{involution check} runs $f \circ f$ on $(x, y)$ and checks that the result is equal to $(x, y)$. If $f$ is an involution on $Z$, then this check will always succeed; if there is a set $\tilde{Z}$ of positive $\pi$-measure on which $f(f(z)) \neq z$ (i.e., $f$ is not an involution), then this check has positive probability of failing.
+
+\item \textbf{Dimension check.} The \textit{dimension check} runs the involution $f$ on $(x, y)$ and records the sets of addresses $\text{Rd}_{f,x,y}^{\textit{cont}}$ and $\text{Wr}_{f,x,y}^{\textit{cont}}$ at which $f$ performs continuous reads and writes, respectively. It then checks that the sizes of these sets match. (Addresses with an $n$-dimensional Lebesgue measure as their reference measure, corresponding to vector-valued random choices, are unpacked into $n$ separate addresses for the purposes of this check.)
+\end{enumerate}
+
+These checks each catch qualitatively different bugs in user programs. We now give several examples.
+
+\textit{Incorrectly transformed continuous variables.} Many bugs in the design or implementation of deterministic transformations of continuous variables are naturally detected by the involution check. Consider, for example, the Hamiltonian Monte Carlo algorithm~\citep{hmc}, which, as \citet{imcmc} observe, is an instance of the involutive MCMC framework. 
+%$x$ is the model state, $y$ is the momentum, and the involution $f$ first runs a leapfrog integrator to obtain a new state $x'$ and final momentum $-y'$, then negates the final momentum and returns $(x', y')$. 
+When applied to HMC, Gen's dynamic bug check involves:
+%Gen's dynamic checks will uncover mathematical errors in the implementation of the leapfrog integrator, and will also detect a failure to perform the final negation of the momentum. In particular, the dynamic check involves 
+(a) sampling a model state $x$ from the prior; (b) sampling a momentum $y$; (c) running the leapfrog integrator forward to get a new state $x'$ and new momentum $-y'$, (d) running the leapfrog integrator backward from state $x'$ with momentum $y'$, and (e) checking that this results in the state-momentum pair $x, -y$. If the momentum is not properly negated, or if the leapfrog integrator is incorrectly implemented, this check can fail.
+
+As another, simpler example of this type of error, consider the \texttt{split\_params} and \texttt{merge\_params} functions invoked in Figure~\ref{fig:mixture}, as part of a reversible-jump MCMC kernel for learning a mixture of Gaussians with an unknown number of components. Considering only the $\mu$ parameter, suppose the \textit{split} move samples an auxiliary variable $u_1$ and computes $\mu_1 = \mu + u_1, \mu_2 = \mu - u_1$ as the means of the two new clusters. If the \textit{merge} move joins two clusters and assigns $\mu = \sqrt{\mu_1 \mu_2}$, there is a mismatch: a split move cannot be reversed by a corresponding merge, because in general, $\sqrt{(\mu+u_1)(\mu-u_1)} \neq \mu$. This error could be fixed either by changing the split to compute $\mu_1 = \mu u_1, \mu_2 = \frac{\mu}{u_1}$, or by changing the merge to compute $\mu = \frac{\mu_1 + \mu_2}{2}$.
+
+As a final, rather different example in this class, suppose approximate inverses $F_\theta, G_\theta : \mathbb{R}^d \rightarrow \mathbb{R}^d$ are learned neural networks trained via a Cycle GAN objective~\citep{cyclegan} to translate between the latent spaces of two models in a Bayesian model selection problem. A user might implement the following involution:
+
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@tracefn h from (tr1, tr2) to (tr3, tr4)
+   which_model = @read(tr1, :model, :discrete)
+   if which_model == 1
+      z = @read(tr1, :z, :continuous)
+      z_in_model_2 = F(z)
+      @write(tr3, :z, z_in_model_2, :continuous)
+      @write(tr3, :model, 2, :discrete)
+   else
+      z = @read(tr1, :z, :continuous)
+      z_in_model_1 = G(z)
+      @write(tr3, :z, z_in_model_1, :continuous)
+      @write(tr3, :model, 1, :discrete)
+   end
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+
+However, even though $F_\theta$ and $G_\theta$ are trained with
+an objective that encourages $F_\theta(G_\theta(z)) \approx z$, 
+this relationship is not exact equality, so the involutive MCMC
+framework cannot be directly applied, and the involution check
+will fail. This error could be fixed by sampling a proposed value
+\textit{near} $F_\theta(z)$ or $G_\theta(z)$, rather than directly applying $F_\theta$
+and $G_\theta$ to $z$.
+
+\textit{Discrete logic errors.} Another common class of errors is 
+for the discrete logic of an involution to be flawed. Consider the following incorrect 
+implementation of a \textit{birth-death} move for the mixture model in Figure~\ref{fig:mixture}, which either adds a new mixture component or selects an existing one
+at random to delete:
+
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@gen function q(trace)
+  current_k = trace[:k]
+  is_birth ~ bernoulli(current_k == 1 ? 1.0 : 0.5)
+  if is_birth
+    new_mu ~ normal(0, 10)
+    new_var ~ inv_gamma(1, 10)
+  else
+    deletion_idx ~ uniform_discrete(1, current_k)
+  end
+end
+
+@tracefn h from (tr1, tr2) to (tr3, tr4)
+   is_birth = @read(tr2, :is_birth, :discrete)
+   @write(tr4, :is_birth, !is_birth, :discrete)
+   k = @read(tr1, :k, :discrete)
+   weights = @read(tr1, :weights, :continuous)
+   if is_birth
+     @write(tr3, :k, k+1, :discrete)
+     new_mu = @read(tr2, :new_mu, :continuous)
+     new_var = @read(tr2, :new_var, :continuous)
+     @write(tr3, (:mu, k+1), new_mu, :continuous)
+     @write(tr3, (:var, k+1), new_var, :continuous)
+     new_weights = add_weight(weights)
+     @write(tr4, :deletion_idx, k+1, :discrete)
+   else
+     idx = @read(tr2, :deletion_idx, :discrete)
+     @copy(tr1, (:mu, idx), tr4, :new_mu)
+     @copy(tr1, (:var, idx), tr4, :new_var)
+     for i in (idx+1):k
+       @copy(tr1, (:mu, i), tr3, (:mu, i-1))
+       @copy(tr1, (:var, i), tr3, (:var, i-1))
+     end
+     @write(tr3, :k, k-1, :discrete)
+     new_weights = delete_weight(weights, i)
+   end
+   @write(tr3, :weights, new_weights, :continuous)
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+
+The flaw in this implementation is that although the death move can 
+delete any of the $k$ mixture components, the birth move can only add
+a new component to the \textit{end} (index $k+1$), so the move is not
+reversible. Gen's involution check will discover that the deletion of a
+component with index $i < k$ is not reversed by a corresponding birth move,
+and will thus raise an error.
+
+\textit{Other miscellaneous errors.} When implementing distributions as probabilistic programs, it is also possible for users to make more mundane errors, such as spelling the name of a random choice inconsistently, or characterizing random choices using the wrong \texttt{type} tags (\texttt{:continuous} and \texttt{:discrete}). Such errors can be difficult to detect statically, because the addresses at which a probabilistic program makes random choices, and the distributions of those choices, may change from sample to sample. (Previous work has explored static analyses based on types~\citep{popltraces} and abstract interpretation~\citep{verified_svi}, but these each work on limited subsets of the programs that Gen's full modeling language permits, and it is often precisely these more complex programs that require the flexibility of the involutive MCMC framework in the first place.) Gen's dynamic support and dimension checks can help to detect bugs like these. For example, if the involution $f$ writes to a misspelled address, the support check will determine that the resulting trace's density is 0.
+
 
 % TODO show an example of the type of bug it can detect (an edge case?)
 
