@@ -200,32 +200,32 @@ Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \m
     %\State $r \sim \mathrm{Uniform}(0, 1)$
     %\State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
 %\EndProcedure
-
-\Procedure{$P$.score}{$x$}
-    %\State \Return $p(x)$ % TODO or product of densities? % TODO state notation is non-standard
-    % if we don't use this product then what is the point -- why don't we just use p(x)
-    \State \Return $\prod_{a \in A(x)} p_{\sigma(a)}(x[a])$ (?) TODO % TODO
-\EndProcedure
-
-\Procedure{$Q$.score}{$y$; $x$}
-    %\State \Return $q_x(y)$ % TODO or product of densities?
-    \State \Return $\prod_{a \in A(y)} q_{x,\sigma(a)}(y[a])$ (?) TODO % TODO
-\EndProcedure
-
-\Procedure{$F$.jacdetabs}{$x$,$y$}
-    \For{$a$ in $\textproc{continuous-addresses}(x)$}
-        \State $J1[a,:] \gets \nabla_{x[a]} \left( F(x, y)_{\mathrm{continuous}} \right)$ (?) TODO % TODO
-    \EndFor
-    \For{$a$ in $\textproc{continuous-addresses}(y)$}
-        \State $J2[a,:] \gets \nabla_{y[a]} \left( F(x, y)_{\mathrm{continuous}} \right)$ (?) TODO % TODO
-    \EndFor
-    \State $J \gets \left[\begin{array}{c}J1\\J2\end{array}\right]$
-    \State \Return $|\det(J)|$
-\EndProcedure
-\end{algorithmic}
-\caption{Trace Involutive MCMC}
-\label{alg:trimcmc}
-\end{algorithm}
+%
+%\Procedure{$P$.score}{$x$}
+    %%\State \Return $p(x)$ % TODO or product of densities? % TODO state notation is non-standard
+    %% if we don't use this product then what is the point -- why don't we just use p(x)
+    %\State \Return $\prod_{a \in A(x)} p_{\sigma(a)}(x[a])$ (?) TODO % TODO
+%\EndProcedure
+%
+%\Procedure{$Q$.score}{$y$; $x$}
+    %%\State \Return $q_x(y)$ % TODO or product of densities?
+    %\State \Return $\prod_{a \in A(y)} q_{x,\sigma(a)}(y[a])$ (?) TODO % TODO
+%\EndProcedure
+%
+%\Procedure{$F$.jacdetabs}{$x$,$y$}
+    %\For{$a$ in $\textproc{continuous-addresses}(x)$}
+        %\State $J1[a,:] \gets \nabla_{x[a]} \left( F(x, y)_{\mathrm{continuous}} \right)$ (?) TODO % TODO
+    %\EndFor
+    %\For{$a$ in $\textproc{continuous-addresses}(y)$}
+        %\State $J2[a,:] \gets \nabla_{y[a]} \left( F(x, y)_{\mathrm{continuous}} \right)$ (?) TODO % TODO
+    %\EndFor
+    %\State $J \gets \left[\begin{array}{c}J1\\J2\end{array}\right]$
+    %\State \Return $|\det(J)|$
+%\EndProcedure
+%\end{algorithmic}
+%\caption{Trace Involutive MCMC}
+%\label{alg:trimcmc}
+%\end{algorithm}
 
 \begin{algorithm}[h]
 \begin{algorithmic}
