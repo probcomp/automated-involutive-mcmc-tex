@@ -2,12 +2,34 @@ import torch
 from collections import namedtuple
 from itertools import chain
 
-##########################
-# generic implementation #
-##########################
 
-CONTINUOUS = "CONTINUOUS"
-DISCRETE = "DISCRETE"
+##############################################
+# minimal probabilistic programming language #
+##############################################
+
+def sample(p, *args):
+    trace = {}
+    def trace_choice(dist, addr):
+        val = dist.sample()
+        trace[addr] = val
+        return val
+    p(trace_choice, *args)
+    return trace
+
+def logpdf(trace, p, *args):
+    lpdf = torch.tensor(0.0)
+    def trace_choice(dist, addr):
+        nonlocal lpdf
+        val = trace[addr]
+        lpdf += dist.log_prob(val)
+        return val
+    p(trace_choice, *args)
+    return lpdf
+
+
+###############################################
+# minimal differentiable programming language #
+###############################################
 
 InvolutionRunnerState = namedtuple("InvolutionRunnerState",
     [   "input_model_trace", "input_aux_trace",
@@ -45,8 +67,6 @@ def write_aux_cont(state, addr, value):
 def write_aux_disc(state, addr, val):
     state.output_aux_trace[addr] = val
 
-
-
 def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace):
     state = InvolutionRunnerState(input_model_trace, input_auxiliary_trace, {}, {}, [], [])
     f(state)
@@ -55,30 +75,16 @@ def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace):
         output_cont_tensor.backward(retain_graph=True)
         grad = []
         for input_cont_tensor in state.input_cont_tensors:
-            grad.append(input_cont_tensor.clone())
+            grad.append(input_cont_tensor.grad.clone())
             input_cont_tensor.grad.zero_()
         grads.append(grad)
     (_, logabsdet) = torch.tensor(grads).slogdet()
     return (state.output_model_trace, state.output_aux_trace, logabsdet)
 
-def sample(p, *args):
-    trace = {}
-    def trace_choice(dist, addr):
-        val = dist.sample()
-        trace[addr] = val
-        return val
-    p(trace_choice, *args)
-    return trace
 
-def logpdf(trace, p, *args):
-    lpdf = torch.tensor(0.0)
-    def trace_choice(dist, addr):
-        nonlocal lpdf
-        val = trace[addr]
-        lpdf += dist.log_prob(val)
-        return val
-    p(trace_choice, *args)
-    return lpdf
+###################
+# involutive MCMC #
+###################
 
 def involution_mcmc_step(p, q, f, input_model_trace):
 
