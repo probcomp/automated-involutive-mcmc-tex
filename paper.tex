@@ -163,7 +163,7 @@ The mixture kernel is composed from three Gen programs:
 
 
 
-\section{INVOLUTIVE MCMC ON GENERAL STATE SPACES}
+\section{INVOLUTIVE MCMC ON GENERAL STATE SPACES} % on traces ??
 
 Involutive MCMC is a general framework for constructing MCMC kernels that are stationary
 for a target probability measure $p$. Informally, the algorithm works as follows: starting at some state $x$, we first sample
@@ -185,7 +185,7 @@ programming: the rest of this paper uses it to develop a technique for deriving 
 of involutive MCMC algorithms automatically, 
 given only declarative specifications of $p$, $q$, and $f$.
 
-\subsection{Distributions on dictionaries}
+\subsection{Distributions on Dictionaries}
 
 Instead of vectors of real numbers, we consider in this section distributions over 
 \textit{finite dictionaries} that map (possibly random) keys to (possibly random) values. 
@@ -202,11 +202,16 @@ a finite set of keys $A \subset \mathcal{A}$ at which it has values, and an assi
 We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in B_A\} \mid B_A \in \Sigma_A \, \text{for each finite } A \subset \mathcal{A}\}$ to obtain a measurable space
 of dictionaries. A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_A$: we set $\mu(B) := \sum_{A \in \mathcal{A}, |A| < \infty} \mu_A(\{\mathbf{x} \mid (A, \mathbf{x}) \in B\})$.
 
-\textbf{Notation for dictionaries.} Given a dictionary $m = (A, \mathbf{x})$, we write $A_m$ for $A$ and $m[a]$ for the value $x_a$ associated with a key $a \in A$.
+\textbf{Notation for dictionaries.} Given a dictionary $x = (A, \mathbf{x})$, we write $A_m$ for $A$ and $m[a]$ for the value $x_a$ associated with a key $a \in A$.
 
-\textbf{Densities on finite dictionaries.} Probability distributions on dictionaries can be defined by (i) choosing 
-domains $V_a$ for each address $a$ of interest, and (ii) choosing a probability density $p : \mathcal{D} \rightarrow [0, \infty)$ such that $\int p(m) \mu_\mathcal{D}(\text{d}m) = 1$. We now give several examples
+\textbf{Probability distributions on finite dictionaries.} 
+When all keys are discrete (have countable $V_a$ and counting measure for $\mu_{a}$), a probability distribution on dictionaries is defined by a $p$ is a probability mass function $p : \mathcal{D} \to [0, 1]$ that assigns a probability $p(m)$ to each dictionary $m \in \mathcal{P}$ such that $\sum_{x \in \mathcal{D}} p(m) = 1$.
+More generally a probability distribution in dictionaries is defined by a probability density $p : \mathcal{D} \rightarrow [0, \infty)$ such that $\int p(m) \mu_\mathcal{D}(\text{d}m) = 1$. We now give several examples
 to build intuition.
+
+% TODO keys vs addresses
+
+% TODO how to notate dictionaries -- 'm' or 'd' or 'x' or 't'?
 
 \textit{Gaussian mixture model with unknown number of components.} Consider a generative model of univariate data points $y_1, \dots, y_n$ from a Gaussian mixture with an unknown number of components $k$, each with unknown mean $m_i$ and standard deviation $s_i$. If we place a Gaussian prior on $m_i$, a Gamma prior on $s_i$, and a Poisson prior on $k$, the resulting density is
 %
@@ -216,33 +221,13 @@ when $A_d$ is of the form $\{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y
 
 \textit{Polynomial regression.} 
 
+TODO
+
 \textbf{Conditional distributions via disintegration.} Consider a probability density $p$ on the space $\mathcal{D}$ of dictionaries. 
 %For a set of keys $A \subset \mathcal{A}$, let $p(A) := \int 1[A_m = A] p(m) \mu_\mathcal{D}(\text{d}m)$, the probability under $p$ of a dictionary with exactly the key set $A$. 
 We say a key $a \in \mathcal{A}$ \textit{almost always appears} if $\int \mathbf{1}[a \in A_m] p(m) \mu_\mathcal{D}(\text{d}m) = 1$. Suppose $B$ is a set of keys that almost always appear for $p$, and that $b = (B, \mathbf{b})$ is a dictionary with keys $B$. Furthermore, let $(A_m, \mathbf{m}) \oplus (A_n, \mathbf{n}) := (A_m \cup A_n, \mathbf{m} \times \mathbf{n})$ be the \textit{merge} of two dictionaries $m$ and $n$ defined on disjoint key sets $A_m$ and $A_n$. Then we can define the conditional density $p(d \mid b) := \mathbf{1}[A_d \cap B = \emptyset] \frac{p(d \oplus b)}{\int_{\{m \mid A_m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)}$ when the denominator is finite. If the reference measure $\mu_a$ associated with each key $a \in B$ is discrete (e.g., the counting measure), then this definition corresponds to the ordinary notion of conditioning on an event (namely, the event that a sample from $p$ agrees with the dictionary $b$ on all addresses in $B$). When this is not the case, it corresponds to a more general measure-theoretic notion called disintegration~\citep{disintegration1997}. 
 
 \subsection{Involutive MCMC}
-
-
-
-\section{INVOLUTIVE MCMC} \label{sec:involutive-mcmc}
-Involutive MCMC (Algorithm~\ref{alg:involutive-mcmc}) defines a transition kernel that is stationary for a probabilistic model $p$, based on an auxiliary probability kernel $q$ and a deterministic involution $f$. Different choices of $q$ and $f$ recover instances of classic algorithms from the literature (e.g., Reversible-Jump MCMC~\citep{green}, TODO: others). This section briefly reviews involutive MCMC and gives a general measure-theoretic formulation of the algorithm on arbitrary state-spaces. In the following sections, we will describe how the implementations of involutive MCMC algorithms can be automated using probabilistic and differentiable programming.
-
-
-\begin{algorithm}[h]
-\begin{algorithmic}
-\Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $x$}
-    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
-    \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
-    \State $\alpha \gets
-        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)$
-    % TODO check it
-    \State $r \sim \mathrm{Uniform}(0, 1)$
-    \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
-\EndProcedure
-\end{algorithmic}
-\caption{Involutive MCMC}
-\label{alg:involutive-mcmc}
-\end{algorithm}
 
 Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$. 
 Involutive MCMC implements a transition kernel that is invariant for a \textit{model distribution} given by $p : X \to [0, \infty)$, a probability density over $X$ with respect to $\mu_P$. Each iteration, the algorithm first samples auxiliary variables $y \in Y$ from an auxiliary distribution $q_x$ based on the model's current state $x$: for each $x \in X$ such that $p(x) > 0$, $q_x : Y \to [0, \infty)$ is a probability density with respect to $\mu_Q$.
@@ -257,14 +242,26 @@ $\Sigma := \{A \cap Z \mid A \in \Sigma_P \otimes \Sigma_Q\}$ (assuming $Z$ is a
 Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$. Involutive MCMC runs $f$ on $(x, y)$ to obtain $(x', y')$, then computes an acceptance probability $\alpha$. With probability $\alpha$, the new state $x'$ is returned; otherwise, the previous state $x$ is repeated.
 %Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
 
+% \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)
+
+Suppose the set of possible keys $\mathcal{A}$ can be partitioned $\mathcal{A} = \mathcal{I} \cup \mathcal{K}$ where is a set of \emph{discrete keys} $\mathcal{I}$ that use countable $V_a$ and counting measure $\mu_a$ for $a \in \mathcal{I}$ and $\mathcal{K}$ is a set of \emph{continuous keys} that use $V_a = \mathbb{R}^{d_a}$ for some $d_a$ and Lebesgue-measure $\mu_a$ for $a \in \mathcal{K}$.
+%And suppose that there exists an involution $f : Z \to Z$ such that (i) 
+Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the set of keys $A$ and the values $\mathbf{x}_{\mathrm{d}}$ of discrete keys are both constant (so that each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys).
+Suppose there is an involution $g : E \to E$ between elements of the partition (a function with $g = g^{-1}$), and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ for each $e$ with $h_{e} = h_{g(e)}^{-1}$.
+Let $e(z) \in E$ denote the element of the partition for an alement $z \in Z$.
+Then, $f : Z \to Z$ given by $f(z) := h_{e(z)}(z)$ is an involution:
+\begin{equation}
+f(f(z)) = h_{e(f(z))}(h_{e(z)}(z)) = h_{g(e(z))}(h_{e(z)}(z)) = z
+\end{equation}
+Let $|J h_e|(z)$ denote the absolute value of the Jacobian (determinant) of $h_e$, evaluated at $z$.
+Then, involutive MCMC is:
 \begin{algorithm}[h]
 \begin{algorithmic}
 \Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $x$}
     \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
     \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
     \State $\alpha \gets
-        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)$
-    % TODO check it
+        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot |J h_e|(z)$
     \State $r \sim \mathrm{Uniform}(0, 1)$
     \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
 \EndProcedure
@@ -272,6 +269,12 @@ Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward 
 \caption{Involutive MCMC}
 \label{alg:involutive-mcmc}
 \end{algorithm}
+
+\section{AUTOMATING INVOLUTIVE MCMC} \label{sec:involutive-mcmc}
+
+Involutive MCMC (Algorithm~\ref{alg:involutive-mcmc}) defines a transition kernel that is stationary for a probabilistic model $p$, based on an auxiliary probability kernel $q$ and a deterministic involution $f$. Different choices of $q$ and $f$ recover instances of classic algorithms from the literature (e.g., Reversible-Jump MCMC~\citep{green}, TODO: others). This section briefly reviews involutive MCMC and gives a general measure-theoretic formulation of the algorithm on arbitrary state-spaces. In the following sections, we will describe how the implementations of involutive MCMC algorithms can be automated using probabilistic and differentiable programming.
+
+
 
 Then we have the following result:
 
