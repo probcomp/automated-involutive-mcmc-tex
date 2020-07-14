@@ -184,49 +184,6 @@ Then $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigm
 Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$.
 Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
 
-% TODO what is a trace? and what is a p? do we need parents?
-%\begin{algorithm}[h]
-%\begin{algorithmic}
-%\Procedure{trimcmc-kernel}{$p$, $q$, $f$, $x$}
-    %\State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary trace}
-    %\State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
-    %\State $w_1 \gets \prod_{a \in A(x)} p_{A(x)}(x_a | x_{\mathrm{Pa}^{A(x)}_a})$
-    %\State $w_2 \gets \prod_{a \in A(y)} q_{x,A(y)}(y_a | x_{\mathrm{Pa}^{A(x)}_a})$
-    %\State $w_3 \gets \prod_{a \in A(x')} p_{A(x')}(x'_a | (x'_b)_{b \in \mathrm{Pa}^{A(x)}_a})$
-    %\State $w_4 \gets \prod_{a \in A(y')} q_{x',A(y')}(y'_b | (y'_b)_{b \in \mathrm{Pa}^{A(x)}_a})$
-    %\State $|J| \gets F.\textproc{jacdetabs}(x, y)$
-    %\State $\alpha \gets
-        %\displaystyle \frac{w_3 \cdot w_4}{w_1 \cdot w_2} \cdot w_5$
-    %\State $r \sim \mathrm{Uniform}(0, 1)$
-    %\State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
-%\EndProcedure
-%
-%\Procedure{$P$.score}{$x$}
-    %%\State \Return $p(x)$ % TODO or product of densities? % TODO state notation is non-standard
-    %% if we don't use this product then what is the point -- why don't we just use p(x)
-    %\State \Return $\prod_{a \in A(x)} p_{\sigma(a)}(x[a])$ (?) TODO % TODO
-%\EndProcedure
-%
-%\Procedure{$Q$.score}{$y$; $x$}
-    %%\State \Return $q_x(y)$ % TODO or product of densities?
-    %\State \Return $\prod_{a \in A(y)} q_{x,\sigma(a)}(y[a])$ (?) TODO % TODO
-%\EndProcedure
-%
-%\Procedure{$F$.jacdetabs}{$x$,$y$}
-    %\For{$a$ in $\textproc{continuous-addresses}(x)$}
-        %\State $J1[a,:] \gets \nabla_{x[a]} \left( F(x, y)_{\mathrm{continuous}} \right)$ (?) TODO % TODO
-    %\EndFor
-    %\For{$a$ in $\textproc{continuous-addresses}(y)$}
-        %\State $J2[a,:] \gets \nabla_{y[a]} \left( F(x, y)_{\mathrm{continuous}} \right)$ (?) TODO % TODO
-    %\EndFor
-    %\State $J \gets \left[\begin{array}{c}J1\\J2\end{array}\right]$
-    %\State \Return $|\det(J)|$
-%\EndProcedure
-%\end{algorithmic}
-%\caption{Trace Involutive MCMC}
-%\label{alg:trimcmc}
-%\end{algorithm}
-
 \begin{algorithm}[h]
 \begin{algorithmic}
 \Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $x$}
@@ -722,7 +679,7 @@ To derive a more efficient algorithm, we use the cofactor expansion of the deter
 Applying this rule recursively allows a significant reduction in the size of the determinant computation when the Jacobian matrix possesses sparsity.
 Sparse Jacobians are common in applications of involutive MCMC, and reversible jump MCMC in particular.
 For example, consider the Jacobian for the split-merge move of~\citet{richardson1997bayesian}, implemented in Figure~\ref{fig:mixture}:
-\includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
+%\includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
 In this case, the Jacobian determinant can be simplified to the determinant of a $6$-by-$6$ matrix that does not grow in size with the number of clusters and number of data points, because unaffected clusters and data points have their values \emph{copied} from the input model trace to the output model trace.
 While a reasonable hand-coded implementation of this algorithm would likely exploit this sparsity as well, it would require careful and error-prone reasoning and implementation, which our approach automates.
 
