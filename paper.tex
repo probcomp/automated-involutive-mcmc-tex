@@ -229,8 +229,8 @@ We say a key $a \in \mathcal{A}$ \textit{almost always appears} if $\int \mathbf
 
 \subsection{Involutive MCMC}
 
-Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$. 
-Involutive MCMC implements a transition kernel that is invariant for a \textit{model distribution} given by $p : X \to [0, \infty)$, a probability density over $X$ with respect to $\mu_P$. Each iteration, the algorithm first samples auxiliary variables $y \in Y$ from an auxiliary distribution $q_x$ based on the model's current state $x$: for each $x \in X$ such that $p(x) > 0$, $q_x : Y \to [0, \infty)$ is a probability density with respect to $\mu_Q$.
+Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two general measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$. 
+Involutive MCMC implements a transition kernel that is invariant for a \textit{model distribution} given by $p : X \to [0, \infty)$, a probability density over $X$ with respect to $\mu_P$. Each iteration, the algorithm first samples auxiliary variables $y \in Y$ from an \emph{auxiliary distribution} $q_x$ based on the model's current state $x$: for each $x \in X$ such that $p(x) > 0$, $q_x : Y \to [0, \infty)$ is a probability density with respect to $\mu_Q$.
 % We call $p$ the \emph{model density} and we call $q_x$ \emph{auxiliary densities}.
 
 The resulting pair $(x, y)$ of the current model state and the newly sampled auxiliary state will be an element of the joint space $Z := \{(x, y) \in X \times Y \mid p(x) q_x(y) > 0 \}$. We can equip $Z$ with the $\sigma$-algebra 
@@ -239,47 +239,15 @@ $\Sigma := \{A \cap Z \mid A \in \Sigma_P \otimes \Sigma_Q\}$ (assuming $Z$ is a
 %Suppose that $Z \in \Sigma_P \otimes \Sigma_Q$ ($Z$ is a $\mu_P \times \mu_Q$-measurable set).
 %Then $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigma$-algebra on $Z$ and $\mu : \Sigma \to [0, \infty)$ with $\mu(A) := (\mu_P \times \mu_Q)(A)$ is a $\sigma$-finite measure on measurable space $(Z, \Sigma)$.
 
-Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$. Involutive MCMC runs $f$ on $(x, y)$ to obtain $(x', y')$, then computes an acceptance probability $\alpha$. With probability $\alpha$, the new state $x'$ is returned; otherwise, the previous state $x$ is repeated.
+Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$. Involutive MCMC runs $f$ on $(x, y)$ to obtain $(x', y')$, then computes an acceptance probability:
+\begin{equation}
+\alpha(x, y) = \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)
+\end{equation}
+With probability $\alpha$, the new state $x'$ is returned; otherwise, the previous state $x$ is repeated.
 %Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
 
-% \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)
-
-Suppose the set of possible keys $\mathcal{A}$ can be partitioned $\mathcal{A} = \mathcal{I} \cup \mathcal{K}$ where is a set of \emph{discrete keys} $\mathcal{I}$ that use countable $V_a$ and counting measure $\mu_a$ for $a \in \mathcal{I}$ and $\mathcal{K}$ is a set of \emph{continuous keys} that use $V_a = \mathbb{R}^{d_a}$ for some $d_a$ and Lebesgue-measure $\mu_a$ for $a \in \mathcal{K}$.
-%And suppose that there exists an involution $f : Z \to Z$ such that (i) 
-Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the set of keys $A$ and the values $\mathbf{x}_{\mathrm{d}}$ of discrete keys are both constant (so that each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys).
-Suppose there is an involution $g : E \to E$ between elements of the partition (a function with $g = g^{-1}$), and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ for each $e$ with $h_{e} = h_{g(e)}^{-1}$.
-Let $e(z) \in E$ denote the element of the partition for an alement $z \in Z$.
-Then, $f : Z \to Z$ given by $f(z) := h_{e(z)}(z)$ is an involution:
-\begin{equation}
-f(f(z)) = h_{e(f(z))}(h_{e(z)}(z)) = h_{g(e(z))}(h_{e(z)}(z)) = z
-\end{equation}
-Let $|J h_e|(z)$ denote the absolute value of the Jacobian (determinant) of $h_e$, evaluated at $z$.
-Then, involutive MCMC is:
-\begin{algorithm}[h]
-\begin{algorithmic}
-\Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $x$}
-    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
-    \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
-    \State $\alpha \gets
-        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot |J h_e|(z)$
-    \State $r \sim \mathrm{Uniform}(0, 1)$
-    \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
-\EndProcedure
-\end{algorithmic}
-\caption{Involutive MCMC}
-\label{alg:involutive-mcmc}
-\end{algorithm}
-
-\section{AUTOMATING INVOLUTIVE MCMC} \label{sec:involutive-mcmc}
-
-Involutive MCMC (Algorithm~\ref{alg:involutive-mcmc}) defines a transition kernel that is stationary for a probabilistic model $p$, based on an auxiliary probability kernel $q$ and a deterministic involution $f$. Different choices of $q$ and $f$ recover instances of classic algorithms from the literature (e.g., Reversible-Jump MCMC~\citep{green}, TODO: others). This section briefly reviews involutive MCMC and gives a general measure-theoretic formulation of the algorithm on arbitrary state-spaces. In the following sections, we will describe how the implementations of involutive MCMC algorithms can be automated using probabilistic and differentiable programming.
-
-
-
-Then we have the following result:
-
 \begin{theorem}[Involutive MCMC is stationary]
-Algorithm~\ref{alg:involutive-mcmc} defines a probability kernel $k$ on $X$ that is stationary with respect to the model probability distribution.
+Involutive MCMC defines a probability kernel $k$ on $X$ that is stationary with respect to the model probability distribution.
 That is, $\int_X k_x(B) p(x) d\mu_X(dx) = \int_B p(x) d\mu_X(dx)$ for all $B \in \Sigma_X$.
 \end{theorem}
 \begin{proof}
@@ -287,7 +255,47 @@ The proof is presented in stages in the appendix (see Section~\ref{sec:involutio
 \end{proof}
 
 
-See Section~\ref{sec:radon-nikodym-special-case} for a derivation of the Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d \mu$ for a special case, when the involution $f$ can be factored into (i) an involution on a countable partition of $Z$ and (ii) a family of continuously differentiable bijections on Euclidean spaces.
+\subsection{Involutive MCMC with Dictionaries}
+
+The general measure-theoretic formulation of involutive MCMC above does not specify how to compute a Radon-Nikodym derivative, or the densities.
+We now derive an algorithm for involutive MCMC when the model and auxiliary distributions are defined on spaces of dictionaries.
+
+% TODO should we just segment the addresses into discrete and continuous addresses as part of the dictionary formalism above -- that would allow us to move this up. the added flexibility of full per-address measure is not used anyways..
+
+Suppose that the model distribution $p$ and auxiliary distributions $q_x$ are all probability distributions on dictionaries.
+Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries.
+Suppose that both $X$ and $Y$ use the set of keys $\mathcal{A}$, and that $\mathcal{A}$ can be partitioned $\mathcal{A} = \mathcal{I} \cup \mathcal{K}$ where is a set of \emph{discrete keys} $\mathcal{I}$ that use countable $V_a$ and counting measure $\mu_a$ for $a \in \mathcal{I}$ and $\mathcal{K}$ is a set of \emph{continuous keys} that use $V_a = \mathbb{R}^{d_a}$ for some $d_a$ and Lebesgue-measure $\mu_a$ for $a \in \mathcal{K}$.
+%And suppose that there exists an involution $f : Z \to Z$ such that (i) 
+Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the sets of keys $A_x$ and $A_y$ and the values $\mathbf{x}_{\mathrm{d}}$ and $\mathbf{y}_{\mathrm{d}}$ of discrete keys are both constant (so that each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys in the two dictionaries).
+Suppose there is an involution $g : E \to E$ between elements of the partition (a function with $g = g^{-1}$), and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ for each $e$ with $h_{e} = h_{g(e)}^{-1}$.
+Let $e(z) \in E$ denote the element of the partition for an alement $z \in Z$.
+Then, $f : Z \to Z$ given by $f(z) := h_{e(z)}(z)$ is an involution:
+\begin{equation}
+f(f(z)) = h_{e(f(z))}(h_{e(z)}(z)) = h_{g(e(z))}(h_{e(z)}(z)) = z
+\end{equation}
+Let $|J h_e|(z)$ denote the absolute value of the Jacobian (determinant) of $h_e$, evaluated at $z$.
+Algorithm~\ref{alg:involutive-mcmc} defines involutive MCMC in this more structured setting, in which the Radon-Nikodym is replaced with a Jacobian (see Section~\ref{sec:radon-nikodym-special-case} for a derivation).
+\begin{algorithm}[h]
+\begin{algorithmic}
+\Procedure{involutive-mcmc-kernel}{$p$, $q$, $f$, $x$}
+    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary dictionary}
+    \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
+    \State $\alpha \gets
+        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot |J h_e|(z)$
+    \State $r \sim \mathrm{Uniform}(0, 1)$
+    \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
+\EndProcedure
+\end{algorithmic}
+\caption{Involutive MCMC for Dictionaries}
+\label{alg:involutive-mcmc}
+\end{algorithm}
+
+%\section{AUTOMATING INVOLUTIVE MCMC} \label{sec:involutive-mcmc}
+
+%Involutive MCMC (Algorithm~\ref{alg:involutive-mcmc}) defines a transition kernel that is stationary for a probabilistic model $p$, based on an auxiliary probability kernel $q$ and a deterministic involution $f$. Different choices of $q$ and $f$ recover instances of classic algorithms from the literature (e.g., Reversible-Jump MCMC~\citep{green}, TODO: others). This section briefly reviews involutive MCMC and gives a general measure-theoretic formulation of the algorithm on arbitrary state-spaces. In the following sections, we will describe how the implementations of involutive MCMC algorithms can be automated using probabilistic and differentiable programming.
+
+%Then we have the following result:
+
 
 
 
