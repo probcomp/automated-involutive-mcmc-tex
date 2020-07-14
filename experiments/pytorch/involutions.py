@@ -1,4 +1,6 @@
 import torch
+from collections import namedtuple
+from itertools import chain
 
 ##########################
 # generic implementation #
@@ -7,75 +9,75 @@ import torch
 CONTINUOUS = "CONTINUOUS"
 DISCRETE = "DISCRETE"
 
-InvolutionRunnerState = collections.namedtuple("InvolutionRunnerState",
+InvolutionRunnerState = namedtuple("InvolutionRunnerState",
     [   "input_model_trace", "input_aux_trace",
         "output_model_trace", "output_aux_trace",
-        "input_grad_tensors"
+        "input_cont_tensors", "output_cont_tensors"
     ])
 
 def read_model_cont(state, addr):
-    val = torch.tensor(state.input_model_trace.[addr], requires_grad=True)
-    state.input_grad_tensors.append(val.grad)
+    val = torch.tensor(state.input_model_trace[addr], requires_grad=True)
+    state.input_cont_tensors.append(val)
     return val
 
 def read_model_disc(state, addr):
     return state.input_model_trace[addr]
 
-def write_model_cont(state, addr, value):
-    state.output_model_trace.trace[addr] = (value, CONTINUOUS)
+def write_model_cont(state, addr, val):
+    state.output_model_trace[addr] =val 
+    state.output_cont_tensors.append(val)
 
-def write_model_disc(state, addr, value):
-    state.output_model_trace[addr] = (value, DISCRETE)
+def write_model_disc(state, addr, val):
+    state.output_model_trace[addr] = val
 
 def read_aux_cont(state, addr):
-    val = torch.tensor(state.input_aux_trace.[addr], requires_grad=True)
-    state.input_grad_tensors.append(val.grad)
+    val = torch.tensor(state.input_aux_trace[addr], requires_grad=True)
+    state.input_cont_tensors.append(val)
     return val
 
 def read_aux_disc(state, addr):
     return state.input_aux_trace[addr]
 
 def write_aux_cont(state, addr, value):
-    state.output_aux_trace.trace[addr] = (value, CONTINUOUS)
+    state.output_aux_trace[addr] = val
+    state.output_cont_tensors.append(val)
 
-def write_aux_disc(state, addr, value):
-    state.output_aux_trace[addr] = (value, DISCRETE)
+def write_aux_disc(state, addr, val):
+    state.output_aux_trace[addr] = val
 
 
-from itertools import chain
 
 def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace):
-    state = InvolutionRunnerState(input_model_trace, input_auxiliary_trace, {}, {}, [])
+    state = InvolutionRunnerState(input_model_trace, input_auxiliary_trace, {}, {}, [], [])
     f(state)
     grads = []
-    for (output_var, (output_val, output_label)) in chain(
-            state.output_model_trace.items(), state.output_aux_trace.items())
-        if output_label == CONTINUOUS:
-            output_val.backward(retain_graph=True)
-            grad = []
-            for input_grad in state.input_grad_tensors:
-                grad.append(input_grad.clone())
-                input_grad.zero_()
-            grads.append(grad)
+    for output_cont_tensor in state.output_cont_tensors:
+        output_cont_tensor.backward(retain_graph=True)
+        grad = []
+        for input_cont_tensor in state.input_cont_tensors:
+            grad.append(input_cont_tensor.clone())
+            input_cont_tensor.grad.zero_()
+        grads.append(grad)
     (_, logabsdet) = torch.tensor(grads).slogdet()
-    return (output_trace, logabsdet)
+    return (state.output_model_trace, state.output_aux_trace, logabsdet)
 
-def sample(p, args):
+def sample(p, *args):
     trace = {}
     def trace_choice(dist, addr):
         val = dist.sample()
         trace[addr] = val
         return val
-    p(trace_choice, args...)
+    p(trace_choice, *args)
     return trace
 
-def logpdf(trace, p, args):
+def logpdf(trace, p, *args):
     lpdf = torch.tensor(0.0)
     def trace_choice(dist, addr):
+        nonlocal lpdf
         val = trace[addr]
         lpdf += dist.log_prob(val)
         return val
-    p(trace_choice, args...)
+    p(trace_choice, *args)
     return lpdf
 
 def involution_mcmc_step(p, q, f, input_model_trace):
@@ -96,9 +98,9 @@ def involution_mcmc_step(p, q, f, input_model_trace):
 
     # accept or reject
     if Bernoulli(prob_accept).sample():
-        return (output_trace, True)
+        return (output_model_trace, True)
     else:
-        return (input_trace, False)
+        return (input_model_trace, False)
 
 
 ###########
@@ -107,13 +109,13 @@ def involution_mcmc_step(p, q, f, input_model_trace):
 
 Bernoulli = torch.distributions.bernoulli.Bernoulli
 Gamma = torch.distributions.gamma.Gamma
-Normal = torch.distributions.gamma.Normal
+Normal = torch.distributions.normal.Normal
 Uniform = torch.distributions.uniform.Uniform
 
 pi = 3.1415927410125732
 
 def p(trace):
-    if trace(Bernoulli(0.5), "polar")
+    if trace(Bernoulli(0.5), "polar"):
         trace(Gamma(1.0, 1.0), "r")
         trace(Uniform(-pi/2, pi/2), "theta")
     else:
@@ -134,23 +136,26 @@ def cartesian_to_polar(x, y):
     y = torch.sqrt(x * x + y * y)
     return (theta, y)
 
-def f(input_trace):
-    output_trace = {}
-    if input_trace["polar"]:
-        (x, y) = polar_to_cartesian(input_trace["r"], input_trace["theta"])
-        write_cont(output_trace, "x", x)
-        write_cont(output_trace, "y", y)
+def f(state):
+    polar = read_model_disc(state, "polar")
+    if polar:
+        r = read_model_cont(state, "r")
+        theta = read_model_cont(state, "theta")
+        (x, y) = polar_to_cartesian(r, theta)
+        write_model_cont(state, "x", x)
+        write_model_cont(state, "y", y)
     else:
-        (r, theta) = cartesian_to_polar(input_trace["x"], input_trace["y"])
-        write_cont(output_trace, "r", r)
-        write_cont(output_trace, "theta", theta)
-    write_disc(output_trace, "polar", not input_trace["polar"])
-    return output_trace
+        x = read_model_cont(state, "x")
+        y = read_model_cont(state, "y")
+        (r, theta) = cartesian_to_polar(x, y)
+        write_model_cont(state, "r", r)
+        write_model_cont(state, "theta", theta)
+    write_model_disc(state, "polar", not polar)
 
 trace = {
-        "polar" : (True, DISCRETE),
-        "r": (1.2, CONTINUOUS),
-        "theta" : (0.12, CONTINUOUS)
+        "polar" : True,
+        "r": 1.2,
+        "theta" : 0.12
 }
 
 for it in range(1, 100):
