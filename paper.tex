@@ -288,7 +288,7 @@ Algorithm~\ref{alg:involutive-mcmc} defines involutive MCMC in this more structu
 
 \begin{algorithm}[h]
 \begin{algorithmic}
-\Procedure{involutive-mcmc-kernel}{$p$, $q$, $f$, $x$}
+\Procedure{involutive-mcmc}{$p$, $q$, $f$, $x$}
     \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary dictionary}
     \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
     \State $\alpha \gets
@@ -307,6 +307,56 @@ Algorithm~\ref{alg:involutive-mcmc} defines involutive MCMC in this more structu
 %Involutive MCMC (Algorithm~\ref{alg:involutive-mcmc}) defines a transition kernel that is stationary for a probabilistic model $p$, based on an auxiliary probability kernel $q$ and a deterministic involution $f$. Different choices of $q$ and $f$ recover instances of classic algorithms from the literature (e.g., Reversible-Jump MCMC~\citep{green}, TODO: others). This section briefly reviews involutive MCMC and gives a general measure-theoretic formulation of the algorithm on arbitrary state-spaces. In the following sections, we will describe how the implementations of involutive MCMC algorithms can be automated using probabilistic and differentiable programming.
 
 \section{AUTOMATING INVOLUTIVE MCMC} \label{sec:automating}
+
+% TODO add the algorithm box involving traces..
+
+\begin{algorithm}[h]
+\begin{algorithmic}
+\Procedure{simulate-and-score}{$P(\beta)$}
+   \State $\log w \gets 0$
+   \State $x \gets \{\}$
+   \State Execute $P$ on input $\beta$, replacing $"\mathtt{a \sim d}"$ with:
+    \State $\;\;\;\;$ 1. $\; v \sim d$
+    \State $\;\;\;\;$ 2. $\; x[a] \gets v$
+    \State $\;\;\;\;$ 3. $\; \log w \gets \log w + \textproc{logpdf}(d, x[a])$
+    \State $\;\;\;\;$ 4. $\;$ \Return $v$
+   \State \Return $(x, \log w)$
+\EndProcedure
+
+\Procedure{score}{$P(\beta), x$}
+   \State $\log w \gets 0$
+   \State Execute $Q$ on input $x$, replacing $"\mathtt{a \sim d}"$ with:
+    \State $\;\;\;\;$ 1. $\; v \sim x[a]$
+    \State $\;\;\;\;$ 3. $\; \log w \gets \log w + \textproc{logpdf}(d, x[a])$
+    \State $\;\;\;\;$ 4. $\;$ \Return $v$
+   \State \Return $\log w$
+\EndProcedure
+
+\Procedure{run-involution}{$F$, $(x, y)$}
+    TODO
+\EndProcedure
+\end{algorithmic}
+\caption{Probabilistic and Differentiable Program Operations}
+\label{alg:prob-prog}
+\end{algorithm}
+
+\begin{algorithm}[h]
+\begin{algorithmic}
+\Procedure{auto-involutive-mcmc}{$P$, $Q$, $F$, $x$}
+    \State $\log w_1 \gets \textproc{score}(P(), x)$
+    \State $(y, \log w_2) \gets \textproc{simulate-and-score}(Q(x))$
+    \State $(x', y', \log |J|) \gets \textproc{run-involution}(F, (x, y))$
+    \State $\log w_2 \gets \textproc{score}(Q(x), y)$
+    \State $\log w_3 \gets \textproc{score}(P(), x')$
+    \State $\log w_4 \gets \textproc{score}(Q(x'), y')$
+    \State $\log \alpha \gets \log w_3 - \log w_1 + \log w_4 - \log w_2 + \log |J|$
+    \State $r \sim \mathrm{Uniform}(0, 1)$
+    \State \algorithmicif \, $r \le \exp(\alpha)$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
+\EndProcedure
+\end{algorithmic}
+\caption{Automated Involutive MCMC}
+\label{alg:involutive-mcmc}
+\end{algorithm}
 
 Involutive MCMC is a general framework that can be used to develop diverse MCMC algorithms
 for models over arbitrary state spaces. We wish to \textit{automate} the implementation
@@ -556,7 +606,6 @@ We denote a trace $t$ obtained from a dictionary $x$ and a probabilistic program
 t \gets \mathrm{trace}(P, x)
 \end{equation}
 
-% TODO add the algorithm box involving traces..
 
 \subsubsection{Conditioning on Observed Data}
 % TODO update this
