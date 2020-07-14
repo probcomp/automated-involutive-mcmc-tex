@@ -195,17 +195,28 @@ but are in general more flexible: different keys can hold values of different ty
 can also consider distributions in which the set of keys is itself random, useful for model
 selection problems and structure uncertainty more generally.
 
-\textbf{Measure space for finite dictionaries.} We fix a countably infinite set $\mathcal{A}$ of possible keys, and for each key $a \in \mathcal{A}$,
-we fix a measure space $(V_a, \Sigma_a, \mu_a)$ determining the possible values $V_a$ that may be
-associated with $a$. Given a set of keys $A$, we can consider the set $V_A = \times_{a \in A} V_a$ of \textit{assignments} of values to each key. ($V_A$ can also be made a measure space, using the standard product $\sigma$-algebra $\Sigma_A = \otimes_{a \in A} \Sigma_a$ and the product measure $\mu_A = \times_{a \in A} \mu_a$.)  Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in V_A\}$. That is, a dictionary specifies 
+\textbf{The space of finite dictionaries.}
+We fix a countably infinite set $\mathcal{A}$ of possible keys, such that each key $a$ is either \emph{discrete} ($a \in \mathcal{I}$) or \emph{continuous} ($a \in \mathcal{J}$), where $\mathcal{A} = \mathcal{I} \cup \mathcal{J}$.\footnote{
+It is straighforward to assign a general meaure space to each address, but this is not necessary for our purposes.}
+Let $V_a$ denote the set of possible values for key $a$, where $V_a$ is a countable set for each discrete key, and where $V_a = \mathbb{R}^{d_a}$ for each continuous key for some $d_a$.
+Given a set of keys $A$, let $V_A = \times_{a \in A} V_a$ denote the set of \textit{assignments} of values to each key.
+Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in V_A\}$. That is, a dictionary specifies 
 a finite set of keys $A \subset \mathcal{A}$ at which it has values, and an assignment $\mathbf{x}$ of values $x_a$ for each.
+
+\textbf{A measure space of finite dictionaries.}
+We associate a measure $\mu_a$ on $V_a$ for each key---the counting measure for each discrete key and the Lebesgue-measure on $\mathbf{R}^{d_a}$ for each continuous key.
+For each finite set of keys $A$, we make $V_A$ a measure space using the standard product $\sigma$-algebra $\Sigma_A = \otimes_{a \in A} \Sigma_a$ and the product measure $\mu_A = \times_{a \in A} \mu_a$.
 We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in B_A\} \mid B_A \in \Sigma_A \, \text{for each finite } A \subset \mathcal{A}\}$ to obtain a measurable space
-of dictionaries. A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_A$: we set $\mu(B) := \sum_{A \in \mathcal{A}, |A| < \infty} \mu_A(\{\mathbf{x} \mid (A, \mathbf{x}) \in B\})$.
+of dictionaries.
+A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_A$: we set $\mu(B) := \sum_{A \in \mathcal{A}, |A| < \infty} \mu_A(\{\mathbf{x} \mid (A, \mathbf{x}) \in B\})$.
 
 \textbf{Notation for dictionaries.} Given a dictionary $x = (A, \mathbf{x})$, we write $A_m$ for $A$ and $m[a]$ for the value $x_a$ associated with a key $a \in A$.
+We also denote specific dictionaries using notation $\{k_1 \mapsto v_1, k_2 \mapsto v_2, \ldots\}$.
+For example, the dictionary $(A, \mathbf{x})$ with $A = \{1, \mathtt{"foo"}\}$ and $x_1 = 0.123$ and $x_{\mathtt{"foo"}} = 5$ is denoted 
+$\{1 \mapsto 0.123, \mathtt{"foo"} \mapsto 5\}$.
 
 \textbf{Probability distributions on finite dictionaries.} 
-When all keys are discrete (have countable $V_a$ and counting measure for $\mu_{a}$), a probability distribution on dictionaries is defined by a $p$ is a probability mass function $p : \mathcal{D} \to [0, 1]$ that assigns a probability $p(m)$ to each dictionary $m \in \mathcal{P}$ such that $\sum_{x \in \mathcal{D}} p(m) = 1$.
+When all keys are discrete, a probability distribution on dictionaries is defined by a $p$ is a probability mass function $p : \mathcal{D} \to [0, 1]$ that assigns a probability $p(m)$ to each dictionary $m \in \mathcal{P}$ such that $\sum_{x \in \mathcal{D}} p(m) = 1$.
 More generally a probability distribution in dictionaries is defined by a probability density $p : \mathcal{D} \rightarrow [0, \infty)$ such that $\int p(m) \mu_\mathcal{D}(\text{d}m) = 1$. We now give several examples
 to build intuition.
 
@@ -263,10 +274,9 @@ We now derive an algorithm for involutive MCMC when the model and auxiliary dist
 % TODO should we just segment the addresses into discrete and continuous addresses as part of the dictionary formalism above -- that would allow us to move this up. the added flexibility of full per-address measure is not used anyways..
 
 Suppose that the model distribution $p$ and auxiliary distributions $q_x$ are all probability distributions on dictionaries.
-Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries.
-Suppose that both $X$ and $Y$ use the set of keys $\mathcal{A}$, and that $\mathcal{A}$ can be partitioned $\mathcal{A} = \mathcal{I} \cup \mathcal{K}$ where is a set of \emph{discrete keys} $\mathcal{I}$ that use countable $V_a$ and counting measure $\mu_a$ for $a \in \mathcal{I}$ and $\mathcal{K}$ is a set of \emph{continuous keys} that use $V_a = \mathbb{R}^{d_a}$ for some $d_a$ and Lebesgue-measure $\mu_a$ for $a \in \mathcal{K}$.
+Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries with keys $\mathcal{A}$, so that $Z = X \times Y \subseteq \mathcal{D} \times \mathcal{D}$.
 %And suppose that there exists an involution $f : Z \to Z$ such that (i) 
-Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the sets of keys $A_x$ and $A_y$ and the values $\mathbf{x}_{\mathrm{d}}$ and $\mathbf{y}_{\mathrm{d}}$ of discrete keys are both constant (so that each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys in the two dictionaries).
+Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the sets of keys $A_x$ and $A_y$ and the values $x_a$ and $y_a$ for all discrete keys $a$ are both constant (so that each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys in the two dictionaries).
 Suppose there is an involution $g : E \to E$ between elements of the partition (a function with $g = g^{-1}$), and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ for each $e$ with $h_{e} = h_{g(e)}^{-1}$.
 Let $e(z) \in E$ denote the element of the partition for an alement $z \in Z$.
 Then, $f : Z \to Z$ given by $f(z) := h_{e(z)}(z)$ is an involution:
