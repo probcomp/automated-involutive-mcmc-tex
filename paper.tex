@@ -285,6 +285,7 @@ f(f(z)) = h_{e(f(z))}(h_{e(z)}(z)) = h_{g(e(z))}(h_{e(z)}(z)) = z
 \end{equation}
 Let $|J h_e|(z)$ denote the absolute value of the Jacobian (determinant) of $h_e$, evaluated at $z$.
 Algorithm~\ref{alg:involutive-mcmc} defines involutive MCMC in this more structured setting, in which the Radon-Nikodym is replaced with a Jacobian (see Section~\ref{sec:radon-nikodym-special-case} for a derivation).
+
 \begin{algorithm}[h]
 \begin{algorithmic}
 \Procedure{involutive-mcmc-kernel}{$p$, $q$, $f$, $x$}
@@ -300,14 +301,10 @@ Algorithm~\ref{alg:involutive-mcmc} defines involutive MCMC in this more structu
 \label{alg:involutive-mcmc}
 \end{algorithm}
 
+
 %\section{AUTOMATING INVOLUTIVE MCMC} \label{sec:involutive-mcmc}
 
 %Involutive MCMC (Algorithm~\ref{alg:involutive-mcmc}) defines a transition kernel that is stationary for a probabilistic model $p$, based on an auxiliary probability kernel $q$ and a deterministic involution $f$. Different choices of $q$ and $f$ recover instances of classic algorithms from the literature (e.g., Reversible-Jump MCMC~\citep{green}, TODO: others). This section briefly reviews involutive MCMC and gives a general measure-theoretic formulation of the algorithm on arbitrary state-spaces. In the following sections, we will describe how the implementations of involutive MCMC algorithms can be automated using probabilistic and differentiable programming.
-
-%Then we have the following result:
-
-
-
 
 \section{AUTOMATING INVOLUTIVE MCMC} \label{sec:automating}
 
@@ -323,6 +320,8 @@ individual univariate and multivariate random variables, or about conditional in
 the easier it will be for the implementation to exploit this structure automatically by using
 more efficient data structures and low-level manipulations.
 
+\subsection{Trace-Based Probabilistic Programming}
+
 \textit{Probabilistic programs} are flexible and structured representations for arbitrary
 computable probability distributions. Unlike densities (but like Bayesian networks), probabilistic programs can be efficiently sampled and contain explicitly represented information
 about some conditional independence relationships in a model. 
@@ -330,9 +329,10 @@ But unlike Bayesian networks, they do not assume a fixed number of random variab
 This section introduces one language for probabilistic programs, with which users can encode both their
 models $p$ and their auxiliary distributions $q_x$. 
 
-\subsection{A Probabilistic Programming Language}
+\subsubsection{A Probabilistic Programming Language}
 
 In our framework, a probabilistic program defines a probability distribution on finite maps (dictionaries) that map the names of random choices (their \emph{addresses}) to values.
+% TODO trace terminology
 Following standard terminology~\citep{?}, we call these dictionaries \emph{traces} because they are often sampled by running a probabilistic program, and `tracing' the execution of the program by recording the value of each random choice encountered.
 We now make the concept of a trace more concrete using code in a probabilistic programming language.
 
@@ -476,22 +476,24 @@ When this function is invoked it encodes the following probability distribution 
 \end{array}
 \]
 
-\subsection{Handling Continuous Distributions}
-To handle programs that sample continuous probability distributions the notion of a probability mass function on traces needs to be generalized to a probability density function on traces with respect to a certain reference measure.
-The probabilistic program still defines a probability distribution (i.e. measure) on traces, but via  a density instead of a probability mass function.
+%\subsubsection{Handling Continuous Distributions}
+%To handle programs that sample continuous probability distributions the notion of a probability mass function on traces needs to be generalized to a probability density function on traces with respect to a certain reference measure.
+%The probabilistic program still defines a probability distribution (i.e. measure) on traces, but via  a density instead of a probability mass function.
+%
+%Let $\mathcal{A}$ denote a countable set of all possible addresses.
+%For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
+%Let $T := \cup_{A \subseteq \mathcal{A} : |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in \times_{a \in A} V_a\}\}$ denote the set of all finite traces (i.e. dictionaries) from addresses in $\mathcal{A}$ to their values.
+%For each finite $A \subseteq \mathcal{A}$, let $\Sigma_A := \otimes_{a \in A} \Sigma_a$ (the product $\sigma$-algebra over $\Sigma_a$ for $a \in A$), and let $\mu_A := \times_{a \in A} \mu_a$ (the product measure).
+%Let $\Sigma \subseteq \mathcal{P}(T)$ be the $\sigma$-algebra formed by sets of the form $B := \cup_{A \subseteq \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in B_A\}$ for some $B_A \in \Sigma_A$ for each $A$.
+%Let $\mu : \Sigma \to [0, \infty)$ be a measure on measurable space $(T, \Sigma)$ defined by $\mu(B) := \sum_{A \subseteq \mathcal{A}, |A| < \infty} \mu_A(B_A)$.
+%
 
-Let $\mathcal{A}$ denote a countable set of all possible addresses.
-For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
-Let $T := \cup_{A \subseteq \mathcal{A} : |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in \times_{a \in A} V_a\}\}$ denote the set of all finite traces (i.e. dictionaries) from addresses in $\mathcal{A}$ to their values.
-For each finite $A \subseteq \mathcal{A}$, let $\Sigma_A := \otimes_{a \in A} \Sigma_a$ (the product $\sigma$-algebra over $\Sigma_a$ for $a \in A$), and let $\mu_A := \times_{a \in A} \mu_a$ (the product measure).
-Let $\Sigma \subseteq \mathcal{P}(T)$ be the $\sigma$-algebra formed by sets of the form $B := \cup_{A \subseteq \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in B_A\}$ for some $B_A \in \Sigma_A$ for each $A$.
-Let $\mu : \Sigma \to [0, \infty)$ be a measure on measurable space $(T, \Sigma)$ defined by $\mu(B) := \sum_{A \subseteq \mathcal{A}, |A| < \infty} \mu_A(B_A)$.
-
-A probabilistic program $P$ denotes a probability density $p : T \to [0, \infty)$ with respect to a reference measure $\mu$ on traces.
-Describing the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper, and we refer to the reader to~\citet{popltraces} for an example of denotational semantics of a probabilistic programming language that uses explicit addresses for random-choices.
-But, informally, the density of a trace in our formalism (and existing formalisms) is the product of densities of each individual random choice, as an example below illustrates.
-
-The measure-theoretic formalism above is capable of expressing probabilistic programs that use continuous distributions by setting the reference measure space $(V_a, \Sigma_a, \mu_a)$ for some addresses $a$ to use the Lebesgue-measure.
+\subsubsection{Automatically Computing Densities}
+% TODO explain the non-standard interpretation idea.
+A probabilistic program $P$ denotes a probability density $p : T \to [0, \infty)$ with respect to a reference measure $\mu$ on dictionaries.
+Defining the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper, and we refer to the reader to~\citet{popltraces} for an example of denotational semantics of a probabilistic programming language similar to that of this paper.
+%But, informally, the density of a trace in our formalism (and existing formalisms) is the product of densities of each individual random choice, as an example below illustrates.
+But this section illustrates what form density functions for probabilistics programs take and how to they can be automatically evaluated by probabilistic programming systems.
 For example, consider the following probabilistic program, which encodes a generative model for data generated from a polynomial with unknown degree and unknown coefficients:
 \noindent
 \begin{center}
@@ -532,44 +534,32 @@ p_{\mathrm{inversegamma}(1, 1)}(x[\mathtt{:}\mathtt{noise}]) \cdot\\
 \prod_{i=1}^n p_{\mathrm{normal}(m(t, i), 0.1 + x[\mathtt{noise}])}(x[(\mathtt{"y"}, i)])
 \end{array}
 \end{align*}
-where $m(t, i) := \sum_{j=0}^{x[\mathtt{:}\mathtt{degree}]} \mathtt{xcoords}[i]^j \cdot x[(\mathtt{"c"}, j)]$.
+where $m(t, i) := \sum_{j=0}^{x[\mathtt{:}\mathtt{degree}]} \mathtt{xcoords}[i]^j \cdot x[(\mathtt{"c"}, j)]$, and where $p_{\mathrm{geometric}(r)}$, $p_{\mathrm{inversegamma}(\alpha, \beta)}$, and $p_{\mathrm{normal}(\mu, \sigma)}$ are density functions for geometric, inverse gamma, and normal distributions, respectively.
 
-\subsection{Specifying the Densities for Involutive MCMC with Probabilistic Programs}
+\paragraph{Traces of Probabilistic Programs.}
+In general, the density $p$ of a probabilistic program with respect to the reference measure $\mu$ on dictionaries, evaluated at a dictionary $x = (A, \mathbf{x})$, can be computed as the product of individual density functions evaluated at each random choice $x[a]$.
+To compute the density of a dictionary $x$, many probabilistic programming systems including Gen employ traces.
+In the context of probabilistic programming, a \emph{trace} $t$ is a record of each of the random choices made during an execution of a probabilistic program, including (i) the addresses $A$ of the choices, (ii) their values $\mathbf{x}$, and (iii) the order in which the addresses was visited (as a list of addresses $t_1, \ldots, t_{|A|} \in A$), and (iv) the probability distributions $p^{(t)}_a$ from which each address $a \in A$ was sampled during the execution.
+That is, each trace $t$ contains a dictionary $x = (A, \mathbf{x})$ such that $p(x) > 0$, as well as the order information $t_1, \ldots, t_{|A|}$ and the distribution information $p^{(t)}_a$ for each $a$.
+If a trace $t$ is available for a dictionary $x$, then the probability density of the dictionary is the product of the densities of each random choice in the trace:
+\footnote{Probabilistic programming implementations use sums of log-densities instead of products for numerical reasons.}
+\begin{equation} \label{eq:density-product}
+p((A, \mathbf{x})) = \prod_{i=1}^{|A|} p^{(t)}_{a}(x[a_{t_i}] | x[a_{t_1}], \ldots, x[a_{t_{i-1}}])
+\end{equation}
+See~\citet{popltraces} for an example of a formal proof that the product of densities is the density of the dictionary $x$ with respect to the reference measure.
+Note that although in general, the probability density $p^{(t)}_a$ of address $a$ is a function of the value of the choice $x[a]$ as well the values of all previously sampled choices, in practice it is only a function of a subset of previous choices due to conditional independence structure in the model.
 
-To define the model and auxiliary densities used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
-The model reference measure $(X, \Sigma_P, \mu_P)$ and density that were required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure and density $p$ on traces as defined above (so that $X := T$).
-To define the auxiliary densities, we use a second probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
-The set of possible inputs to $Q$ is $\{x \in T : p(x) > 0\}$, and for each such $x$ the probabilistic program $Q$ defines a density $q_x : T \to [0, \infty)$ with respect to the reference measure on traces.\footnote{
-Note that we the same measure space $(T, \Sigma, \mu)$ on traces for both the model and auxiliary probabilistic program.
-If both programs sample some random choice at the same address $a$ and require different measure spaces $(V_a, \Sigma_a, \mu_a)$ for the address, this can be handled formally by making the addresses sampled by the two programs disjoint by prepending either the prefix `p.' or `q.' to addresses.
-This is only required for book-keeping in the formalism, and these prefixes do not need to be actually added to the addresses used in the programs.}
+Given a dictionary $x$ for which $p(x) > 0$, it is possible to obtain a trace $t$ containing that dictionary by executing the probabilistic program, but intercepting random choice expressions and modifying their behavior.
+For each intercepted random choice expression during the execution, instead of sampling the value of the random choice at address $a$, we (i) append the address $a$ to the list of addresses ($t_1, t_2, \ldots$), (ii) record the probability distribution $p^{(t)}_a$, (iii) look up the address $a$ in the dictionary (obtaining $v \gets x[a]$), and (iv) resume regular program execution, evaluating the random choice expression to the value $v$ obtained from the dictionary.
+We denote a trace $t$ obtained from a dictionary $x$ and a probabilistic program $P$:
+\begin{equation}
+t \gets \mathrm{trace}(P, x)
+\end{equation}
 
-The involutive MCMC framework of Section~\ref{sec:involutive-mcmc} requires that $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu_P \times \mu_Q$-measurable.
-We now give a sufficient condition for this to hold.
-Let $D \subseteq \mathcal{A}$ denote the subset of addresses that are discrete (i.e. where $V_a$ is a countable set and $\mu_a$ is the counting measure).
-For $\mathbf{x} \in \times_{a \in A} V_a$ let $\mathbf{x} = (\mathbf{d}, \mathbf{c})$ where $\mathbf{d} \in \times_{a \in A \cap D} V_a$ and $\mathbf{c} = \times_{a \in A \setminus D} V_a$, so that $\mathbf{d}$ is the discrete part of $\mathbf{x}$ and $\mathbf{c}$ is the non-discrete part.
- %TODO make this a proposition
-\begin{lemma}
-Suppose that $p$ and $q$ are such that $p(A, (\mathbf{d}, \mathbf{c})) > 0$ implies
-$p(A, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{a \in A \setminus D} V_a$,
-and that $q_x(A, (\mathbf{d}, \mathbf{c})) > 0$ where $x = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}})$ implies that
-$q_{x'}(A, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{a \in A \setminus D} V_a$ and all $x' = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}}')$ where $\tilde{\mathbf{c}}' \in \prod_{a \in \tilde{A} \setminus D} V_a$.
-Then, $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu \times \mu$-measurable where $\mu$ is the reference measure on traces.
-\end{lemma}
-\begin{proof}
-For $p$ and $q$ satisfying these conditions,
-$Z = \cup_{(A_1,A_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \{((A_1, (\mathbf{d}_1, \mathbf{c}_1)), (A_2, (\mathbf{d}_2, \mathbf{c}_2))) : \mathbf{c}_1 \in \times_{a \in A_1 \setminus D} V_a, \mathbf{c}_2 \in \times_{a \in A_2 \setminus D} V_a\}$ for some countable set $E \subseteq \{(A_1, A_2, \mathbf{d}_1, \mathbf{d}_2) : A_1, A_2 \subseteq \mathcal{A}, |A_1| < \infty, |A_2| < \infty, \mathbf{d}_1 \in \times_{a \in A_1 \cap D} V_a, \mathbf{d}_2 \in \times_{a \in A_2 \cap D} V_a\}$ of address sets and discrete choice values for both programs.
-The measure of $Z$ is
-$(\mu \times \mu)(Z) = \sum_{(A_1,A_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \prod_{a \in (A_1 \setminus D) \cup (A_2 \setminus D)} \mu_a(V_a)$.
-% TODO double check me.,
-\end{proof}
+% TODO add the algorithm box involving traces..
 
-Intuitively, this requirement means that for both the model probabilistic program $P$ and the auxiliary probabilistic program $Q$, the support of a random choice that is not discrete cannot depend on the value of another non-discrete random choice.
-Additionally, the support of non-discrete random choices in $Q$ cannot depend on the value of non-discrete random choices in the input $x$, which is a trace of $P$.
-This requirement defines a notion \emph{well-behavedness} for a probabilistic program ($P$) and an additional notion of well-behavedness for a pair of probabilistic programs that are sequenced one after the other ($P$ and $Q$).
-% TODO: prove that if Q satisfeies the criterion, then the composition P circ Q satisfies the single-program criterion..
-
-\subsubsection{Conditional Distributions on Traces}
+\subsubsection{Conditioning on Observed Data}
+% TODO update this
 The formalism in this section so far defines the model distribution (with respect to which stationarity of the kernel is required) as the distribution on traces of an (unconditioned) probabilistic program $P$ that encodes a generative model.
 However, typically in applications of MCMC the target distribution is obtained by conditioning on evidence.
 Our formalism does not distinguish between latent and observed random choices, and it is straightforward to show that the involution MCMC kernel is stationary with respect to a conditional distribution on the latent part of a partially observed trace as long as the involution does not modify the existence or values of observed random choices (when such conditional distribution is well-defined).
@@ -578,7 +568,17 @@ Gen provides a mechanism for obtaining initial trace(s) with observed random cho
 % (define marginal density, then define conditional distribution)
 % could also do this in an updated version of the tech report..
 
-\section{DIFFERENTIABLE PROGRAMMING WITH TRACES} \label{sec:differentiable-programming-traces}
+\subsubsection{Automatically Computing Density Ratios in Involutive MCMC}
+
+Provided the two probabilistic programs $P$ and $Q$ satisfy a simple technical requirement (described in Section~\ref{sec:technical-requirement}), they can be used to specify the model density $p$ and auxiliary densities $p_x$, respectively for use with involutive MCMC on dictionaries (Algorithm~\ref{alg:involutive-mcmc}).
+The acceptance probability of involutive MCMC includes the following ratio of densities:
+\begin{equation}
+\frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)}
+\end{equation}
+To evaluate this density ratio, we can obtain four traces, one for each dictionary, and use those traces to compute the four probability densities, as shown in Algorithm~\ref{alg:trace-based-involutive-mcmc}.
+Section~\ref{sec:sparsity} describes a more efficent approach that exploits sparsity in the involution and resulting cancellation in the ratio for improved efficiency, but requires a more sophisticated probabilistic programming runtime system.
+
+\subsection{Differentiable Programming with Dictionaries} \label{sec:differentiable-programming-traces}
 
 The previous section described how the probability densities ($p$ and $q$) required for involutive MCMC can be specified using probabilistic programs.
 This section introduces a differentiable programming language that can be used to specify the involution $f$ that is used in involutive MCMC.
@@ -593,7 +593,7 @@ Therefore, the involution is a map from pairs of traces to pairs of traces.
 %To simplify the notation, we can represent a pair of traces $(x, y)$ as a single trace $z$, in which each address in $x$ and $x'$ is prefixed with some unique identifier (e.g. \texttt{model}) and each address in $y$ is prefixed with some unique identifier $y'$ (e.g. \texttt{auxiliary}).
 Then, $Z$ is a set of such trace pairs, and the involution $f$ is a function from $Z$ onto itself that is its own invverse.
 
-\subsection{A Differentiable Programming Language for Manipulating Traces}
+\subsubsection{A Differentiable Programming Language for Manipulating Dictionaries}
 Like the probabilistic programming languages described above, our differentiable language for involutions on traces is embedded based on Julia.
 The differentiable language has specialized expressions for reading values from addresses in a trace, writing values to the addresses in a trace, and copying values from an address in one trace to an address in another trace.
 For example, to read a value from a trace, we use the \texttt{@read} keyword:
@@ -661,15 +661,7 @@ Each input and output trace is given a name (e.g. \texttt{tr1}, \texttt{tr2}, \t
 For involution MCMC, the function must have two input traces and two output traces.
 The input trace is the input model trace ($x$), the second input trace is the input auxiliary trace ($y$), the first output trace is the output model trace ($x'$) and the second output trace is the output auxiliary trace ($y'$).
 
-\subsection{Implicit Copies}
-
-If an address is present in the input model trace and is needed to form a complete output model trace but was not written to or copied to in by the function body, then it will be implicitly copied from the previous trace by the runtime implementation.
-This significantly reduces the amount of code that has to be written when only a small subset of the model trace is being modified during the application of the involution MCMC move (which is common in applications of reversible jump MCMC).
-As a simple example, if there are $N$ latent variables, and the move only updates 1 of them, then the involution needs to contain only $O(1)$ lines of code instead of $O(N)$ lines.
-
-TODO: show an example
-
-\subsection{Reasoning About Involutions}
+\subsubsection{Reasoning About Involutions}
 Recall the earlier code snippet that maps from polar to cartesian coordinates.
 This code snippet defines a bijection from one coordinate system to another.
 However, it does not define an involution, because applying the function the first time produces a trace containing cartesian coordinates, and applying the function a second time to the resulting trace would fail, because the function reads in polar coordinates from its input trace.
@@ -735,46 +727,17 @@ end
 \end{tabular}
 \end{center}
 
-\subsection{The Radon-Nikodym Derivative}
+%\subsubsection{The Radon-Nikodym Derivative}
+%
+%The differentiable programming language introduced in this section assumes that the reference measure of each random choice address is either the counting measure (corresponding to the $\mathtt{:}\mathtt{discrete}$ tag in \texttt{@read} and \texttt{@write} operations) or a Lebesgue measure ($\mathtt{:}\mathtt{continuous}$ tag).
+%Consider a bijection $f : Z \to Z$ (recall that every involution is a bijection).
+%If the space $Z$ can be partitioned into a countable number of sets $Z_1, Z_2, \ldots$, such that the each element of the partition is in one-to-one correspondence with another element ($f_1 : \{Z_1, Z_2, \ldots\} \to \{Z_1, Z_2, \ldots\}$ for some bijection $f_1$), and such that $f_{2,i} : Z_i \to Z_{f_1(i)}$ is a continuously differentiable bijection, and such that $f(z) = f_{2,i(z)}(z)$, then a Radon-Nikodym can be constructed from the Jacobian of the function $f_{2,i(z)}$ where $i(z) = Z_j$ for $z \in Z_j$.
+%We denote the Jacobian (determinant) of a function $g$ by $| J g |$.
+%See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
+%Applying this to the setting where $Z$ is a set of pairs of traces of probabilistic programs as formalized in the preivous section is straightforward when the partition of $Z$ is the countable disjoint union over all pairs $(A, \mathbf{d})$ where $A \subseteq \mathcal{A}$ are trace structures and $\mathbf{d}$ are assignments to discrete choices.
+%
 
-The differentiable programming language introduced in this section assumes that the reference measure of each random choice address is either the counting measure (corresponding to the $\mathtt{:}\mathtt{discrete}$ tag in \texttt{@read} and \texttt{@write} operations) or a Lebesgue measure ($\mathtt{:}\mathtt{continuous}$ tag).
-Consider a bijection $f : Z \to Z$ (recall that every involution is a bijection).
-If the space $Z$ can be partitioned into a countable number of sets $Z_1, Z_2, \ldots$, such that the each element of the partition is in one-to-one correspondence with another element ($f_1 : \{Z_1, Z_2, \ldots\} \to \{Z_1, Z_2, \ldots\}$ for some bijection $f_1$), and such that $f_{2,i} : Z_i \to Z_{f_1(i)}$ is a continuously differentiable bijection, and such that $f(z) = f_{2,i(z)}(z)$, then a Radon-Nikodym can be constructed from the Jacobian of the function $f_{2,i(z)}$ where $i(z) = Z_j$ for $z \in Z_j$.
-We denote the Jacobian (determinant) of a function $g$ by $| J g |$.
-See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
-Applying this to the setting where $Z$ is a set of pairs of traces of probabilistic programs as formalized in the preivous section is straightforward when the partition of $Z$ is the countable disjoint union over all pairs $(A, \mathbf{d})$ where $A \subseteq \mathcal{A}$ are trace structures and $\mathbf{d}$ are assignments to discrete choices.
-
-
-% TODO do a PyTorch implementation??
-
-\section{AUTOMATIC ACCEPTANCE PROBABILITY CALCULATION} \label{sec:automating}
-
-The general form of the acceptance probability in Algorithm~\ref{alg:involutive-mcmc} is:
-\begin{equation}
-\min\left\{1, \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right) \right\}
-\end{equation}
-For the setting when $p$, $q$, and $f$ are defined using the probabilistic and differentiable programming languages of this section, the probability simplifies to:
-\begin{equation} \label{eq:accept-prob-jacobian}
-\min\left\{1, \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} |J f_{2,i(x,y)} | \right\}
-\end{equation}
-Implementing the computation of this probability by hand is error-prone due to conceptual, arithmetic, and implementation errors; as well as time consuming and tedious.
-This section describes how the computation of this probability is automated by Gen using probabilistic and differentiable programming techniques.
-
-\subsection{Automatically Computing Probability Density Ratios}
-
-When the model density function $p$ and the auxiliary density functions $q_x$ in Algorithm~\ref{alg:involutive-mcmc} are specified by writing probabilistic programs in the language of Section~\ref{sec:prob-prog-traces}, Gen automatically computes the following ratio of densities, given the previous traces $x$ and $y$ and the proposed traces $x'$ and $y'$:
-\begin{equation} \label{eq:density-ratio}
-\frac{p(x') q_{x'}(y')}{p(x) q_x(y)}
-\end{equation}
-The density $p$ of a probabilistic program with respect to the reference measure $\mu$, evaluated at a trace $x = (A, \mathbf{x})$, is the product of individual densities for each random choice (and similarly for the auxiliary densities and the auxiliary probabilistic program):
-\begin{equation} \label{eq:density-product}
-p((A, \mathbf{x})) = \prod_{a \in A} p_{\sigma_a}(\mathbf{x}[a])
-\end{equation}
-where $\mathbf{x}[a]$ denotes the value of address $a$ in the trace, $p_{\sigma_a}$ is the probability density function for distribution from which random choice $a$ is sampled, given that the state of the program when sampling is $\sigma_a$.
-(See~\citet{popltraces} for a formal proof for a somewhat more restricted probabilistic programming language.)
-Therefore, the probabilistic programming language can compute the density at a trace $x$ by executing the program, but at each random choice $a$, reading the value of the choice $\mathbf{x}[a]$ instead of sampling it, computing the density at $\mathbf{x}[a]$ and accumulating it into the product above.\footnote{Probabilistic programming implementations use sums of log-densities instead of products for numerical reasons.}
-
-To evaluate this density ratio, we utilize Gen's API for probabilistic programs and traces, which automatically computes the density of a trace of a probabilistic program, whether that trace was sampled from the probabilistic program (as in the case of computing $q_x(y)$ for $y \sim q_{x}(\cdot)$) or when that trace was produced externally from the probabilistic program (as in the case of computing $q_{x'}(y')$, where $y'$ was produced from the involution $f$).
+\section{EXPLOITING SPARSITY FOR IMPROVED PERFORAMNCE} \label{sec:sparsity}
 
 \subsubsection{Incremental Computation of Model Density Ratio}
 While it is possible to compute the ratio of densities in Equation~(\ref{eq:density-ratio}) by separately computing the four densities of the four traces, this scales linearly in the total number of random choices in the traces, because every random choice in each trace needs to be visited to compute the products in Equation~(\ref{eq:density-product}).
@@ -784,6 +747,15 @@ In these cases, the ratio of model trace densities $p(x') / p(x)$ dominates the 
 However, due to conditional independencies in the model, the densities $p(x')$ and $p(x)$ often share common factors that cancel, which affords an opportunity for $O(1)$ computation of the ratio.
 Gen's trace API includes an \emph{incremental update} operation~\citep{gen-paper}, which takes a previous trace $x$, and a partial trace $u$ containing the values of random choices that should be changed (or added if there is stochastic structure in the model), and returns a new trace $x'$.
 This allows for $O(1)$ computation of $p(x') / p(x)$ when the modeling language runtime system is able to detect and exploit the cancellation.
+
+\subsubsection{Implicit Copies}
+
+If an address is present in the input model trace and is needed to form a complete output model trace but was not written to or copied to in by the function body, then it will be implicitly copied from the previous trace by the runtime implementation.
+This significantly reduces the amount of code that has to be written when only a small subset of the model trace is being modified during the application of the involution MCMC move (which is common in applications of reversible jump MCMC).
+As a simple example, if there are $N$ latent variables, and the move only updates 1 of them, then the involution needs to contain only $O(1)$ lines of code instead of $O(N)$ lines.
+
+TODO: show an example
+
 
 \subsection{Sparsity-Aware Automatic Jacobian Computation}
 
@@ -1414,6 +1386,43 @@ Expanding:
 % we need to restrict q so that for each discrete part of $t$, the reference measure is the same
 % (which implies that the same sets of random choices are made?)
 % that will allow us to 
+
+\subsection{A requirement on Densities for Involutive MCMC with Probabilistic Programs} \label{sec:technical-requirement}
+TODO: consider cutting this or moving to appendix -- it is a complicated technical requirement on programs
+
+% TODO cut this??
+To define the model and auxiliary densities used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
+The model reference measure $(X, \Sigma_P, \mu_P)$ and density that were required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure and density $p$ on traces as defined above (so that $X := T$).
+To define the auxiliary densities, we use a second probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
+The set of possible inputs to $Q$ is $\{x \in T : p(x) > 0\}$, and for each such $x$ the probabilistic program $Q$ defines a density $q_x : T \to [0, \infty)$ with respect to the reference measure on traces.\footnote{
+Note that we the same measure space $(T, \Sigma, \mu)$ on traces for both the model and auxiliary probabilistic program.
+If both programs sample some random choice at the same address $a$ and require different measure spaces $(V_a, \Sigma_a, \mu_a)$ for the address, this can be handled formally by making the addresses sampled by the two programs disjoint by prepending either the prefix `p.' or `q.' to addresses.
+This is only required for book-keeping in the formalism, and these prefixes do not need to be actually added to the addresses used in the programs.}
+
+The involutive MCMC framework of Section~\ref{sec:involutive-mcmc} requires that $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu_P \times \mu_Q$-measurable.
+We now give a sufficient condition for this to hold.
+Let $D \subseteq \mathcal{A}$ denote the subset of addresses that are discrete (i.e. where $V_a$ is a countable set and $\mu_a$ is the counting measure).
+For $\mathbf{x} \in \times_{a \in A} V_a$ let $\mathbf{x} = (\mathbf{d}, \mathbf{c})$ where $\mathbf{d} \in \times_{a \in A \cap D} V_a$ and $\mathbf{c} = \times_{a \in A \setminus D} V_a$, so that $\mathbf{d}$ is the discrete part of $\mathbf{x}$ and $\mathbf{c}$ is the non-discrete part.
+ %TODO make this a proposition
+\begin{lemma}
+Suppose that $p$ and $q$ are such that $p(A, (\mathbf{d}, \mathbf{c})) > 0$ implies
+$p(A, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{a \in A \setminus D} V_a$,
+and that $q_x(A, (\mathbf{d}, \mathbf{c})) > 0$ where $x = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}})$ implies that
+$q_{x'}(A, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{a \in A \setminus D} V_a$ and all $x' = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}}')$ where $\tilde{\mathbf{c}}' \in \prod_{a \in \tilde{A} \setminus D} V_a$.
+Then, $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu \times \mu$-measurable where $\mu$ is the reference measure on traces.
+\end{lemma}
+\begin{proof}
+For $p$ and $q$ satisfying these conditions,
+$Z = \cup_{(A_1,A_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \{((A_1, (\mathbf{d}_1, \mathbf{c}_1)), (A_2, (\mathbf{d}_2, \mathbf{c}_2))) : \mathbf{c}_1 \in \times_{a \in A_1 \setminus D} V_a, \mathbf{c}_2 \in \times_{a \in A_2 \setminus D} V_a\}$ for some countable set $E \subseteq \{(A_1, A_2, \mathbf{d}_1, \mathbf{d}_2) : A_1, A_2 \subseteq \mathcal{A}, |A_1| < \infty, |A_2| < \infty, \mathbf{d}_1 \in \times_{a \in A_1 \cap D} V_a, \mathbf{d}_2 \in \times_{a \in A_2 \cap D} V_a\}$ of address sets and discrete choice values for both programs.
+The measure of $Z$ is
+$(\mu \times \mu)(Z) = \sum_{(A_1,A_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \prod_{a \in (A_1 \setminus D) \cup (A_2 \setminus D)} \mu_a(V_a)$.
+% TODO double check me.,
+\end{proof}
+
+Intuitively, this requirement means that for both the model probabilistic program $P$ and the auxiliary probabilistic program $Q$, the support of a random choice that is not discrete cannot depend on the value of another non-discrete random choice.
+Additionally, the support of non-discrete random choices in $Q$ cannot depend on the value of non-discrete random choices in the input $x$, which is a trace of $P$.
+This requirement defines a notion \emph{well-behavedness} for a probabilistic program ($P$) and an additional notion of well-behavedness for a pair of probabilistic programs that are sequenced one after the other ($P$ and $Q$).
+% TODO: prove that if Q satisfeies the criterion, then the composition P circ Q satisfies the single-program criterion..
 
 
 \end{document}
