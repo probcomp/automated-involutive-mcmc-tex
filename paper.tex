@@ -128,17 +128,8 @@ differentiable programming languages.
 
 \section{INTRODUCTION}
 
-%This is the best paper~\citep{cusumano2019gen}.
-
-\subsection{Second Level Heading}
-
-\subsubsection{Third Level Heading}
-
-\paragraph{Fourth Level Heading}
 
 \section{BACKGROUND AND RELATED WORK}
-
-%\subsection{Traces}
 
 \begin{figure*}[ht]
     \centering
@@ -170,19 +161,72 @@ The mixture kernel is composed from three Gen programs:
     \label{fig:structure-learning}
 \end{figure*}
 
+
+
+\section{INVOLUTIVE MCMC ON GENERAL STATE SPACES}
+
+Involutive MCMC is a general framework for constructing MCMC kernels that are stationary
+for a target probability measure $p$. Informally, the algorithm works as follows: starting at some state $x$, we first sample
+an auxiliary variable $y \sim q_x$ from a state-dependent auxiliary distribution. We then apply an \textit{involution} $f$ to the pair $(x, y)$ to obtain $(x', y')$. 
+Finally, we computes an acceptance probability $\alpha$ and either accept $x'$ as the new state, or reject it and repeat the previous state $x$.
+Different choices of $q$ and $f$ recover many algorithms from the literature~\citep{imcmc}.
+
+In this section, we derive the involutive MCMC algorithm for models $p$ and auxiliary kernels
+$q$ defined over general state spaces.
+By emphasizing general state spaces, we intend to clarify
+a potential point of confusion regarding the involutive MCMC algorithm: as presented by
+\citet{imcmc},
+the acceptance probability $\alpha$ depends on the Jacobian of the involution $f$, but
+it is not immediately clear how to define this Jacobian when $f$ may operate on samples
+from arbitrary measurable spaces, rather than on vectors in $\mathbb{R}^n$. Our 
+reformulation of the algorithm below is general enough to handle arbitrary model and auxiliary
+distributions, and precise enough to enable automation via probabilistic and differentiable
+programming: the rest of this paper uses it to develop a technique for deriving efficient implementations
+of involutive MCMC algorithms automatically, 
+given only declarative specifications of $p$, $q$, and $f$.
+
+\subsection{Distributions on dictionaries}
+
+Instead of vectors of real numbers, we consider in this section distributions over 
+\textit{finite dictionaries} that map (possibly random) keys to (possibly random) values. 
+Dictionaries include vectors as a special case (a vector $\mathbf{x} \in \mathbb{R}^n$ can
+be represented as a dictionary mapping the keys $1, \dots, n$ to the values $x_1, \dots, x_n$),
+but are in general more flexible: different keys can hold values of different types, and we
+can also consider distributions in which the set of keys is itself random, useful for model
+selection problems and structure uncertainty more generally.
+
+\textbf{Measure space for finite dictionaries.} We fix a countably infinite set $\mathcal{A}$ of possible keys, and for each key $a \in \mathcal{A}$,
+we fix a measure space $(V_a, \Sigma_a, \mu_a)$ determining the possible values $V_a$ that may be
+associated with $a$. Given a set of keys $A$, we can consider the set $V_A = \times_{a \in A} V_a$ of \textit{assignments} of values to each key. ($V_A$ can also be made a measure space, using the standard product $\sigma$-algebra $\Sigma_A = \otimes_{a \in A} \Sigma_a$ and the product measure $\mu_A = \times_{a \in A} \mu_a$.)  Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in V_A\}$. That is, a dictionary specifies 
+a finite set of keys $A \subset \mathcal{A}$ at which it has values, and an assignment $\mathbf{x}$ of values $x_a$ for each.
+We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in B_A\} \mid B_A \in \Sigma_A \, \text{for each finite } A \subset \mathcal{A}\}$ to obtain a measurable space
+of dictionaries. A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_A$: we set $\mu(B) := \sum_{A \in \mathcal{A}, |A| < \infty} \mu_A(\{\mathbf{x} \mid (A, \mathbf{x}) \in B\})$.
+
+\textbf{Notation for dictionaries.} Given a dictionary $m = (A, \mathbf{x})$, we write $A_m$ for $A$ and $m[a]$ for the value $x_a$ associated with a key $a \in A$.
+
+\textbf{Densities on finite dictionaries.} Probability distributions on dictionaries can be defined by (i) choosing 
+domains $V_a$ for each address $a$ of interest, and (ii) choosing a probability density $p : \mathcal{D} \rightarrow [0, \infty)$ such that $\int p(m) \mu_\mathcal{D}(\text{d}m) = 1$. We now give several examples
+to build intuition.
+
+\textit{Gaussian mixture model with unknown number of components.} Consider a generative model of univariate data points $y_1, \dots, y_n$ from a Gaussian mixture with an unknown number of components $k$, each with unknown mean $m_i$ and standard deviation $s_i$. If we place a Gaussian prior on $m_i$, a Gamma prior on $s_i$, and a Poisson prior on $k$, the resulting density is
+%
+$$p(d) = TODO$$
+%
+when $A_d$ is of the form $\{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq d[\texttt{k}]\} \cup \{\texttt{s}_i \mid 1 \leq i \leq d[\texttt{k}]\}$, and 0 otherwise. In this case, we have $V_\texttt{k} = \mathbb{N}$ with the counting measure for $\mu_\texttt{k}$, and for all other addresses $a \in \mathcal{A}$, $V_a = \mathbb{R}$ with the Lebesgue measure for $\mu_a$.
+
+\textit{Polynomial regression.} 
+
+\textbf{Conditional distributions via disintegration.} Consider a probability density $p$ on the space $\mathcal{D}$ of dictionaries. 
+%For a set of keys $A \subset \mathcal{A}$, let $p(A) := \int 1[A_m = A] p(m) \mu_\mathcal{D}(\text{d}m)$, the probability under $p$ of a dictionary with exactly the key set $A$. 
+We say a key $a \in \mathcal{A}$ \textit{almost always appears} if $\int \mathbf{1}[a \in A_m] p(m) \mu_\mathcal{D}(\text{d}m) = 1$. Suppose $B$ is a set of keys that almost always appear for $p$, and that $b = (B, \mathbf{b})$ is a dictionary with keys $B$. Furthermore, let $(A_m, \mathbf{m}) \oplus (A_n, \mathbf{n}) := (A_m \cup A_n, \mathbf{m} \times \mathbf{n})$ be the \textit{merge} of two dictionaries $m$ and $n$ defined on disjoint key sets $A_m$ and $A_n$. Then we can define the conditional density $p(d \mid b) := \mathbf{1}[A_d \cap B = \emptyset] \frac{p(d \oplus b)}{\int_{\{m \mid A_m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)}$ when the denominator is finite. If the reference measure $\mu_a$ associated with each key $a \in B$ is discrete (e.g., the counting measure), then this definition corresponds to the ordinary notion of conditioning on an event (namely, the event that a sample from $p$ agrees with the dictionary $b$ on all addresses in $B$). When this is not the case, it corresponds to a more general measure-theoretic notion called disintegration~\citep{disintegration1997}. 
+
+\subsection{Involutive MCMC}
+
+
+
 \section{INVOLUTIVE MCMC} \label{sec:involutive-mcmc}
-This section gives a measure-theoretic formulation of involutive MCMC on general state spaces.
-This generality is necessary for applications of involutive MCMC to models with structure uncertainty and for describing how involutive MCMC can be automated using probabilistic programming.
+Involutive MCMC (Algorithm~\ref{alg:involutive-mcmc}) defines a transition kernel that is stationary for a probabilistic model $p$, based on an auxiliary probability kernel $q$ and a deterministic involution $f$. Different choices of $q$ and $f$ recover instances of classic algorithms from the literature (e.g., Reversible-Jump MCMC~\citep{green}, TODO: others). This section briefly reviews involutive MCMC and gives a general measure-theoretic formulation of the algorithm on arbitrary state-spaces. In the following sections, we will describe how the implementations of involutive MCMC algorithms can be automated using probabilistic and differentiable programming.
 
-Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$.
-Let $p : X \to [0, \infty)$ be a probability density with respect to $\mu_P$ and for each $x \in X$ such that $p(x) > 0$ let $q_x : Y \to [0, \infty)$ be probability density with respect to $\mu_Q$.
-We call $p$ the \emph{model density} and we call $q_x$ \emph{auxiliary densities}.
-Let $\pi(x, y) := p(x) q_x(y)$ and $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0 \}$.
-Suppose that $Z \in \Sigma_P \otimes \Sigma_Q$ ($Z$ is a $\mu_P \times \mu_Q$-measurable set).
-Then $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigma$-algebra on $Z$ and $\mu : \Sigma \to [0, \infty)$ with $\mu(A) := (\mu_P \times \mu_Q)(A)$ is a $\sigma$-finite measure on measurable space $(Z, \Sigma)$.
-
-Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$.
-Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
 
 \begin{algorithm}[h]
 \begin{algorithmic}
@@ -200,7 +244,36 @@ Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \m
 \label{alg:involutive-mcmc}
 \end{algorithm}
 
-See Section~\ref{sec:radon-nikodym-special-case} for a derivation of the Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d \mu$ for a special case, when the involution $f$ can be factored into (i) an involution on a countable partition of $Z$ and (ii) a family of continuously differentiable bijection on Euclidean spaces.
+Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$. 
+Involutive MCMC implements a transition kernel that is invariant for a \textit{model distribution} given by $p : X \to [0, \infty)$, a probability density over $X$ with respect to $\mu_P$. Each iteration, the algorithm first samples auxiliary variables $y \in Y$ from an auxiliary distribution $q_x$ based on the model's current state $x$: for each $x \in X$ such that $p(x) > 0$, $q_x : Y \to [0, \infty)$ is a probability density with respect to $\mu_Q$.
+% We call $p$ the \emph{model density} and we call $q_x$ \emph{auxiliary densities}.
+
+The resulting pair $(x, y)$ of the current model state and the newly sampled auxiliary state will be an element of the joint space $Z := \{(x, y) \in X \times Y \mid p(x) q_x(y) > 0 \}$. We can equip $Z$ with the $\sigma$-algebra 
+$\Sigma := \{A \cap Z \mid A \in \Sigma_P \otimes \Sigma_Q\}$ (assuming $Z$ is a $\mu_P \times \mu_Q$-measurable set), and a reference measure $\mu(A) := (\mu_P \times \mu_Q)(A)$. 
+%Let $\pi(x, y) := p(x) q_x(y)$ and $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0 \}$.
+%Suppose that $Z \in \Sigma_P \otimes \Sigma_Q$ ($Z$ is a $\mu_P \times \mu_Q$-measurable set).
+%Then $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigma$-algebra on $Z$ and $\mu : \Sigma \to [0, \infty)$ with $\mu(A) := (\mu_P \times \mu_Q)(A)$ is a $\sigma$-finite measure on measurable space $(Z, \Sigma)$.
+
+Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$. Involutive MCMC runs $f$ on $(x, y)$ to obtain $(x', y')$, then computes an acceptance probability $\alpha$. With probability $\alpha$, the new state $x'$ is returned; otherwise, the previous state $x$ is repeated.
+%Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
+
+\begin{algorithm}[h]
+\begin{algorithmic}
+\Procedure{involutive-mcmc-move}{$p$, $q$, $f$, $x$}
+    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
+    \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
+    \State $\alpha \gets
+        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)$
+    % TODO check it
+    \State $r \sim \mathrm{Uniform}(0, 1)$
+    \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
+\EndProcedure
+\end{algorithmic}
+\caption{Involutive MCMC}
+\label{alg:involutive-mcmc}
+\end{algorithm}
+
+Then we have the following result:
 
 \begin{theorem}[Involutive MCMC is stationary]
 Algorithm~\ref{alg:involutive-mcmc} defines a probability kernel $k$ on $X$ that is stationary with respect to the model probability distribution.
@@ -210,22 +283,44 @@ That is, $\int_X k_x(B) p(x) d\mu_X(dx) = \int_B p(x) d\mu_X(dx)$ for all $B \in
 The proof is presented in stages in the appendix (see Section~\ref{sec:involution-detailed-balance}, Section~\ref{sec:involution-is-stationary}, and Section~\ref{sec:involutive-mcmc-is-stationary}).
 \end{proof}
 
-\section{PROBABILISTIC PROGRAMMING WITH TRACES} \label{sec:prob-prog-traces}
 
-Probabilistic programs are programs that define probability distributions.
-Probabilistic programs can be used to define standard joint probability distributions over vectors of random-variables, as well as more complex probability distributions with uncertainty over the structure in which the set of random variables itself random.
-Involutive MCMC can be applied for target probability distributions on non-standard reference measures, including models with structure uncertainty.
-For example, reversible jump MCMC, which is a special case of involutive MCMC, can be applied to switch between different model structures.
-This section describes a framework for probabilistic programming that is expressive enough to represent probability distributions with structure uncertainty.
+See Section~\ref{sec:radon-nikodym-special-case} for a derivation of the Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d \mu$ for a special case, when the involution $f$ can be factored into (i) an involution on a countable partition of $Z$ and (ii) a family of continuously differentiable bijections on Euclidean spaces.
 
-In our framework, a probabilistic program defines a probability distribution on finite dictionaries that map the identifer for a random choice (called its \emph{address}) to its value.
-Following standard terminology~\citep{?}, we call these dictionaries \emph{traces} because they are often sampled by running a probabilistic program, and `tracing' the execution the program by recording the value of eacn random choice encountered.
-The next section makes the concept of a trace more concrete using code in a probabilistic programming language.
+
+
+\section{AUTOMATING INVOLUTIVE MCMC} \label{sec:automating}
+
+Involutive MCMC is a general framework that can be used to develop diverse MCMC algorithms
+for models over arbitrary state spaces. We wish to \textit{automate} the implementation
+details for involutive MCMC algorithms, given only a specification of the model $p$, the
+auxiliary distribution $q$, and the involution $f$.
+To do so, we require a representation for the distributions $p$ and $q$ that is flexible
+enough to represent the full variety of models and auxiliary distributions of interest to
+practitioners. The representation must support density evaluation and sampling. It is also desirable that the representation be \textit{structured}: the more
+information available to us (e.g., about the decomposition of a distribution's state space into 
+individual univariate and multivariate random variables, or about conditional independence relationships in a model),
+the easier it will be for the implementation to exploit this structure automatically by using
+more efficient data structures and low-level manipulations.
+
+\textit{Probabilistic programs} are flexible and structured representations for arbitrary
+computable probability distributions. Unlike densities (but like Bayesian networks), probabilistic programs can be efficiently sampled and contain explicitly represented information
+about some conditional independence relationships in a model. 
+But unlike Bayesian networks, they do not assume a fixed number of random variables, state space dimension, or dependency structure.
+This section introduces one language for probabilistic programs, with which users can encode both their
+models $p$ and their auxiliary distributions $q_x$. 
 
 \subsection{A Probabilistic Programming Language}
 
-The probabilistic programming language used in this paper is based on the dynamic modeling language in the Gen probabilistic programming system~\citep{gen-pldi}.
-In this language, user tags each random choice with an explicit address in the code, as part of a \emph{random-choice expression} of the following form:
+In our framework, a probabilistic program defines a probability distribution on finite maps (dictionaries) that map the names of random choices (their \emph{addresses}) to values.
+Following standard terminology~\citep{?}, we call these dictionaries \emph{traces} because they are often sampled by running a probabilistic program, and `tracing' the execution of the program by recording the value of each random choice encountered.
+We now make the concept of a trace more concrete using code in a probabilistic programming language.
+
+The probabilistic programming language used in this paper is 
+the dynamic modeling language in the Gen probabilistic programming system~\citep{gen-pldi}.
+The language is embedded in the general-purpose Julia programming language~\citep{julia}.
+Julia functions can be turned into Gen probabilistic programs by tagging
+each random choice with an explicit address in the code, 
+as part of a \emph{random-choice expression} of the following form:
 \noindent
 \begin{center}
 \begin{tabular}{c}
@@ -246,7 +341,8 @@ For example, the following expression samples a non-negative integer from a geom
 \end{center}
 In addition to being recorded in the trace, the sampled value is returned to the running program.
 That is, the random choice expression evaluates to the sampled value.
-For example, the expression below evaluates to a an even non-negative integer:
+For example, the expression below samples the random variable \texttt{"a"} and multiplies it by 2,
+yielding an even non-negative integer:
 \noindent
 \begin{center}
 \begin{tabular}{c}
@@ -255,7 +351,10 @@ For example, the expression below evaluates to a an even non-negative integer:
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-Probabilistic programs are typically constructed by combining multiple random choice expressions with regular Julia code (Gen is embedded in the Julia programming language~\citep{julia}).
+A probabilistic program will typically combine multiple random choice expressions. For example,
+the following code samples a random choice at address \texttt{"a"}, assigns it to the Julia variable
+\texttt{a}, and then samples a Bernoulli random variable at address \texttt{"b"} with a parameter
+that depends on \texttt{a}:
 \noindent
 \begin{center}
 \begin{tabular}{c}
@@ -267,9 +366,9 @@ a = ({"a"} ~ geometric(0.5))
 \end{center}
 This probabilistic program has an unbounded (countably infinite) number of possible traces it could produce.
 One possible trace samples the value 1 at $\texttt{"a"}$ and the Boolean value $\false$ at \texttt{"b"}, and we denote this trace by $\{\mathtt{"a"} \mapsto 1, \mathtt{"b"} \mapsto \false\}$.
-Note that the variable to which the first choice was assigned happens to be the same as the address.
-This is not required, and often the random choice has no variable name in the program, as in the second random choice with address \texttt{"b"}.
-But to reduce possibe unecessary typing, the following optional syntactic sugar will simultaneously assign the value to the program variable $\mathtt{a}$ and record it at trace address $\mathtt{a}$.\footnote{
+Note that the Julia variable to which the first choice is assigned (\texttt{a}) happens to be the same as the address (\texttt{"a"}).
+This is not required, and often the random choice has no corresponding Julia variable in the program, as in the second random choice with address \texttt{"b"}.
+But to reduce unnecessary typing, the following optional syntactic sugar will simultaneously assign the value to the program variable $\mathtt{a}$ and record it at trace address $\mathtt{"a"}$.\footnote{
 More precisely, the address is the Julia symbol (interned string) \texttt{a}, constructed with Julia syntax \texttt{:a}.}
 \noindent
 \begin{center}
@@ -279,8 +378,9 @@ a ~ geometric(0.5)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-Probabilistic programs can make use of familiar control flow constructs, like loops and branching.
-Stochastic control flow is also possible:
+
+What gives probabilistic programs much of their expressive power is that they can make use of familiar control flow constructs, like loops and if statements, and this control flow can both depend on random choices and influence which random choices are made downstream. Consider the following program implementing a geometric
+distribution as the result of iterated Bernoulli draws:
 \noindent
 \begin{center}
 \begin{tabular}{c}
@@ -292,7 +392,7 @@ end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-Note that for the probabilistic program to be valid, we require that every address is used at most once within every possible execution.
+Note that each Bernoulli flip uses a different address (the number \texttt{i} increases at each iteration). For the probabilistic program to be valid, we require that every address is used at most once within every possible execution.
 
 For probabilistic programs that sample from discrete probability distributions like those used above, the meaning of the program is a probability mass function $p$ that assigns a probability to every possible trace.
 For example, for the program with the \texttt{while} loop above, the distribution is:
@@ -357,7 +457,7 @@ When this function is invoked it encodes the following probability distribution 
 
 \subsection{Handling Continuous Distributions}
 To handle programs that sample continuous probability distributions the notion of a probability mass function on traces needs to be generalized to a probability density function on traces with respect to a certain reference measure.
-The probabilistic program still defines a probability distibution (i.e. measure) on traces, but viavia  a density instead of a probability mass function.
+The probabilistic program still defines a probability distribution (i.e. measure) on traces, but via  a density instead of a probability mass function.
 
 Let $\mathcal{A}$ denote a countable set of all possible addresses.
 For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
@@ -400,8 +500,8 @@ The addresses used by this generative function are:
 \]
 (Note that $\mathcal{A}$ could contain additional addresses that the program never samples.)
 The random choice at address $\mathtt{:}\mathtt{degree}$ is discrete with $V_a = \integers_{\ge 0}$ and the other random choices are continuous.
-Address $\mathtt{:}\mathtt{:noise}$ has $V_a = \reals_{> 0}$ and $(\mathtt{"c"}, i)$ and $(\mathtt{"y"}, i)$ have $V_a = \reals$, and all of these use the Lebesgue measure. % TODO double-check this
-The density with respect to the reference measure $\mu$ is:
+The address $\mathtt{:}\mathtt{noise}$ has $V_a = \reals_{> 0}$ and $(\mathtt{"c"}, i)$ and $(\mathtt{"y"}, i)$ have $V_a = \reals$, and at all of these continuous addresses, we use the Lebesgue measure for $\mu_a$. % TODO double-check this
+The density with respect to the reference measure $\mu$ is then:
 \begin{align*}
 p(x) =
 \begin{array}{l}
@@ -415,7 +515,7 @@ where $m(t, i) := \sum_{j=0}^{x[\mathtt{:}\mathtt{degree}]} \mathtt{xcoords}[i]^
 
 \subsection{Specifying the Densities for Involutive MCMC with Probabilistic Programs}
 
-To define the model and auxiliary densitites used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
+To define the model and auxiliary densities used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
 The model reference measure $(X, \Sigma_P, \mu_P)$ and density that were required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure and density $p$ on traces as defined above (so that $X := T$).
 To define the auxiliary densities, we use a second probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
 The set of possible inputs to $Q$ is $\{x \in T : p(x) > 0\}$, and for each such $x$ the probabilistic program $Q$ defines a density $q_x : T \to [0, \infty)$ with respect to the reference measure on traces.\footnote{
@@ -801,7 +901,7 @@ end
        @copy(tr1, (:var, i), tr3, (:var, i-1))
      end
      @write(tr3, :k, k-1, :discrete)
-     new_weights = delete_weight(weights, i)
+     new_weights = delete_weight(weights, idx)
    end
    @write(tr3, :weights, new_weights, :continuous)
 end
