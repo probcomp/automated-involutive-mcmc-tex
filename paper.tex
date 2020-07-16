@@ -165,7 +165,24 @@ The contributions of this paper include:
 \item An algorithm that dynamically detects errors in the specification of an involutive MCMC kernel.
 \end{enumerate}
 
-\section{BACKGROUND AND RELATED WORK}
+\section{RELATED WORK}
+
+The involutive MCMC construction was previously implemented~\citep{gen-inv-mcmc} by the authors as part of the inference library of the Gen probabilistic programming system~\citep{cusumano2019gen}.
+The construction was motivated in part by a desire for a simple interface that automated the implementation of reversible jump MCMC samplers~\citep{green1995reversible}, state-dependent mixtures of proposals on complex state spaces, and data-driven neural proposals.
+Gen's involutive MCMC construction has since been used by a number of researchers to design and implement MCMC algorithms in diverse domains including computational biology~\citep{merrell2020inferring} and artificial intelligence~\citep{zhi2020online}.
+
+\citet{imcmc} independently identified the involutive MCMC construction as a unifying framework for MCMC algorithms, and showed how a number of classic and recent MCMC algorithms can be cast within this framework.
+\citet{imcmc} also identified design principles for developing new MCMC algorithms using the involutive MCMC construction, and showed that the framework aids in the derivation of novel efficient MCMC algorithms.
+
+The involutive MCMC construction encompasses many existing classes of MCMC kernels, some of which explicitly make use of bijective or involutive deterministic maps.
+In particular, the reversible jump framework~\citep{green1995reversible,hastie2012model} employs a family of continuously differentiable bijections between the Euclidean parameter spaces of different models.
+\citet{tierney1998note} described a family of deterministic proposals based on a deterministic involution that is equivalent to involutive MCMC but without the auxiliary proposal distribution.
+More recently,~\citet{spanbauer2020deep} defined a class of deep generative model based on differentiable involutions and trained these models to serve as efficient proposal distributions on continuous state spaces; the resulting algorithm is an instance of the construction presented in this paper.
+%Gen~\citet{cusumano2019gen}
+%Gen's involution MCMC construct~\citet{gen-inv-mcmc}
+%Reversible jump MCMC~\citet{green1995reversible}
+%^Using probabilistic programs as proposals~\citet{cusumano2018using}
+%Reversible jump probabilistic programming~\citet{roberts2019reversible}
 
 \begin{figure*}[ht]
     \centering
@@ -297,6 +314,20 @@ $\Sigma := \{A \cap Z \mid A \in \Sigma_P \otimes \Sigma_Q\}$ (assuming $Z$ is a
 Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$. Involutive MCMC runs $f$ on $(x, y)$ to obtain $(x', y')$, then computes an acceptance probability $\alpha$.
 With probability $\alpha$, the new state $x'$ is returned; otherwise, the previous state $x$ is repeated.
 %Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
+\begin{algorithm}[h]
+\begin{algorithmic}
+\Procedure{involutive-mcmc}{$p$, $q$, $f$, $x$}
+    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary state}
+    \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
+    \State $\alpha \gets
+        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)$
+    \State $r \sim \mathrm{Uniform}(0, 1)$
+    \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
+\EndProcedure
+\end{algorithmic}
+\caption{Involutive MCMC}
+\label{alg:involutive-mcmc}
+\end{algorithm}
 
 \begin{theorem}[Involutive MCMC is stationary]
 Involutive MCMC defines a probability kernel $k$ on $X$ that is stationary with respect to the model probability distribution.
@@ -330,20 +361,6 @@ Then, the acceptance probability simplifies to:
 \end{equation}
 Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 
-\begin{algorithm}[h]
-\begin{algorithmic}
-\Procedure{involutive-mcmc}{$p$, $q$, $f$, $x$}
-    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary state}
-    \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
-    \State $\alpha \gets
-        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)$
-    \State $r \sim \mathrm{Uniform}(0, 1)$
-    \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
-\EndProcedure
-\end{algorithmic}
-\caption{Involutive MCMC}
-\label{alg:involutive-mcmc}
-\end{algorithm}
 
 
 %\section{AUTOMATING INVOLUTIVE MCMC} \label{sec:involutive-mcmc}
