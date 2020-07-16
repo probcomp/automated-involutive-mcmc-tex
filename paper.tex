@@ -219,7 +219,7 @@ We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\big
 of dictionaries.
 A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_A$: we set $\mu(B) := \sum_{A \in \mathcal{A}, |A| < \infty} \mu_A(\{\mathbf{x} \mid (A, \mathbf{x}) \in B\})$.
 
-\textbf{Notation for dictionaries.} Given a dictionary $x = (A, \mathbf{x})$, we write $A_m$ for $A$ and $m[a]$ for the value $x_a$ associated with a key $a \in A$.
+\textbf{Notation for dictionaries.} Given a dictionary $d = (A, \mathbf{x})$, we write $A_d$ for $A$ and $d[a]$ for the value $x_a$ associated with a key $a \in A$.
 We also denote specific dictionaries using notation $\{k_1 \mapsto v_1, k_2 \mapsto v_2, \ldots\}$.
 For example, the dictionary $(A, \mathbf{x})$ with $A = \{1, \mathtt{"foo"}\}$ and $x_1 = 0.123$ and $x_{\mathtt{"foo"}} = 5$ is denoted 
 $\{1 \mapsto 0.123, \mathtt{"foo"} \mapsto 5\}$.
@@ -233,9 +233,17 @@ to build intuition.
 
 % TODO how to notate dictionaries -- 'm' or 'd' or 'x' or 't'?
 
-\textit{Gaussian mixture model with unknown number of components.} Consider a generative model of univariate data points $y_1, \dots, y_n$ from a Gaussian mixture with an unknown number of components $k$, each with unknown mean $m_i$ and standard deviation $s_i$. If we place a Gaussian prior on $m_i$, a Gamma prior on $s_i$, and a Poisson prior on $k$, the resulting density is
+\textit{Gaussian mixture model with unknown number of components.} Consider a generative model of univariate data points $y_1, \dots, y_n$ from a Gaussian mixture with an unknown number of components $k$, each with unknown mean $m_i$ and variance $s_i$. If we place a Gaussian prior on $m_i$, an inverse Gamma prior on $s_i$, and a Poisson prior on $k$, the resulting density is
 %
-$$p(d) = TODO$$
+\begin{align*}
+p(d) =
+\begin{array}{l}
+p_{\mathrm{poisson}(3)}(d[\mathtt{k}]) \cdot\\
+\prod_{i=1}^{d[\mathtt{k}]} p_{\mathrm{normal}(0, 1)}(d[\mathtt{m}_i]) \cdot\\
+\prod_{i=1}^{d[\mathtt{k}]} p_{\mathrm{inversegamma}(1, 10)}(d[\mathtt{s}_i]) \cdot\\
+\prod_{i=1}^n  \frac{1}{d[\mathtt{k}]} \sum_{j=1}^{d[\mathtt{k}]} \cdot p_{\mathrm{normal}(d[\mathtt{m}_j], d[\mathtt{s}_i])}(d[\mathtt{y}_i])
+\end{array}
+\end{align*}
 %
 when $A_d$ is of the form $\{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq d[\texttt{k}]\} \cup \{\texttt{s}_i \mid 1 \leq i \leq d[\texttt{k}]\}$, and 0 otherwise. In this case, we have $V_\texttt{k} = \mathbb{N}$ with the counting measure for $\mu_\texttt{k}$, and for all other addresses $a \in \mathcal{A}$, $V_a = \mathbb{R}$ with the Lebesgue measure for $\mu_a$.
 
@@ -703,13 +711,13 @@ Gen provides a mechanism for obtaining initial trace(s) with observed random cho
 
 \subsubsection{Automatically Computing Density Ratios in Involutive MCMC}
 
-Provided the two probabilistic programs $P$ and $Q$ satisfy a simple technical requirement (described in Section~\ref{sec:technical-requirement}), they can be used to specify the model density $p$ and auxiliary densities $p_x$, respectively for use with involutive MCMC on dictionaries (Algorithm~\ref{alg:involutive-mcmc}).
+Provided the two probabilistic programs $P$ and $Q$ satisfy a simple technical requirement (described in Section~\ref{sec:technical-requirement}), they can be used to specify the model density $p$ and auxiliary densities $q_x$ for use with involutive MCMC on dictionaries (Algorithm~\ref{alg:involutive-mcmc}).
 The acceptance probability of involutive MCMC includes the following ratio of densities:
 \begin{equation}
 \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)}
 \end{equation}
-To evaluate this density ratio, we can obtain four traces, one for each dictionary, and use those traces to compute the four probability densities, as shown in Algorithm~\ref{alg:trace-based-involutive-mcmc}.
-Section~\ref{sec:sparsity} describes a more efficent approach that exploits sparsity in the involution and resulting cancellation in the ratio for improved efficiency, but requires a more sophisticated probabilistic programming runtime system.
+This ratio can be computed term-by-term using \textsc{trace-and-score} (Algorithm~\ref{alg:trace-based-involutive-mcmc}). 
+Section~\ref{sec:sparsity} describes a more efficient approach that exploits sparsity in the involution and resulting cancellation in the ratio for improved efficiency, but requires a more sophisticated probabilistic programming runtime system.
 
 \subsection{Differentiable Programming with Dictionaries} \label{sec:differentiable-programming-traces}
 
@@ -1044,8 +1052,16 @@ and will thus raise an error.
 
 \textit{Other miscellaneous errors.} When implementing distributions as probabilistic programs, it is also possible for users to make more mundane errors, such as spelling the name of a random choice inconsistently, or characterizing random choices using the wrong \texttt{type} tags (\texttt{:continuous} and \texttt{:discrete}). Such errors can be difficult to detect statically, because the addresses at which a probabilistic program makes random choices, and the distributions of those choices, may change from sample to sample. (Previous work has explored static analyses based on types~\citep{popltraces} and abstract interpretation~\citep{verified_svi}, but these each work on limited subsets of the programs that Gen's full modeling language permits, and it is often precisely these more complex programs that require the flexibility of the involutive MCMC framework in the first place.) Gen's dynamic support and dimension checks can help to detect bugs like these. For example, if the involution $f$ writes to a misspelled address, the support check will determine that the resulting trace's density is 0.
 
-
 % TODO show an example of the type of bug it can detect (an edge case?)
+
+\textbf{Dynamic checks during inference.} These dynamic assertions can also be run during inference, at each application of the transition kernel. This can be useful to catch bugs that only occur in regions of the state space with low prior mass (but perhaps high posterior mass). When enabled, we can run dynamic checks after each application of the kernel, and when they fail, write to a debugging log and reject the proposed new state. As it turns out, the kernel induced by this procedure is still stationary for $p$:
+
+\begin{lemma}
+Let $p$ and $q_x$ be model and auxiliary densities as above, but suppose $f : \mathcal{D} \times \mathcal{D} \rightarrow \mathcal{D} \times \mathcal{D}$ may not be an involution on $Z$.  Trace-based involutive MCMC with dynamic checks enabled, rejecting whenever such a check fails, still yields a kernel that is stationary for $p$.
+\end{lemma}
+\begin{proof}
+Let $R = \{x \in Z \mid f(f(x)) = x \wedge \pi(f(x)) > 0\}$, and let $h(x) := \mathbf{1}[x \in R]f(x) + \mathbf{1}[x \not\in R]x$. Then $h$ is an involution on $Z$, and trace-based involutive MCMC with $p$, $q_x$, and $h$ yields a stationary kernel. But this kernel is the same one induced by using $f$ with dynamic checks. For $x$ on which dynamic checks succeed, $h$ is equivalent to $f$. For $x$ on which dynamic checks fail, $h$ is equivalent to the identity; thus, accepting a move produced by $h$ is equivalent to rejecting.  
+\end{proof}
 
 \section{EXAMPLES}
 
