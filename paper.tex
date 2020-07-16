@@ -24,6 +24,7 @@
 \bibliographystyle{apalike}
 
 % graphics
+\usepackage{hyperref}
 \usepackage{float}
 \usepackage{graphicx}
 \usepackage[usenames,dvipsnames,svgnames]{xcolor}
@@ -136,39 +137,34 @@ differentiable programming languages.
 \end{abstract}
 
 \section{INTRODUCTION}
-Markov chain Monte Carlo (MCMC) algorithms are powerful tools for approximate sampling from probability distributions and are central to modern Bayesian statistics, probabilistic machine learning, statistical physics, and numerous applications of probabilistic inference from robotics to computational biology.
+Markov chain Monte Carlo (MCMC) algorithms are powerful tools for approximate sampling from probability distributions and are central to modern Bayesian statistics, probabilistic machine learning, statistical physics, and numerous applications of probabilistic inference.
 But designing and deriving efficient MCMC algorithms is mathematically involved, and implementing MCMC kernels is tedious and notoriously error-prone.
-These challenges are especially pertinent when sampling from probability distributions on complex hybrid symbolic-numeric state spaces such as those arising in computational biology~\citep{huelsenbeck2004bayesian}, robotics and scene understanding~\citep{geiger2011generative}, and models of human cognition~\citep{tenenbaum2011grow}.
+These challenges are especially pertinent when sampling from probability distributions on complex state spaces that combine symbolic, numeric, and structural uncertainty, such as those arising in computational biology~\citep{huelsenbeck2004bayesian}, robotics and scene understanding~\citep{geiger2011generative}, and models of human cognition~\citep{tenenbaum2011grow}.
 
 Involutive MCMC is a mathematical construction for MCMC kernels that provides a simplifying and unifying perspective on a number of previously disparate classes of kernels,
 including reversible jump MCMC~\citep{green1995reversible}, the dominant mathematical framework for MCMC on complex hybrid state spaces.
 Involutive MCMC constructs an MCMC kernel from three components: (i) the unnormalized target density, (ii) a sampler and density for an auxiliary probability distribution (iii) an involution\footnote{a bijection that is its own inverse ($f$ where $f(f(z)) = z$)} on an extended state space.
 While this construction is mathematically clarifying, correctly implementing involutive MCMC kernels on complex state spaces remains challenging due to tedious density and Jacobian computations and the need for careful reasoning about the state space.
 
-This paper formulates involutive MCMC on general state spaces and shows how to automatically generate the implementation of an involutive MCMC kernel from high-level probabilistic programs and differentiable programs that define the relevant distributions and the involution, respectively.
+This paper formulates involutive MCMC on general state spaces and shows how to automatically generate the implementation of an involutive MCMC kernel from three declarative programs that define the target probability distribution, auxiliary probability distribution, and the involution, respectively.
+The probability distributions are defined as probabilistic programs, and the involution is defined as a differentiable program that transforms the execution traces of the probabilistic programs.
+We use probabilistic programming techniques and automatic differentiation to automatically compute the acceptance probability.
+We also show how to automatically detect mathematical errors in the specification of an involutive MCMC kernel, and how to improve the efficiency by automatically exploiting the sparsity structure in the involution.
+We implemented the approach within the Gen probabilistic programming system\footnote{\url{https://www.gen.dev}}~\citep{cusumano2019pldi}.
+The paper shows examples of involutive MCMC kernels implemented in Gen for (1) a split-merge reversible jump move in an infinite mixture model, and a (2) state-dependent mixture of Metropolis-Hastings proposals on an infinite combinatorial space of covariance functions for a Gaussian process.
+We also provide a lightweight PyTorch implementation of the basic approach at:
+\begin{center}
+\vspace{-2mm}
+\url{https://github.com/probcomp/autoimcmc}.
+\end{center}
 
 
-This paper introduces (1) a declarative interface for specifying involutive MCMC kernels and (2) an algorithm that automates the implementation of an involutive MCMC kernel from the declarative specification.
+The contributions of this paper include:
+\begin{enumerate}
+\item A 
+\end{enumerate}
 
-The declarative interface takes as input two probabilistic programs that define the model distribution and auxiliary distribution respectively, and a differentiable program that defines the involution.
-
-The algorithm applies probabilistic programming techniques and automatic differentiation to the programs to fully automate the acceptance probability computation.
-
-The paper also shows how to improve the algorithm's asymptotic efficiency by exploiting the structure of the involution.
-
-The paper also gives an algorithm that dynamically detects mathematical and programming errors in the specification of an involutive MCMC algorithm.
-
-The paper also describes the implementation of this interface and these algorithms as part of the Gen probabilistic programming system.
-
-The paper also shows examples of involutive MCMC kernels specified using the interface that implement (1) a split-merge reversible jump move in an infinite mixture model, and a (2) state-dependent mixture of Metropolis-Hastings proposals on an infinite combinatorial space of covariance functions for a Gaussian process.
-
-The paper also gives a general measure-theoretic formulation of involutive MCMC, and a formulation of involutive MCMC on the more specialized but still very flexible state space of dictionaries that is the state space used by the Gen probabilistic programming system.
-
-%TODO: add
-    %representation of (Gen's) state space
-    %the language for specifying bijections on state space
-
-
+TODO: list contributiosn
 
 \section{BACKGROUND AND RELATED WORK}
 
