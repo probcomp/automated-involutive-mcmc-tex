@@ -141,8 +141,8 @@ Markov chain Monte Carlo (MCMC) algorithms are powerful tools for approximate sa
 But designing and deriving efficient MCMC algorithms is mathematically involved, and implementing MCMC kernels is tedious and notoriously error-prone.
 These challenges are especially pertinent when sampling from probability distributions on complex state spaces that combine symbolic, numeric, and structural uncertainty, such as those arising in computational biology~\citep{huelsenbeck2004bayesian}, robotics and scene understanding~\citep{geiger2011generative}, and models of human cognition~\citep{tenenbaum2011grow}.
 
-Involutive MCMC is a mathematical construction for MCMC kernels that provides a simplifying and unifying perspective on a number of previously disparate classes of kernels,
-including reversible jump MCMC~\citep{green1995reversible}, the dominant mathematical framework for MCMC on complex hybrid state spaces.
+Involutive MCMC is a mathematical construction for MCMC kernels that gives a simplifying and unifying perspective on a number of previously disparate classes of kernels,
+including reversible jump MCMC~\citep{green1995reversible}, which is the dominant mathematical framework for MCMC on complex state spaces.
 Involutive MCMC constructs an MCMC kernel from three components: (i) the unnormalized target density, (ii) a sampler and density for an auxiliary probability distribution (iii) an involution\footnote{a bijection that is its own inverse ($f$ where $f(f(z)) = z$)} on an extended state space.
 While this construction is mathematically clarifying, correctly implementing involutive MCMC kernels on complex state spaces remains challenging due to tedious density and Jacobian computations and the need for careful reasoning about the state space.
 
