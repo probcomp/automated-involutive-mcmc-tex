@@ -161,7 +161,7 @@ The contributions of this paper include:
 \item A mathematical formulation of state spaces consisting of arbitrary key-value stores (i.e. dictionaries) that formalizes the space of execution traces of Gen probabilistic programs, and a formulation of involutive MCMC on these spaces.
 \item A differentiable programming language for defining bijections between spaces of traces of probabilistic programs.
 \item An algorithm that automates the implementation of an involutive MCMC kernel given two probabilistic programs and a differentiable program encoding the involution, using automatic differentiation and tracing of probabilistic programs.
-\item An extension to the algorithm that exploits sparsity in the involution to reduce the computational complexity of an involutive MCMC kernel from $O(N^2)$ to $O(1)$ in common cases.
+\item An extension to the algorithm that exploits sparsity in the involution to reduce the computational complexity of an involutive MCMC kernel from $O(N^2)$ to $O(1)$ in common cases where $N$ is the dimensionality of the latent space.
 \item An algorithm that dynamically detects errors in the specification of an involutive MCMC kernel.
 \end{enumerate}
 
