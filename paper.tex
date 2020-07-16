@@ -197,7 +197,7 @@ selection problems and structure uncertainty more generally.
 
 \textbf{The space of finite dictionaries.}
 We fix a countably infinite set $\mathcal{A}$ of possible keys, such that each key $a$ is either \emph{discrete} ($a \in \mathcal{I}$) or \emph{continuous} ($a \in \mathcal{J}$), where $\mathcal{A} = \mathcal{I} \cup \mathcal{J}$.\footnote{
-It is straighforward to assign a general meaure space to each address, but this is not necessary for our purposes.}
+It is straightforward to assign a general measure space to each address, but this is not necessary for our purposes.}
 Let $V_a$ denote the set of possible values for key $a$, where $V_a$ is a countable set for each discrete key, and where $V_a = \mathbb{R}^{d_a}$ for each continuous key for some $d_a$.
 Given a set of keys $A$, let $V_A = \times_{a \in A} V_a$ denote the set of \textit{assignments} of values to each key.
 Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in V_A\}$. That is, a dictionary specifies 
@@ -372,239 +372,304 @@ more efficient data structures and low-level manipulations.
 
 \subsection{Trace-Based Probabilistic Programming}
 
-\textit{Probabilistic programs} are flexible and structured representations for arbitrary
-computable probability distributions. Unlike densities (but like Bayesian networks), probabilistic programs can be efficiently sampled and contain explicitly represented information
+\textit{Probabilistic programs} are flexible and structured representations for  probability distributions. Unlike densities (but like Bayesian networks), probabilistic programs can be efficiently sampled and contain explicitly represented information
 about some conditional independence relationships in a model. 
 But unlike Bayesian networks, they do not assume a fixed number of random variables, state space dimension, or dependency structure.
-This section introduces one language for probabilistic programs, with which users can encode both their
-models $p$ and their auxiliary distributions $q_x$. 
 
-\subsubsection{A Probabilistic Programming Language}
+At the most basic level, a probabilistic program is a program that makes random choices. 
+Any such program induces a probability distribution over its possible \textit{execution traces}, records of each random choice it makes.
+If each random choice is associated with a unique \textit{address} from a countable set
+of addresses $\mathcal{A}$, 
+then these traces can be viewed as finite dictionaries, mapping the address of each random choice to its value. 
+The distribution induced by a probabilistic program over
+its execution traces can thus be understood as a measure on the space $(\mathcal{D}, \Sigma_\mathcal{D}, \mu_\mathcal{D})$ introduced in the previous section. Furthermore, densities of trace distributions with respect to $\mu_\mathcal{D}$ are typically easy to compute.
 
-In our framework, a probabilistic program defines a probability distribution on finite maps (dictionaries) that map the names of random choices (their \emph{addresses}) to values.
-% TODO trace terminology
-Following standard terminology~\citep{?}, we call these dictionaries \emph{traces} because they are often sampled by running a probabilistic program, and `tracing' the execution of the program by recording the value of each random choice encountered.
-We now make the concept of a trace more concrete using code in a probabilistic programming language.
+In this section, we introduce the Gen language~\citep{gen-pldi} for probabilistic programs, and present a technique for automating the implementation of involutive MCMC algorithms when the model $p$ and auxiliary distribution $q_x$ are both represented as
+Gen programs. 
 
-The probabilistic programming language used in this paper is 
-the dynamic modeling language in the Gen probabilistic programming system~\citep{gen-pldi}.
-The language is embedded in the general-purpose Julia programming language~\citep{julia}.
-Julia functions can be turned into Gen probabilistic programs by tagging
-each random choice with an explicit address in the code, 
-as part of a \emph{random-choice expression} of the following form:
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-{<address>} ~ <distribution>
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-The left-hand side of the expression (green) specifies the address of the choice, and the right-hand side specifies the probability distribution to be sampled from.
-For example, the following expression samples a non-negative integer from a geometric distribution and the value gets recorded in the trace at the address \texttt{"a"}:
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-{"a"} ~ geometric(0.5)
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-In addition to being recorded in the trace, the sampled value is returned to the running program.
-That is, the random choice expression evaluates to the sampled value.
-For example, the expression below samples the random variable \texttt{"a"} and multiplies it by 2,
-yielding an even non-negative integer:
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-({"a"} ~ geometric(0.5)) * 2
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-A probabilistic program will typically combine multiple random choice expressions. For example,
-the following code samples a random choice at address \texttt{"a"}, assigns it to the Julia variable
-\texttt{a}, and then samples a Bernoulli random variable at address \texttt{"b"} with a parameter
-that depends on \texttt{a}:
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-a = ({"a"} ~ geometric(0.5))
-{"b"} ~ bernoulli(a / (a + 1))
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-This probabilistic program has an unbounded (countably infinite) number of possible traces it could produce.
-One possible trace samples the value 1 at $\texttt{"a"}$ and the Boolean value $\false$ at \texttt{"b"}, and we denote this trace by $\{\mathtt{"a"} \mapsto 1, \mathtt{"b"} \mapsto \false\}$.
-Note that the Julia variable to which the first choice is assigned (\texttt{a}) happens to be the same as the address (\texttt{"a"}).
-This is not required, and often the random choice has no corresponding Julia variable in the program, as in the second random choice with address \texttt{"b"}.
-But to reduce unnecessary typing, the following optional syntactic sugar will simultaneously assign the value to the program variable $\mathtt{a}$ and record it at trace address $\mathtt{"a"}$.\footnote{
-More precisely, the address is the Julia symbol (interned string) \texttt{a}, constructed with Julia syntax \texttt{:a}.}
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-a ~ geometric(0.5)
-\end{lstlisting}}
-\end{tabular}
-\end{center}
+\subsubsection{A Language for Probabilistic Programs with Traces}
 
-What gives probabilistic programs much of their expressive power is that they can make use of familiar control flow constructs, like loops and if statements, and this control flow can both depend on random choices and influence which random choices are made downstream. Consider the following program implementing a geometric
-distribution as the result of iterated Bernoulli draws:
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-i = 1
-while ({i} ~ bernoulli(0.5))
-    i = i + 1
-end
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-Note that each Bernoulli flip uses a different address (the number \texttt{i} increases at each iteration). For the probabilistic program to be valid, we require that every address is used at most once within every possible execution.
+The Gen probabilistic programming language augments the syntax of Julia~\citep{julia}
+with a single new construct, the \texttt{\{a\} $\sim$ d} expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form \texttt{\{a\} $\sim$ d}, (i) evaluating the \textit{address expression} \texttt{a} to obtain an address $a \in \mathcal{A}$; (ii) evaluating the \textit{distribution expression} $d$ to obtain a distribution $d$ over the measurable space $V_a$; (iii) sampling a value $x_a \sim d$ and adding the mapping $\{a \mapsto x_a\}$ to a dictionary called the program trace; and (iv) returning the sampled value $x_a$ to the program, to continue execution. When execution terminates, the program trace has accumulated a mapping for each random choice encountered during the program's execution.
 
-For probabilistic programs that sample from discrete probability distributions like those used above, the meaning of the program is a probability mass function $p$ that assigns a probability to every possible trace.
-For example, for the program with the \texttt{while} loop above, the distribution is:
-\[
-\begin{array}{c|c}
-    x & p(x)\\
-    \hline
-    \{1 \mapsto \false\} & 0.5\\
-    \{1 \mapsto \true, 2 \mapsto \false\} & 0.5^2\\
-    \{1 \mapsto \true, 2 \mapsto \true, 3 \mapsto \false\} & 0.5^3\\
-    .. & ..
-\end{array}
-\]
-We assume that probabilistic programs halt with probability $1$, meaning that the sum of probabilities over all (finite) traces is one.
-Note that traces are always finite, but there may be an infinite number of possible traces, as in the previous example.
+As a concrete example, consider Figure~\ref{fig:mixture}a, which defines a Gen program for a Gaussian mixture model with an unknown number of components. The program \texttt{p} accepts as input an integer \texttt{n}, a number of data points. Each $\texttt{n}$ defines
+a distinct distribution over dictionaries.
 
-In order to construct more complex distributions, we wrap probabilistic programs in functions, called
-`generative functions' in Gen.
-These functions can then be invoked by other functions, including recursively, which allows programs encode probability distributions on more complex and combinatorial objects.
-When invoking such a function, we give an \emph{address namespace} under which every random choice made in that function should be recorded.
-This helps prevent addresses of choices defined in different functions from colliding.
-The syntax for calling a generative function and assigning the address namespace is the same as that of random choice expressions.
-For example:
-\begin{center}
-\begin{tabular}{c}
-\begin{lstlisting}[basicstyle=\small\ttfamily]
-@gen function g()
-  if ({"go"} ~ bernoulli(0.2))
-    n1 = ({"L"} ~ g())
-    n2 = ({"R"} ~ g())
-    return n1 + n2 + 1
-  else
-    return 1
-  end
-end
-\end{lstlisting}
-\end{tabular}
-\end{center}
-Because this is a recursive function, a the trace is populated with a hierarchy of addresses.
-For example, the first random choice in the first recursive call has address \texttt{"L"."go"}.
-When this function is invoked it encodes the following probability distribution on traces (quotation marks omitted from addresses to improve readability):
-\[
-\begin{array}{c|c}
-    x & p(x)\\
-    \hline
-    \left\{\mathtt{go} \mapsto \false\right\} & 0.8\\
-& \\
-    \left\{\begin{array}{c}
-        \mathtt{go} \mapsto \true, \mathtt{L}.\mathtt{go} \mapsto \false, \mathtt{R}.\mathtt{go} \mapsto \false
-    \end{array}\right\} & 0.2 \cdot 0.8^2\\
-& \\
-    \left\{\begin{array}{c}
-        \mathtt{go} \mapsto \true,
-        \mathtt{L}.\mathtt{go} \mapsto \true,
-        \mathtt{R}.\mathtt{go} \mapsto \false,\\
-        \mathtt{L}.\mathtt{L}.\mathtt{go} \mapsto \false,
-        \mathtt{L}.\mathtt{R}.\mathtt{go} \mapsto \false
-    \end{array}\right\}& 0.2^2 \cdot 0.8^3\\
-     .. & ..
-\end{array}
-\]
-
-%\subsubsection{Handling Continuous Distributions}
-%To handle programs that sample continuous probability distributions the notion of a probability mass function on traces needs to be generalized to a probability density function on traces with respect to a certain reference measure.
-%The probabilistic program still defines a probability distribution (i.e. measure) on traces, but via  a density instead of a probability mass function.
-%
-%Let $\mathcal{A}$ denote a countable set of all possible addresses.
-%For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
-%Let $T := \cup_{A \subseteq \mathcal{A} : |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in \times_{a \in A} V_a\}\}$ denote the set of all finite traces (i.e. dictionaries) from addresses in $\mathcal{A}$ to their values.
-%For each finite $A \subseteq \mathcal{A}$, let $\Sigma_A := \otimes_{a \in A} \Sigma_a$ (the product $\sigma$-algebra over $\Sigma_a$ for $a \in A$), and let $\mu_A := \times_{a \in A} \mu_a$ (the product measure).
-%Let $\Sigma \subseteq \mathcal{P}(T)$ be the $\sigma$-algebra formed by sets of the form $B := \cup_{A \subseteq \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in B_A\}$ for some $B_A \in \Sigma_A$ for each $A$.
-%Let $\mu : \Sigma \to [0, \infty)$ be a measure on measurable space $(T, \Sigma)$ defined by $\mu(B) := \sum_{A \subseteq \mathcal{A}, |A| < \infty} \mu_A(B_A)$.
-%
-
-\subsubsection{Automatically Computing Densities}
-% TODO explain the non-standard interpretation idea.
-A probabilistic program $P$ denotes a probability density $p : T \to [0, \infty)$ with respect to a reference measure $\mu$ on dictionaries.
-Defining the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper, and we refer to the reader to~\citet{popltraces} for an example of denotational semantics of a probabilistic programming language similar to that of this paper.
-%But, informally, the density of a trace in our formalism (and existing formalisms) is the product of densities of each individual random choice, as an example below illustrates.
-But this section illustrates what form density functions for probabilistics programs take and how to they can be automatically evaluated by probabilistic programming systems.
-For example, consider the following probabilistic program, which encodes a generative model for data generated from a polynomial with unknown degree and unknown coefficients:
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-@gen function polynomials(x_coords)
-    degree ~ |geometric(0.5)|
-    noise ~ |inv_gamma(1, 1)|
-    coeffs = [ ({("c", i)} ~ |normal(0, 2)|)
-               for i in 0:degree ]
-    for i=1:length(x_coords)
-        x = x_coords[i]
-        mu = coeffs' * x.^(0:length(coeffs)-1)
-        {("y", i)} ~ |normal(mu, noise + 0.1)|
-    end
-end
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-The addresses used by this generative function are:
-\[
-\mathcal{A} := \begin{array}{c}
-\{\mathtt{:}\mathtt{noise}, \mathtt{:}\mathtt{degree}\} \bigcup
-\{(\mathtt{"c"}, i) : i \in \integers_{\ge 0}\} \bigcup\\
-\{(\mathtt{"y"}, i) : i \in \integers_{> 0}\}
-\end{array}
-\]
-(Note that $\mathcal{A}$ could contain additional addresses that the program never samples.)
-The random choice at address $\mathtt{:}\mathtt{degree}$ is discrete with $V_a = \integers_{\ge 0}$ and the other random choices are continuous.
-The address $\mathtt{:}\mathtt{noise}$ has $V_a = \reals_{> 0}$ and $(\mathtt{"c"}, i)$ and $(\mathtt{"y"}, i)$ have $V_a = \reals$, and at all of these continuous addresses, we use the Lebesgue measure for $\mu_a$. % TODO double-check this
-The density with respect to the reference measure $\mu$ is then:
+The first line of the program samples a number of mixture components from a Poisson prior using the address \texttt{:k}. (This line could also be written \texttt{k = \{:k\} $\sim$ poisson\_plus\_one(1)}: the \textit{address} is the symbol \texttt{:k}, and the result of the choice is assigned to a Julia variable called \texttt{k}. Because this is a common pattern, Gen provides the syntactic sugar \texttt{x $\sim$ d} as shorthand for \texttt{x = \{:x\} $\sim$ d}.) The program then samples \texttt{k} means and \texttt{k} variances from Gaussian and inverse Gamma priors, respectively. Each of these 2\texttt{k} random choices has its own address, determined by the address expression preceding it. For example, the mean for the fourth mixture component (if \texttt{k} $\geq 4$) has address \texttt{(:mu, 4)}. The mixture weights are then sampled at the address \texttt{:weights} from a Dirichlet distribution, and $\texttt{n}$ data points are sampled at addresses \texttt{(:x, 1)}, \dots, \texttt{(:x, n)}. The random choice at address $\mathtt{:}\mathtt{k}$ is discrete with $V_{\texttt{:k}} = \integers_{\ge 1}$, and the other random choices are continuous. 
+Overall, the program defines a distribution over traces with the following density over traces $(A, \mathbf{x})$ with respect to $\mu_\mathcal{D}$:
 \begin{align*}
-p(x) =
+p(n)((A, \mathbf{x})) =
 \begin{array}{l}
-p_{\mathrm{geometric}(0.5)}(x[\mathtt{:}\mathtt{degree}]) \cdot\\
-p_{\mathrm{inversegamma}(1, 1)}(x[\mathtt{:}\mathtt{noise}]) \cdot\\
-\prod_{0=1}^{x[\mathtt{:}\mathtt{degree}]} p_{\mathrm{normal}(0,1)}(x[(\mathtt{"c"}, i)])\cdot\\
-\prod_{i=1}^n p_{\mathrm{normal}(m(t, i), 0.1 + x[\mathtt{noise}])}(x[(\mathtt{"y"}, i)])
+p_{\mathrm{poisson}(1)}(x_{\mathtt{:}\mathtt{k}}-1) \cdot\\
+\prod_{i=1}^{x_{\mathtt{:}\mathtt{k}}} p_{\mathrm{normal}(0, 10)}(x_{(\mathtt{:}\mathtt{mu}, i)}) \cdot\\
+\prod_{i=1}^{x_{\mathtt{:}\mathtt{k}}} p_{\mathrm{inversegamma}(1, 10)}(x_{(\mathtt{:}\mathtt{var}, i)}) \cdot\\
+p_{\mathrm{dirichlet}(2.0,\dots,2.0)}(x_{\mathtt{:}\mathtt{weights}})\cdot\\
+\prod_{i=1}^n \sum_{j=1}^{x_{\mathtt{:}\mathtt{k}}} x_{\mathtt{:}\mathtt{weights}}[j] \cdot\\
+\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\; p_{\mathrm{normal}(x_{\mathtt{(:mu, j)}}, x_{(\mathtt{:}\mathtt{var}, j)})}(x_{(\mathtt{:}\mathtt{x}, i)})
 \end{array}
 \end{align*}
-where $m(t, i) := \sum_{j=0}^{x[\mathtt{:}\mathtt{degree}]} \mathtt{xcoords}[i]^j \cdot x[(\mathtt{"c"}, j)]$, and where $p_{\mathrm{geometric}(r)}$, $p_{\mathrm{inversegamma}(\alpha, \beta)}$, and $p_{\mathrm{normal}(\mu, \sigma)}$ are density functions for geometric, inverse gamma, and normal distributions, respectively.
+when $A$ contains exactly the addresses $\mathtt{:}\mathtt{k}, \mathtt{:}\mathtt{weights}, (\mathtt{:}\mathtt{x}, i)$ for $i = 1, \dots, n$, and $(\mathtt{:}\mathtt{mu}, j)$ and $(\mathtt{:}\mathtt{var}, j)$ for $j = 1, \dots, x_{\mathtt{:}\mathtt{k}}$; otherwise, the density is 0.
 
-\paragraph{Traces of Probabilistic Programs.}
-In general, the density $p$ of a probabilistic program with respect to the reference measure $\mu$ on dictionaries, evaluated at a dictionary $x = (A, \mathbf{x})$, can be computed as the product of individual density functions evaluated at each random choice $x[a]$.
-To compute the density of a dictionary $x$, many probabilistic programming systems including Gen employ traces.
-In the context of probabilistic programming, a \emph{trace} $t$ is a record of each of the random choices made during an execution of a probabilistic program, including (i) the addresses $A$ of the choices, (ii) their values $\mathbf{x}$, and (iii) the order in which the addresses was visited (as a list of addresses $t_1, \ldots, t_{|A|} \in A$), and (iv) the probability distributions $p^{(t)}_a$ from which each address $a \in A$ was sampled during the execution.
-That is, each trace $t$ contains a dictionary $x = (A, \mathbf{x})$ such that $p(x) > 0$, as well as the order information $t_1, \ldots, t_{|A|}$ and the distribution information $p^{(t)}_a$ for each $a$.
-If a trace $t$ is available for a dictionary $x$, then the probability density of the dictionary is the product of the densities of each random choice in the trace:
-\footnote{Probabilistic programming implementations use sums of log-densities instead of products for numerical reasons.}
-\begin{equation} \label{eq:density-product}
-p((A, \mathbf{x})) = \prod_{i=1}^{|A|} p^{(t)}_{a}(x[a_{t_i}] | x[a_{t_1}], \ldots, x[a_{t_{i-1}}])
-\end{equation}
-See~\citet{popltraces} for an example of a formal proof that the product of densities is the density of the dictionary $x$ with respect to the reference measure.
-Note that although in general, the probability density $p^{(t)}_a$ of address $a$ is a function of the value of the choice $x[a]$ as well the values of all previously sampled choices, in practice it is only a function of a subset of previous choices due to conditional independence structure in the model.
+% where $m(t, i) := \sum_{j=0}^{x[\mathtt{:}\mathtt{degree}]} \mathtt{xcoords}[i]^j \cdot x[(\mathtt{"c"}, j)]$, and where $p_{\mathrm{geometric}(r)}$, $p_{\mathrm{inversegamma}(\alpha, \beta)}$, and $p_{\mathrm{normal}(\mu, \sigma)}$ are density functions for geometric, inverse gamma, and normal distributions, respectively.
 
-Given a dictionary $x$ for which $p(x) > 0$, it is possible to obtain a trace $t$ containing that dictionary by executing the probabilistic program, but intercepting random choice expressions and modifying their behavior.
-For each intercepted random choice expression during the execution, instead of sampling the value of the random choice at address $a$, we (i) append the address $a$ to the list of addresses ($t_1, t_2, \ldots$), (ii) record the probability distribution $p^{(t)}_a$, (iii) look up the address $a$ in the dictionary (obtaining $v \gets x[a]$), and (iv) resume regular program execution, evaluating the random choice expression to the value $v$ obtained from the dictionary.
-We denote a trace $t$ obtained from a dictionary $x$ and a probabilistic program $P$:
-\begin{equation}
-t \gets \mathrm{trace}(P, x)
-\end{equation}
+
+
+
+% The addresses used by this generative function are:
+% \[
+% \mathcal{A} := \begin{array}{c}
+% \{\mathtt{:}\mathtt{noise}, \mathtt{:}\mathtt{degree}\} \bigcup
+% \{(\mathtt{"c"}, i) : i \in \integers_{\ge 0}\} \bigcup\\
+% \{(\mathtt{"y"}, i) : i \in \integers_{> 0}\}
+% \end{array}
+% \]
+% (Note that $\mathcal{A}$ could contain additional addresses that the program never samples.)
+% The random choice at address $\mathtt{:}\mathtt{degree}$ is discrete with $V_a = \integers_{\ge 0}$ and the other random choices are continuous.
+% The address $\mathtt{:}\mathtt{noise}$ has $V_a = \reals_{> 0}$ and $(\mathtt{"c"}, i)$ and $(\mathtt{"y"}, i)$ have $V_a = \reals$, and at all of these continuous addresses, we use the Lebesgue measure for $\mu_a$. % TODO double-check this
+% The density with respect to the reference measure $\mu$ is then:
+% \begin{align*}
+% p(x) =
+% \begin{array}{l}
+% p_{\mathrm{geometric}(0.5)}(x[\mathtt{:}\mathtt{degree}]) \cdot\\
+% p_{\mathrm{inversegamma}(1, 1)}(x[\mathtt{:}\mathtt{noise}]) \cdot\\
+% \prod_{0=1}^{x[\mathtt{:}\mathtt{degree}]} p_{\mathrm{normal}(0,1)}(x[(\mathtt{"c"}, i)])\cdot\\
+% \prod_{i=1}^n p_{\mathrm{normal}(m(t, i), 0.1 + x[\mathtt{noise}])}(x[(\mathtt{"y"}, i)])
+% \end{array}
+% \end{align*}
+% where $m(t, i) := \sum_{j=0}^{x[\mathtt{:}\mathtt{degree}]} \mathtt{xcoords}[i]^j \cdot x[(\mathtt{"c"}, j)]$, and where $p_{\mathrm{geometric}(r)}$, $p_{\mathrm{inversegamma}(\alpha, \beta)}$, and $p_{\mathrm{normal}(\mu, \sigma)}$ are density functions for geometric, inverse gamma, and normal distributions, respectively.
+
+
+
+
+
+
+
+% In our framework, a probabilistic program defines a probability distribution on finite maps (dictionaries) that map the names of random choices (their \emph{addresses}) to values.
+% % TODO trace terminology
+% Following standard terminology~\citep{?}, we call these dictionaries \emph{traces} because they are often sampled by running a probabilistic program, and `tracing' the execution of the program by recording the value of each random choice encountered.
+% We now make the concept of a trace more concrete using code in a probabilistic programming language.
+
+% The probabilistic programming language used in this paper is 
+% the dynamic modeling language in the Gen probabilistic programming system~\citep{gen-pldi}.
+% The language is embedded in the general-purpose Julia programming language~\citep{julia}.
+% Julia functions can be turned into Gen probabilistic programs by tagging
+% each random choice with an explicit address in the code, 
+% as part of a \emph{random-choice expression} of the following form:
+% \noindent
+% \begin{center}
+% \begin{tabular}{c}
+% {\begin{lstlisting}[basicstyle=\small\ttfamily]
+% {<address>} ~ <distribution>
+% \end{lstlisting}}
+% \end{tabular}
+% \end{center}
+% The left-hand side of the expression (green) specifies the address of the choice, and the right-hand side specifies the probability distribution to be sampled from.
+% For example, the following expression samples a non-negative integer from a geometric distribution and the value gets recorded in the trace at the address \texttt{"a"}:
+% \noindent
+% \begin{center}
+% \begin{tabular}{c}
+% {\begin{lstlisting}[basicstyle=\small\ttfamily]
+% {"a"} ~ geometric(0.5)
+% \end{lstlisting}}
+% \end{tabular}
+% \end{center}
+% In addition to being recorded in the trace, the sampled value is returned to the running program.
+% That is, the random choice expression evaluates to the sampled value.
+% For example, the expression below samples the random variable \texttt{"a"} and multiplies it by 2,
+% yielding an even non-negative integer:
+% \noindent
+% \begin{center}
+% \begin{tabular}{c}
+% {\begin{lstlisting}[basicstyle=\small\ttfamily]
+% ({"a"} ~ geometric(0.5)) * 2
+% \end{lstlisting}}
+% \end{tabular}
+% \end{center}
+% A probabilistic program will typically combine multiple random choice expressions. For example,
+% the following code samples a random choice at address \texttt{"a"}, assigns it to the Julia variable
+% \texttt{a}, and then samples a Bernoulli random variable at address \texttt{"b"} with a parameter
+% that depends on \texttt{a}:
+% \noindent
+% \begin{center}
+% \begin{tabular}{c}
+% {\begin{lstlisting}[basicstyle=\small\ttfamily]
+% a = ({"a"} ~ geometric(0.5))
+% {"b"} ~ bernoulli(a / (a + 1))
+% \end{lstlisting}}
+% \end{tabular}
+% \end{center}
+% This probabilistic program has an unbounded (countably infinite) number of possible traces it could produce.
+% One possible trace samples the value 1 at $\texttt{"a"}$ and the Boolean value $\false$ at \texttt{"b"}, and we denote this trace by $\{\mathtt{"a"} \mapsto 1, \mathtt{"b"} \mapsto \false\}$.
+% Note that the Julia variable to which the first choice is assigned (\texttt{a}) happens to be the same as the address (\texttt{"a"}).
+% This is not required, and often the random choice has no corresponding Julia variable in the program, as in the second random choice with address \texttt{"b"}.
+% But to reduce unnecessary typing, the following optional syntactic sugar will simultaneously assign the value to the program variable $\mathtt{a}$ and record it at trace address $\mathtt{"a"}$.\footnote{
+% More precisely, the address is the Julia symbol (interned string) \texttt{a}, constructed with Julia syntax \texttt{:a}.}
+% \noindent
+% \begin{center}
+% \begin{tabular}{c}
+% {\begin{lstlisting}[basicstyle=\small\ttfamily]
+% a ~ geometric(0.5)
+% \end{lstlisting}}
+% \end{tabular}
+% \end{center}
+
+% What gives probabilistic programs much of their expressive power is that they can make use of familiar control flow constructs, like loops and if statements, and this control flow can both depend on random choices and influence which random choices are made downstream. Consider the following program implementing a geometric
+% distribution as the result of iterated Bernoulli draws:
+% \noindent
+% \begin{center}
+% \begin{tabular}{c}
+% {\begin{lstlisting}[basicstyle=\small\ttfamily]
+% i = 1
+% while ({i} ~ bernoulli(0.5))
+%     i = i + 1
+% end
+% \end{lstlisting}}
+% \end{tabular}
+% \end{center}
+% Note that each Bernoulli flip uses a different address (the number \texttt{i} increases at each iteration). For the probabilistic program to be valid, we require that every address is used at most once within every possible execution.
+
+% For probabilistic programs that sample from discrete probability distributions like those used above, the meaning of the program is a probability mass function $p$ that assigns a probability to every possible trace.
+% For example, for the program with the \texttt{while} loop above, the distribution is:
+% \[
+% \begin{array}{c|c}
+%     x & p(x)\\
+%     \hline
+%     \{1 \mapsto \false\} & 0.5\\
+%     \{1 \mapsto \true, 2 \mapsto \false\} & 0.5^2\\
+%     \{1 \mapsto \true, 2 \mapsto \true, 3 \mapsto \false\} & 0.5^3\\
+%     .. & ..
+% \end{array}
+% \]
+% We assume that probabilistic programs halt with probability $1$, meaning that the sum of probabilities over all (finite) traces is one.
+% Note that traces are always finite, but there may be an infinite number of possible traces, as in the previous example.
+
+% In order to construct more complex distributions, we wrap probabilistic programs in functions, called
+% `generative functions' in Gen.
+% These functions can then be invoked by other functions, including recursively, which allows programs encode probability distributions on more complex and combinatorial objects.
+% When invoking such a function, we give an \emph{address namespace} under which every random choice made in that function should be recorded.
+% This helps prevent addresses of choices defined in different functions from colliding.
+% The syntax for calling a generative function and assigning the address namespace is the same as that of random choice expressions.
+% For example:
+% \begin{center}
+% \begin{tabular}{c}
+% \begin{lstlisting}[basicstyle=\small\ttfamily]
+% @gen function g()
+%   if ({"go"} ~ bernoulli(0.2))
+%     n1 = ({"L"} ~ g())
+%     n2 = ({"R"} ~ g())
+%     return n1 + n2 + 1
+%   else
+%     return 1
+%   end
+% end
+% \end{lstlisting}
+% \end{tabular}
+% \end{center}
+% Because this is a recursive function, a the trace is populated with a hierarchy of addresses.
+% For example, the first random choice in the first recursive call has address \texttt{"L"."go"}.
+% When this function is invoked it encodes the following probability distribution on traces (quotation marks omitted from addresses to improve readability):
+% \[
+% \begin{array}{c|c}
+%     x & p(x)\\
+%     \hline
+%     \left\{\mathtt{go} \mapsto \false\right\} & 0.8\\
+% & \\
+%     \left\{\begin{array}{c}
+%         \mathtt{go} \mapsto \true, \mathtt{L}.\mathtt{go} \mapsto \false, \mathtt{R}.\mathtt{go} \mapsto \false
+%     \end{array}\right\} & 0.2 \cdot 0.8^2\\
+% & \\
+%     \left\{\begin{array}{c}
+%         \mathtt{go} \mapsto \true,
+%         \mathtt{L}.\mathtt{go} \mapsto \true,
+%         \mathtt{R}.\mathtt{go} \mapsto \false,\\
+%         \mathtt{L}.\mathtt{L}.\mathtt{go} \mapsto \false,
+%         \mathtt{L}.\mathtt{R}.\mathtt{go} \mapsto \false
+%     \end{array}\right\}& 0.2^2 \cdot 0.8^3\\
+%      .. & ..
+% \end{array}
+% \]
+
+% %\subsubsection{Handling Continuous Distributions}
+% %To handle programs that sample continuous probability distributions the notion of a probability mass function on traces needs to be generalized to a probability density function on traces with respect to a certain reference measure.
+% %The probabilistic program still defines a probability distribution (i.e. measure) on traces, but via  a density instead of a probability mass function.
+% %
+% %Let $\mathcal{A}$ denote a countable set of all possible addresses.
+% %For each address $a \in \mathcal{A}$ we assign a reference measure space $(V_a, \Sigma_a, \mu_a)$ where $\mu_a$ is $\sigma$-finite ($V$ stands for `values').
+% %Let $T := \cup_{A \subseteq \mathcal{A} : |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in \times_{a \in A} V_a\}\}$ denote the set of all finite traces (i.e. dictionaries) from addresses in $\mathcal{A}$ to their values.
+% %For each finite $A \subseteq \mathcal{A}$, let $\Sigma_A := \otimes_{a \in A} \Sigma_a$ (the product $\sigma$-algebra over $\Sigma_a$ for $a \in A$), and let $\mu_A := \times_{a \in A} \mu_a$ (the product measure).
+% %Let $\Sigma \subseteq \mathcal{P}(T)$ be the $\sigma$-algebra formed by sets of the form $B := \cup_{A \subseteq \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) : \mathbf{x} \in B_A\}$ for some $B_A \in \Sigma_A$ for each $A$.
+% %Let $\mu : \Sigma \to [0, \infty)$ be a measure on measurable space $(T, \Sigma)$ defined by $\mu(B) := \sum_{A \subseteq \mathcal{A}, |A| < \infty} \mu_A(B_A)$.
+% %
+
+% \subsubsection{Automatically Computing Densities}
+% % TODO explain the non-standard interpretation idea.
+% A probabilistic program $P$ denotes a probability density $p : T \to [0, \infty)$ with respect to a reference measure $\mu$ on dictionaries.
+% Defining the denotational semantics of a particular probabilistic programming language (the function mapping programs $P$ to density functions $p$) is out of scope for this paper, and we refer to the reader to~\citet{popltraces} for an example of denotational semantics of a probabilistic programming language similar to that of this paper.
+% %But, informally, the density of a trace in our formalism (and existing formalisms) is the product of densities of each individual random choice, as an example below illustrates.
+% But this section illustrates what form density functions for probabilistics programs take and how to they can be automatically evaluated by probabilistic programming systems.
+% For example, consider the following probabilistic program, which encodes a generative model for data generated from a polynomial with unknown degree and unknown coefficients:
+% \noindent
+% \begin{center}
+% \begin{tabular}{c}
+% {\begin{lstlisting}[basicstyle=\small\ttfamily]
+% @gen function polynomials(x_coords)
+%     degree ~ |geometric(0.5)|
+%     noise ~ |inv_gamma(1, 1)|
+%     coeffs = [ ({("c", i)} ~ |normal(0, 2)|)
+%                for i in 0:degree ]
+%     for i=1:length(x_coords)
+%         x = x_coords[i]
+%         mu = coeffs' * x.^(0:length(coeffs)-1)
+%         {("y", i)} ~ |normal(mu, noise + 0.1)|
+%     end
+% end
+% \end{lstlisting}}
+% \end{tabular}
+% \end{center}
+% The addresses used by this generative function are:
+% \[
+% \mathcal{A} := \begin{array}{c}
+% \{\mathtt{:}\mathtt{noise}, \mathtt{:}\mathtt{degree}\} \bigcup
+% \{(\mathtt{"c"}, i) : i \in \integers_{\ge 0}\} \bigcup\\
+% \{(\mathtt{"y"}, i) : i \in \integers_{> 0}\}
+% \end{array}
+% \]
+% (Note that $\mathcal{A}$ could contain additional addresses that the program never samples.)
+% The random choice at address $\mathtt{:}\mathtt{degree}$ is discrete with $V_a = \integers_{\ge 0}$ and the other random choices are continuous.
+% The address $\mathtt{:}\mathtt{noise}$ has $V_a = \reals_{> 0}$ and $(\mathtt{"c"}, i)$ and $(\mathtt{"y"}, i)$ have $V_a = \reals$, and at all of these continuous addresses, we use the Lebesgue measure for $\mu_a$. % TODO double-check this
+% The density with respect to the reference measure $\mu$ is then:
+% \begin{align*}
+% p(x) =
+% \begin{array}{l}
+% p_{\mathrm{geometric}(0.5)}(x[\mathtt{:}\mathtt{degree}]) \cdot\\
+% p_{\mathrm{inversegamma}(1, 1)}(x[\mathtt{:}\mathtt{noise}]) \cdot\\
+% \prod_{0=1}^{x[\mathtt{:}\mathtt{degree}]} p_{\mathrm{normal}(0,1)}(x[(\mathtt{"c"}, i)])\cdot\\
+% \prod_{i=1}^n p_{\mathrm{normal}(m(t, i), 0.1 + x[\mathtt{noise}])}(x[(\mathtt{"y"}, i)])
+% \end{array}
+% \end{align*}
+% where $m(t, i) := \sum_{j=0}^{x[\mathtt{:}\mathtt{degree}]} \mathtt{xcoords}[i]^j \cdot x[(\mathtt{"c"}, j)]$, and where $p_{\mathrm{geometric}(r)}$, $p_{\mathrm{inversegamma}(\alpha, \beta)}$, and $p_{\mathrm{normal}(\mu, \sigma)}$ are density functions for geometric, inverse gamma, and normal distributions, respectively.
+
+\paragraph{Automating Density Computation.}
+% In general, the density $p$ of a probabilistic program with respect to the reference measure $\mu$ on dictionaries, evaluated at a dictionary $x = (A, \mathbf{x})$, can be computed as the product of individual density functions evaluated at each random choice $x[a]$.
+% To compute the density of a dictionary $x$, many probabilistic programming systems including Gen employ traces.
+% In the context of probabilistic programming, a \emph{trace} $t$ is a record of each of the random choices made during an execution of a probabilistic program, including (i) the addresses $A$ of the choices, (ii) their values $\mathbf{x}$, and (iii) the order in which the addresses was visited (as a list of addresses $t_1, \ldots, t_{|A|} \in A$), and (iv) the probability distributions $p^{(t)}_a$ from which each address $a \in A$ was sampled during the execution.
+% That is, each trace $t$ contains a dictionary $x = (A, \mathbf{x})$ such that $p(x) > 0$, as well as the order information $t_1, \ldots, t_{|A|}$ and the distribution information $p^{(t)}_a$ for each $a$.
+% If a trace $t$ is available for a dictionary $x$, then the probability density of the dictionary is the product of the densities of each random choice in the trace:
+% \footnote{Probabilistic programming implementations use sums of log-densities instead of products for numerical reasons.}
+% \begin{equation} \label{eq:density-product}
+% p((A, \mathbf{x})) = \prod_{i=1}^{|A|} p^{(t)}_{a}(x[a_{t_i}] | x[a_{t_1}], \ldots, x[a_{t_{i-1}}])
+% \end{equation}
+% See~\citet{popltraces} for an example of a formal proof that the product of densities is the density of the dictionary $x$ with respect to the reference measure.
+% Note that although in general, the probability density $p^{(t)}_a$ of address $a$ is a function of the value of the choice $x[a]$ as well the values of all previously sampled choices, in practice it is only a function of a subset of previous choices due to conditional independence structure in the model.
+
+% Given a dictionary $x$ for which $p(x) > 0$, it is possible to obtain a trace $t$ containing that dictionary by executing the probabilistic program, but intercepting random choice expressions and modifying their behavior.
+% For each intercepted random choice expression during the execution, instead of sampling the value of the random choice at address $a$, we (i) append the address $a$ to the list of addresses ($t_1, t_2, \ldots$), (ii) record the probability distribution $p^{(t)}_a$, (iii) look up the address $a$ in the dictionary (obtaining $v \gets x[a]$), and (iv) resume regular program execution, evaluating the random choice expression to the value $v$ obtained from the dictionary.
+% We denote a trace $t$ obtained from a dictionary $x$ and a probabilistic program $P$:
+% \begin{equation}
+% t \gets \mathrm{trace}(P, x)
+% \end{equation}
+The density of a dictionary $(A, \mathbf{x})$ under any probabilistic program's distribution on traces can be computed using Algorithm~\ref{alg:prob-prog} (\textsc{trace-and-score}). The idea is to run the probabilistic program, and whenever a random choice \texttt{\{a\} $\sim$ d} is encountered, to look up the value $x_a$ in the dictionary, compute its density under the primitive distribution $d$, multiply this density into a running total, and return control to the probabilistic program as if the sampling instruction had executed and returned $x_a$. At the end, the running total can be returned as the trace's density. (If at any point an address $a \not\in A$ is encountered, or if not all addresses in $A$ have been visited at the end of execution, the algorithm returns $0$ as the density.) This is a standard technique in probabilistic programming.
+
 
 
 \subsubsection{Conditioning on Observed Data}
