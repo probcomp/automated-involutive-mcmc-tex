@@ -45,6 +45,15 @@
 }
 \AtBeginDocument{\mathcode`"="8000 }
 
+% algorithmic
+\algrenewcomment[1]{\(\triangleright\) #1}
+\algnewcommand{\LineComment}[1]{\State \(\triangleright\) #1}
+%\algblock[Foo]{execute}{end}
+
+\algblockx[exec]{execute}{END}%
+    [1][Unknown]{Execute #1}%
+    [1][Unknown]{\vspace{-4mm}}
+
 % code listings
 \usepackage{listings}
 \lstset{
@@ -241,7 +250,7 @@ We say a key $a \in \mathcal{A}$ \textit{almost always appears} if $\int \mathbf
 \subsection{Involutive MCMC}
 
 Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two general measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$. 
-Involutive MCMC implements a transition kernel that is invariant for a \textit{model distribution} given by $p : X \to [0, \infty)$, a probability density over $X$ with respect to $\mu_P$. Each iteration, the algorithm first samples auxiliary variables $y \in Y$ from an \emph{auxiliary distribution} $q_x$ based on the model's current state $x$: for each $x \in X$ such that $p(x) > 0$, $q_x : Y \to [0, \infty)$ is a probability density with respect to $\mu_Q$.
+Involutive MCMC (Algorithm~\ref{alg:involutive-mcmc}) implements a transition kernel that is invariant for a \textit{model distribution} given by $p : X \to [0, \infty)$, a probability density over $X$ with respect to $\mu_P$. Each iteration, the algorithm first samples auxiliary variables $y \in Y$ from an \emph{auxiliary distribution} $q_x$ based on the model's current state $x$: for each $x \in X$ such that $p(x) > 0$, $q_x : Y \to [0, \infty)$ is a probability density with respect to $\mu_Q$.
 % We call $p$ the \emph{model density} and we call $q_x$ \emph{auxiliary densities}.
 
 The resulting pair $(x, y)$ of the current model state and the newly sampled auxiliary state will be an element of the joint space $Z := \{(x, y) \in X \times Y \mid p(x) q_x(y) > 0 \}$. We can equip $Z$ with the $\sigma$-algebra 
@@ -250,10 +259,7 @@ $\Sigma := \{A \cap Z \mid A \in \Sigma_P \otimes \Sigma_Q\}$ (assuming $Z$ is a
 %Suppose that $Z \in \Sigma_P \otimes \Sigma_Q$ ($Z$ is a $\mu_P \times \mu_Q$-measurable set).
 %Then $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigma$-algebra on $Z$ and $\mu : \Sigma \to [0, \infty)$ with $\mu(A) := (\mu_P \times \mu_Q)(A)$ is a $\sigma$-finite measure on measurable space $(Z, \Sigma)$.
 
-Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$. Involutive MCMC runs $f$ on $(x, y)$ to obtain $(x', y')$, then computes an acceptance probability:
-\begin{equation}
-\alpha(x, y) = \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)
-\end{equation}
+Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$. Involutive MCMC runs $f$ on $(x, y)$ to obtain $(x', y')$, then computes an acceptance probability $\alpha$.
 With probability $\alpha$, the new state $x'$ is returned; otherwise, the previous state $x$ is repeated.
 %Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
 
@@ -268,10 +274,9 @@ The proof is presented in stages in the appendix (see Section~\ref{sec:involutio
 
 \subsection{Involutive MCMC with Dictionaries}
 
-The general measure-theoretic formulation of involutive MCMC above does not specify how to compute a Radon-Nikodym derivative, or the densities.
-We now derive an algorithm for involutive MCMC when the model and auxiliary distributions are defined on spaces of dictionaries.
-
-% TODO should we just segment the addresses into discrete and continuous addresses as part of the dictionary formalism above -- that would allow us to move this up. the added flexibility of full per-address measure is not used anyways..
+The general measure-theoretic formulation of involutive MCMC in Algorithm~\ref{alg:involutive-mcmc} does not specify how to compute the Radon-Nikodym derivative that is required for the acceptance probability.
+When the algorithm is specialized for state spaces consisting of dictionaries, the acceptance probability simplifies and can be computed from standard Jacobian and probability density computations.
+Because dictionaries are flexible objects, the algorithm remains quite general.
 
 Suppose that the model distribution $p$ and auxiliary distributions $q_x$ are all probability distributions on dictionaries.
 Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries with keys $\mathcal{A}$, so that $Z = X \times Y \subseteq \mathcal{D} \times \mathcal{D}$.
@@ -284,20 +289,24 @@ Then, $f : Z \to Z$ given by $f(z) := h_{e(z)}(z)$ is an involution:
 f(f(z)) = h_{e(f(z))}(h_{e(z)}(z)) = h_{g(e(z))}(h_{e(z)}(z)) = z
 \end{equation}
 Let $|J h_e|(z)$ denote the absolute value of the Jacobian (determinant) of $h_e$, evaluated at $z$.
-Algorithm~\ref{alg:involutive-mcmc} defines involutive MCMC in this more structured setting, in which the Radon-Nikodym is replaced with a Jacobian (see Section~\ref{sec:radon-nikodym-special-case} for a derivation).
+Then, the acceptance probability simplifies to:
+\begin{equation}
+\alpha(x, y) = \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot |J h_e|(z)
+\end{equation}
+Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 
 \begin{algorithm}[h]
 \begin{algorithmic}
 \Procedure{involutive-mcmc}{$p$, $q$, $f$, $x$}
-    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary dictionary}
+    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary state}
     \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
     \State $\alpha \gets
-        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot |J h_e|(z)$
+        \displaystyle \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot \left( \frac{d (\mu \circ f^{-1})}{d \mu} (x, y)\right)$
     \State $r \sim \mathrm{Uniform}(0, 1)$
     \State \algorithmicif \, $r \le \alpha$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
 \EndProcedure
 \end{algorithmic}
-\caption{Involutive MCMC for Dictionaries}
+\caption{Involutive MCMC}
 \label{alg:involutive-mcmc}
 \end{algorithm}
 
@@ -310,53 +319,63 @@ Algorithm~\ref{alg:involutive-mcmc} defines involutive MCMC in this more structu
 
 % TODO add the algorithm box involving traces..
 
-\begin{algorithm}[h]
+\begin{algorithm*}[h]
 \begin{algorithmic}
-\Procedure{simulate-and-score}{$P(\beta)$}
+\Procedure{auto-involutive-mcmc}{$\mathcal{P}$, $\mathcal{Q}$, $\mathcal{F}$, $x$}
+    \State $(y, \log w_2) \gets \textproc{trace-and-score}(\mathcal{Q}_x)$ \Comment{Sample $y \sim q_x(\cdot)$ and compute log-density $\log q_x(y)$}
+    \State $(x', y', \log D) \gets \textproc{run-involution}(\mathcal{F}, (x, y))$ \Comment{Compute $(x', y') = f(x, y)$, log Radon-Nikodym deriv. $\log D$}
+    \State $\log w_1 \gets \textproc{score}(\mathcal{P}, x)$ \Comment{Compute log-density $\log p(x)$}
+    \State $\log w_3 \gets \textproc{score}(\mathcal{P}, x')$ \Comment{Compute log-density $\log p(x')$}
+    \State $\log w_4 \gets \textproc{score}(\mathcal{Q}_{x'}, y')$ \Comment{Compute log-density $\log q_{x'}(y')$}
+    \State $\alpha \gets \min\{1, \exp(\log w_3 - \log w_1 + \log w_4 - \log w_2 + \log J)\}$ \Comment{Compute acceptance probability}
+    \State \textbf{with probability} \,$\alpha$ \,\Return $x'$ \algorithmicelse \, \Return $x$ 
+\EndProcedure\\
+
+\begin{minipage}[t]{0.5\linewidth}
+\Procedure{trace-and-score}{$\mathcal{P}$}
    \State $\log w \gets 0$
    \State $x \gets \{\}$
-   \State Execute $P$ on input $\beta$, replacing $"\mathtt{a \sim d}"$ with:
-    \State $\;\;\;\;$ 1. $\; v \sim d$
-    \State $\;\;\;\;$ 2. $\; x[a] \gets v$
-    \State $\;\;\;\;$ 3. $\; \log w \gets \log w + \textproc{logpdf}(d, x[a])$
-    \State $\;\;\;\;$ 4. $\;$ \Return $v$
+   \execute[$\mathcal{P}$], but with $\mathtt{"a \sim d"} \equiv$ (
+        \State \hspace{5mm} 1. set $v \sim d$
+        \State \hspace{5mm} 2. set $x[a] \gets v$
+        \State \hspace{5mm} 3. set $\log w \gets \log w + \textproc{logpdf}(d, v)$
+        \State \hspace{5mm} 4. evaluate to $v$)
+    \END
    \State \Return $(x, \log w)$
 \EndProcedure
-
-\Procedure{score}{$P(\beta), x$}
+\end{minipage}%
+\begin{minipage}[t]{0.5\linewidth}
+\Procedure{score}{$\mathcal{P}$, $x$}
    \State $\log w \gets 0$
-   \State Execute $Q$ on input $x$, replacing $"\mathtt{a \sim d}"$ with:
-    \State $\;\;\;\;$ 1. $\; v \sim x[a]$
-    \State $\;\;\;\;$ 3. $\; \log w \gets \log w + \textproc{logpdf}(d, x[a])$
-    \State $\;\;\;\;$ 4. $\;$ \Return $v$
+   \execute[$\mathcal{P}$], but with $\mathtt{"a \sim d"} \equiv$ (
+        \State \hspace{5mm} 1. set $v \gets x[a]$
+        \State \hspace{5mm} 2. set $\log w \gets \log w + \textproc{logpdf}(d, v)$
+        \State \hspace{5mm} 3. evaluate to $v$)
+    \END
    \State \Return $\log w$
 \EndProcedure
+\end{minipage}\\
 
-\Procedure{run-involution}{$F$, $(x, y)$}
-    TODO
+\Procedure{run-involution}{$\mathcal{F}$, $(x, y)$}
+% TODO would be much simpler to describe if we didn't have to separate out x and y..
+    \LineComment{Run the involution, and keep track of continuous addresses}
+    \State $x' \gets \{\}$ \Comment{Initialize empty output dictionary}
+    \execute[$\mathcal{F}$], but with
+        \State $\mathtt{"write\_cont}(a, v)\mathtt{"} \equiv$ (1. set $x'[a] \gets v$ and 2. set $W \gets W \cup \{a\}$)
+        \State $\mathtt{"read\_cont}(a)\mathtt{"} \equiv$ (1. set $R \gets R \cup \{a\}$ and 2. evaluate to $x[a]$)
+        \State $\mathtt{"copy}(a_1, a_2)\mathtt{"} \equiv$ (1. set $x'[a_2] \gets x[a_1]$ and 2. set $C \gets C \cup \{a_2\}$)
+    \END
+    \LineComment{Use automatic differentiation to compute Jacobian, skipping copied addresses}
+    \For{$i$ in $1, \ldots, |W \setminus C|$}
+        \State $J[i,:] \gets \nabla_{x_{R \setminus C}} \left( h_{e(x, y)}[(W \setminus C)_i] \right)$ \Comment{Gradient of $x'[(W \setminus C)_i]$ w.r.t. non-copied continuous inputs}
+    \EndFor
+    \State \Return $(x', \log |\det(J)|)$
 \EndProcedure
-\end{algorithmic}
-\caption{Probabilistic and Differentiable Program Operations}
-\label{alg:prob-prog}
-\end{algorithm}
 
-\begin{algorithm}[h]
-\begin{algorithmic}
-\Procedure{auto-involutive-mcmc}{$P$, $Q$, $F$, $x$}
-    \State $\log w_1 \gets \textproc{score}(P(), x)$
-    \State $(y, \log w_2) \gets \textproc{simulate-and-score}(Q(x))$
-    \State $(x', y', \log |J|) \gets \textproc{run-involution}(F, (x, y))$
-    \State $\log w_2 \gets \textproc{score}(Q(x), y)$
-    \State $\log w_3 \gets \textproc{score}(P(), x')$
-    \State $\log w_4 \gets \textproc{score}(Q(x'), y')$
-    \State $\log \alpha \gets \log w_3 - \log w_1 + \log w_4 - \log w_2 + \log |J|$
-    \State $r \sim \mathrm{Uniform}(0, 1)$
-    \State \algorithmicif \, $r \le \exp(\alpha)$ \algorithmicthen \, \Return $x'$ \algorithmicelse \, \Return $x$ 
-\EndProcedure
 \end{algorithmic}
 \caption{Automated Involutive MCMC}
-\label{alg:involutive-mcmc}
-\end{algorithm}
+\label{alg:auto-involutive-mcmc}
+\end{algorithm*}
 
 Involutive MCMC is a general framework that can be used to develop diverse MCMC algorithms
 for models over arbitrary state spaces. We wish to \textit{automate} the implementation
