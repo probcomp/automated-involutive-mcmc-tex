@@ -114,26 +114,11 @@
 \aistatsaddress{ Massachusetts Institute of Technology } ]
 
 \begin{abstract}
-Involutive MCMC is a unifying framework for MCMC that encompasses many standard
-and recent MCMC algorithms from the literature, from reversible jump MCMC to
-Hamiltonian Monte Carlo to kernels based on deep neural networks. The key idea
-in involutive MCMC is that a combination of (i) an auxiliary probability
-distribution and (ii) an involution on the extended state space that includes
-the model latent variables and the auxiliary variables results in MCMC kernels
-that satisfy detailed balance with respect to the target distribution. The
-involutive MCMC framework is appealing for its simplicity and generality, and
-promises to be a useful conceptual and mathematical tool for exploring the
-design space of MCMC kernels. However, like other Monte Carlo samplers,
-implementing involutive samplers is time consuming and error prone. This paper
-describes a technique for automatically generating the implementation of
-involutive MCMC samplers from two probabilistic programs that define the target
-distribution and the auxiliary probability distribution respectively, and a
-differentiable program that defines the involution. The technique also detects
-common conceptual and programming errors that arise when designing and
-specifying involutive MCMC algorithms. This paper describes the support for
-involutive MCMC in the Gen probabilistic system that uses this technique, and
-shows involutive samplers specified using Gen's high-level probabilistic and
-differentiable programming languages.
+Involutive MCMC is a unifying mathematical construction for MCMC kernels that generalizes many classic and state-of-the-art MCMC algorithms, from reversible jump MCMC to kernels based on deep neural networks.
+But like MCMC samplers more generally, implementing involutive MCMC kernels is often tedious and error-prone, especially when sampling on complex state spaces.
+This paper describes a technique for automating the implementation of involutive MCMC kernels given (i) a pair of probabilistic programs defining the target distribution and an auxiliary distribution respectively and (ii) a differentiable program that transforms the execution traces of these probabilistic programs.
+The technique, which is implemented as part of the Gen probabilistic programming system, also automatically detects user errors in the specification of involutive MCMC kernels and exploits sparsity in the kernels for improved efficiency.
+The paper shows example Gen code for a split-merge reversible jump move in an infinite Gaussian mixture model and a state-dependent mixture of proposals on a combinatorial space of covariance functions for a Gaussian process.
 \end{abstract}
 
 \section{INTRODUCTION}
