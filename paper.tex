@@ -146,25 +146,24 @@ including reversible jump MCMC~\citep{green1995reversible}, the dominant mathema
 Involutive MCMC constructs an MCMC kernel from three components: (i) the unnormalized target density, (ii) a sampler and density for an auxiliary probability distribution (iii) an involution\footnote{a bijection that is its own inverse ($f$ where $f(f(z)) = z$)} on an extended state space.
 While this construction is mathematically clarifying, correctly implementing involutive MCMC kernels on complex state spaces remains challenging due to tedious density and Jacobian computations and the need for careful reasoning about the state space.
 
-This paper formulates involutive MCMC on general state spaces and shows how to automatically generate the implementation of an involutive MCMC kernel from three declarative programs that define the target probability distribution, auxiliary probability distribution, and the involution, respectively.
+This paper formulates involutive MCMC on general state spaces and shows how to automate the implementation of an involutive MCMC kernel from three declarative programs that define the target probability distribution, auxiliary probability distribution, and the involution, respectively.
 The probability distributions are defined as probabilistic programs, and the involution is defined as a differentiable program that transforms the execution traces of the probabilistic programs.
 We use probabilistic programming techniques and automatic differentiation to automatically compute the acceptance probability.
 We also show how to automatically detect mathematical errors in the specification of an involutive MCMC kernel, and how to improve the efficiency by automatically exploiting the sparsity structure in the involution.
-We implemented the approach within the Gen probabilistic programming system\footnote{\url{https://www.gen.dev}}~\citep{cusumano2019pldi}.
+We implemented the approach within the Gen probabilistic programming system\footnote{\url{https://www.gen.dev}}~\citep{cusumano2019gen}.
 The paper shows examples of involutive MCMC kernels implemented in Gen for (1) a split-merge reversible jump move in an infinite mixture model, and a (2) state-dependent mixture of Metropolis-Hastings proposals on an infinite combinatorial space of covariance functions for a Gaussian process.
-We also provide a lightweight PyTorch implementation of the basic approach at:
-\begin{center}
-\vspace{-2mm}
-\url{https://github.com/probcomp/autoimcmc}.
-\end{center}
-
+We also provide a lightweight PyTorch implementation of the basic approach at
+{\small\url{https://github.com/probcomp/autoimcmc}}.
 
 The contributions of this paper include:
 \begin{enumerate}
-\item A 
+\item A measure-theoretic formulation of involutive MCMC on general state spaces.
+\item A mathematical formulation of state spaces consisting of arbitrary key-value stores (i.e. dictionaries) that formalizes the space of execution traces of Gen probabilistic programs, and a formulation of involutive MCMC on these spaces.
+\item A differentiable programming language for defining bijections between spaces of traces of probabilistic programs.
+\item An algorithm that automates the implementation of an involutive MCMC kernel given two probabilistic programs and a differentiable program encoding the involution, using automatic differentiation and tracing of probabilistic programs.
+\item An extension to the algorithm that exploits sparsity in the involution to reduce the computational complexity of an involutive MCMC kernel from $O(N^2)$ to $O(1)$ in common cases.
+\item An algorithm that dynamically detects errors in the specification of an involutive MCMC kernel.
 \end{enumerate}
-
-TODO: list contributiosn
 
 \section{BACKGROUND AND RELATED WORK}
 
