@@ -204,12 +204,12 @@ The mixture kernel is composed from three Gen programs:
 \section{INVOLUTIVE MCMC ON GENERAL STATE SPACES} % on traces ??
 
 Involutive MCMC is a general framework for constructing MCMC kernels that are stationary
-for a target probability measure $p$. Informally, the algorithm works as follows: starting at some state $x$, we first sample
+for a target probability distribution $p$. Informally, the algorithm works as follows: starting at some state $x$, we first sample
 an auxiliary variable $y \sim q_x$ from a state-dependent auxiliary distribution. We then apply an \textit{involution} $f$ to the pair $(x, y)$ to obtain $(x', y')$. 
 Finally, we computes an acceptance probability $\alpha$ and either accept $x'$ as the new state, or reject it and repeat the previous state $x$.
 Different choices of $q$ and $f$ recover many algorithms from the literature~\citep{imcmc}.
 
-In this section, we derive the involutive MCMC algorithm for models $p$ and auxiliary kernels
+In this section, we present involutive MCMC for models $p$ and auxiliary kernels
 $q$ defined over general state spaces.
 By emphasizing general state spaces, we intend to clarify
 a potential point of confusion regarding the involutive MCMC algorithm: as presented by
@@ -223,82 +223,17 @@ programming: the rest of this paper uses it to develop a technique for deriving 
 of involutive MCMC algorithms automatically, 
 given only declarative specifications of $p$, $q$, and $f$.
 
-\subsection{Distributions on Dictionaries}
-
-Instead of vectors of real numbers, we consider in this section distributions over 
-\textit{finite dictionaries} that map (possibly random) keys to (possibly random) values. 
-Dictionaries include vectors as a special case (a vector $\mathbf{x} \in \mathbb{R}^n$ can
-be represented as a dictionary mapping the keys $1, \dots, n$ to the values $x_1, \dots, x_n$),
-but are in general more flexible: different keys can hold values of different types, and we
-can also consider distributions in which the set of keys is itself random, useful for model
-selection problems and structure uncertainty more generally.
-
-\textbf{The space of finite dictionaries.}
-We fix a countably infinite set $\mathcal{A}$ of possible keys, such that each key $a$ is either \emph{discrete} ($a \in \mathcal{I}$) or \emph{continuous} ($a \in \mathcal{J}$), where $\mathcal{A} = \mathcal{I} \cup \mathcal{J}$.\footnote{
-It is straightforward to assign a general measure space to each address, but this is not necessary for our purposes.}
-Let $V_a$ denote the set of possible values for key $a$, where $V_a$ is a countable set for each discrete key, and where $V_a = \mathbb{R}^{d_a}$ for each continuous key for some $d_a$.
-Given a set of keys $A$, let $V_A = \times_{a \in A} V_a$ denote the set of \textit{assignments} of values to each key.
-Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in V_A\}$. That is, a dictionary specifies 
-a finite set of keys $A \subset \mathcal{A}$ at which it has values, and an assignment $\mathbf{x}$ of values $x_a$ for each.
-
-\textbf{A measure space of finite dictionaries.}
-We associate a measure $\mu_a$ on $V_a$ for each key---the counting measure for each discrete key and the Lebesgue-measure on $\mathbf{R}^{d_a}$ for each continuous key.
-For each finite set of keys $A$, we make $V_A$ a measure space using the standard product $\sigma$-algebra $\Sigma_A = \otimes_{a \in A} \Sigma_a$ and the product measure $\mu_A = \times_{a \in A} \mu_a$.
-We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in B_A\} \mid B_A \in \Sigma_A \, \text{for each finite } A \subset \mathcal{A}\}$ to obtain a measurable space
-of dictionaries.
-A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_A$: we set $\mu(B) := \sum_{A \in \mathcal{A}, |A| < \infty} \mu_A(\{\mathbf{x} \mid (A, \mathbf{x}) \in B\})$.
-
-\textbf{Notation for dictionaries.} Given a dictionary $d = (A, \mathbf{x})$, we write $A_d$ for $A$ and $d[a]$ for the value $x_a$ associated with a key $a \in A$.
-We also denote specific dictionaries using notation $\{k_1 \mapsto v_1, k_2 \mapsto v_2, \ldots\}$.
-For example, the dictionary $(A, \mathbf{x})$ with $A = \{1, \mathtt{"foo"}\}$ and $x_1 = 0.123$ and $x_{\mathtt{"foo"}} = 5$ is denoted 
-$\{1 \mapsto 0.123, \mathtt{"foo"} \mapsto 5\}$.
-
-\textbf{Probability distributions on finite dictionaries.} 
-When all keys are discrete, a probability distribution on dictionaries is defined by a $p$ is a probability mass function $p : \mathcal{D} \to [0, 1]$ that assigns a probability $p(m)$ to each dictionary $m \in \mathcal{P}$ such that $\sum_{x \in \mathcal{D}} p(m) = 1$.
-More generally a probability distribution in dictionaries is defined by a probability density $p : \mathcal{D} \rightarrow [0, \infty)$ such that $\int p(m) \mu_\mathcal{D}(\text{d}m) = 1$. We now give several examples
-to build intuition.
-
-% TODO keys vs addresses
-
-% TODO how to notate dictionaries -- 'm' or 'd' or 'x' or 't'?
-
-\textit{Gaussian mixture model with unknown number of components.} Consider a generative model of univariate data points $y_1, \dots, y_n$ from a Gaussian mixture with an unknown number of components $k$, each with unknown mean $m_i$ and variance $s_i$. If we place a Gaussian prior on $m_i$, an inverse Gamma prior on $s_i$, and a Poisson prior on $k$, the resulting density is
-%
-\begin{align*}
-p(d) =
-\begin{array}{l}
-p_{\mathrm{poisson}(3)}(d[\mathtt{k}]) \cdot\\
-\prod_{i=1}^{d[\mathtt{k}]} p_{\mathrm{normal}(0, 1)}(d[\mathtt{m}_i]) \cdot\\
-\prod_{i=1}^{d[\mathtt{k}]} p_{\mathrm{inversegamma}(1, 10)}(d[\mathtt{s}_i]) \cdot\\
-\prod_{i=1}^n  \frac{1}{d[\mathtt{k}]} \sum_{j=1}^{d[\mathtt{k}]} \cdot p_{\mathrm{normal}(d[\mathtt{m}_j], d[\mathtt{s}_i])}(d[\mathtt{y}_i])
-\end{array}
-\end{align*}
-%
-when $A_d$ is of the form $\{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq d[\texttt{k}]\} \cup \{\texttt{s}_i \mid 1 \leq i \leq d[\texttt{k}]\}$, and 0 otherwise. In this case, we have $V_\texttt{k} = \mathbb{N}$ with the counting measure for $\mu_\texttt{k}$, and for all other addresses $a \in \mathcal{A}$, $V_a = \mathbb{R}$ with the Lebesgue measure for $\mu_a$.
-
-\textit{Polynomial regression.} 
-
-TODO
-
-\textbf{Conditional distributions via disintegration.} Consider a probability density $p$ on the space $\mathcal{D}$ of dictionaries. 
-%For a set of keys $A \subset \mathcal{A}$, let $p(A) := \int 1[A_m = A] p(m) \mu_\mathcal{D}(\text{d}m)$, the probability under $p$ of a dictionary with exactly the key set $A$. 
-We say a key $a \in \mathcal{A}$ \textit{almost always appears} if $\int \mathbf{1}[a \in A_m] p(m) \mu_\mathcal{D}(\text{d}m) = 1$. Suppose $B$ is a set of keys that almost always appear for $p$, and that $b = (B, \mathbf{b})$ is a dictionary with keys $B$. Furthermore, let $(A_m, \mathbf{m}) \oplus (A_n, \mathbf{n}) := (A_m \cup A_n, \mathbf{m} \times \mathbf{n})$ be the \textit{merge} of two dictionaries $m$ and $n$ defined on disjoint key sets $A_m$ and $A_n$. Then we can define the conditional density $p(d \mid b) := \mathbf{1}[A_d \cap B = \emptyset] \frac{p(d \oplus b)}{\int_{\{m \mid A_m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)}$ when the denominator is finite. If the reference measure $\mu_a$ associated with each key $a \in B$ is discrete (e.g., the counting measure), then this definition corresponds to the ordinary notion of conditioning on an event (namely, the event that a sample from $p$ agrees with the dictionary $b$ on all addresses in $B$). When this is not the case, it corresponds to a more general measure-theoretic notion called disintegration~\citep{disintegration1997}. 
-
-\subsection{Involutive MCMC}
+\subsection{General Involutive MCMC}
 
 Let $(X, \Sigma_P, \mu_P)$ and $(Y, \Sigma_Q, \mu_Q)$ denote two general measure spaces with $\sigma$-finite $\mu_P$ and $\mu_Q$. 
 Involutive MCMC (Algorithm~\ref{alg:involutive-mcmc}) implements a transition kernel that is invariant for a \textit{model distribution} given by $p : X \to [0, \infty)$, a probability density over $X$ with respect to $\mu_P$. Each iteration, the algorithm first samples auxiliary variables $y \in Y$ from an \emph{auxiliary distribution} $q_x$ based on the model's current state $x$: for each $x \in X$ such that $p(x) > 0$, $q_x : Y \to [0, \infty)$ is a probability density with respect to $\mu_Q$.
-% We call $p$ the \emph{model density} and we call $q_x$ \emph{auxiliary densities}.
 
 The resulting pair $(x, y)$ of the current model state and the newly sampled auxiliary state will be an element of the joint space $Z := \{(x, y) \in X \times Y \mid p(x) q_x(y) > 0 \}$. We can equip $Z$ with the $\sigma$-algebra 
 $\Sigma := \{A \cap Z \mid A \in \Sigma_P \otimes \Sigma_Q\}$ (assuming $Z$ is a $\mu_P \times \mu_Q$-measurable set), and a reference measure $\mu(A) := (\mu_P \times \mu_Q)(A)$. 
-%Let $\pi(x, y) := p(x) q_x(y)$ and $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0 \}$.
-%Suppose that $Z \in \Sigma_P \otimes \Sigma_Q$ ($Z$ is a $\mu_P \times \mu_Q$-measurable set).
-%Then $\Sigma := \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq Z\}$ is a $\sigma$-algebra on $Z$ and $\mu : \Sigma \to [0, \infty)$ with $\mu(A) := (\mu_P \times \mu_Q)(A)$ is a $\sigma$-finite measure on measurable space $(Z, \Sigma)$.
 
 Let $f : Z \to Z$ denote an involution ($f^{-1} = f$) such that the pushforward of $\mu$ under $f$, denoted $\mu \circ f^{-1}$, is absolutely continuous with respect to $\mu$, with Radon-Nikodym derivative $d (\mu \circ f^{-1}) / d\mu : Z \to [0, \infty)$. Involutive MCMC runs $f$ on $(x, y)$ to obtain $(x', y')$, then computes an acceptance probability $\alpha$.
 With probability $\alpha$, the new state $x'$ is returned; otherwise, the previous state $x$ is repeated.
-%Let $y \sim q_x(\cdot)$ denote a random sample from the measure defined by $A \mapsto \int_A q_x(y) \mu_Q(dy)$ for $A \in \Sigma_Q$.
+
 \begin{algorithm}[h]
 \begin{algorithmic}
 \Procedure{involutive-mcmc}{$p$, $q$, $f$, $x$}
@@ -322,14 +257,97 @@ That is, $\int_X k_x(B) p(x) d\mu_X(dx) = \int_B p(x) d\mu_X(dx)$ for all $B \in
 The proof is presented in stages in the appendix (see Section~\ref{sec:involution-detailed-balance}, Section~\ref{sec:involution-is-stationary}, and Section~\ref{sec:involutive-mcmc-is-stationary}).
 \end{proof}
 
+\subsection{Probability Distributions on Dictionaries}
+
+While maximally general, the measure-theoretic formulation of involutive MCMC in Algorithm~\ref{alg:involutive-mcmc} is not amenable to an automated implementation, because it does not indicate how to compute the Radon-Nikodym derivative that is required for the acceptance probability, and it is unclear how to specify the probability measures involved.
+%When the algorithm is specialized for state spaces consisting of dictionaries, the acceptance probability simplifies and can be computed from standard Jacobian and probability density computations.
+%Because dictionaries are flexible objects, the algorithm remains quite general.
+
+While restricting the state space to vectors of real numbers would address these issues, we seek a 
+representation that remains flexible enough to represent complex hybrid state spaces with numeric, symbolic, and structure uncertainty.
+Therefore, we use state spaces consisting of 
+\textit{finite dictionaries} that map (possibly random) keys to (possibly random) values. 
+Dictionaries include vectors as a special case (a vector $\mathbf{x} \in \mathbb{R}^n$ can
+be represented as a dictionary mapping the keys $1, \dots, n$ to the values $x_1, \dots, x_n$),
+but are more flexible: different keys can hold values of different types (e.g. integers, strings), and we
+can also consider distributions in which the set of keys is itself random, which is useful for model
+selection problems and structure uncertainty more generally.
+
+This section describes probability distributions on dictionaries, and gives a constructive definition of the involutive MCMC acceptance probability in this setting in terms of a Jacobian.
+Section~\ref{sec:automating} will then show how probability distributions on dictionaries can be specified with probabilistic programs, and how probabilistic programming techniques can automatically compute probability densities spaces of dictionaries.
+
+\textbf{The space of finite dictionaries.}
+We fix a countably infinite set $\mathcal{A}$ of possible keys, such that each key $a$ is either called \emph{discrete} ($a \in \mathcal{I}$) or \emph{continuous} ($a \in \mathcal{J}$), where $\mathcal{A} = \mathcal{I} \cup \mathcal{J}$.\footnote{
+It is possible to assign a general measure space to each address, but this is not necessary for our purposes.}
+Let $V_a$ denote the set of possible values for key $a$, where $V_a$ is a countable set for each discrete key, and where $V_a = \mathbb{R}^{d_a}$ for each continuous key for some $d_a$.
+Given a set of keys $A$, let $V_A = \times_{a \in A} V_a$ denote the set of \textit{assignments} of values to each key.
+Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in V_A\}$. That is, a dictionary specifies 
+a finite set of keys $A \subset \mathcal{A}$ at which it has values, and an assignment $\mathbf{x}$ of values $x_a$ for each.
+
+\textbf{Relationship to representation of~\citet{green1995reversible}.}
+\citet{green1995reversible} uses a state space that is the countable union of `models', where for each model there is a Eucliean space of parameters.
+Dictionaries possesses substantially more structure:
+Parameters have keys, so it is possible to express that parameters are shared across different structures.
+Instead of a monolithic `model', dictionaries use a more elaborate discrete state that includes the set of keys and the assignment to the discrete keys.
+The additional structure of dictionaries enables the automation technique Section~\ref{sec:automating}.
+
+\textbf{A measure space of finite dictionaries.}
+We associate a measure $\mu_a$ on $V_a$ for each key---the counting measure for each discrete key and the Lebesgue-measure on $\mathbb{R}^{d_a}$ for each continuous key.
+For each finite set of keys $A$, we make $V_A$ a measure space using the standard product $\sigma$-algebra $\Sigma_A = \otimes_{a \in A} \Sigma_a$ and the product measure $\mu_A = \times_{a \in A} \mu_a$.
+We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in B_A\} \mid B_A \in \Sigma_A \, \text{for each finite } A \subset \mathcal{A}\}$ to obtain a measurable space
+of dictionaries.
+A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_A$: we set $\mu(B) := \sum_{A \in \mathcal{A}, |A| < \infty} \mu_A(\{\mathbf{x} \mid (A, \mathbf{x}) \in B\})$.
+
+\textbf{Notation for dictionaries.} Given a dictionary $d = (A, \mathbf{x})$, we write $A_d$ for $A$ and $d[a]$ for the value $x_a$ associated with a key $a \in A$.
+We also denote specific dictionaries using notation $\{k_1 \mapsto v_1, k_2 \mapsto v_2, \ldots\}$.
+For example, the dictionary $(A, \mathbf{x})$ with $A = \{1, \mathtt{"foo"}\}$ and $x_1 = 0.123$ and $x_{\mathtt{"foo"}} = 5$ is denoted 
+$\{1 \mapsto 0.123, \mathtt{"foo"} \mapsto 5\}$.
+
+\textbf{Probability distributions on finite dictionaries.} 
+When all keys are discrete, a probability distribution on dictionaries is defined by a $p$ is a probability mass function $p : \mathcal{D} \to [0, 1]$ that assigns a probability $p(m)$ to each dictionary $m \in \mathcal{P}$ such that $\sum_{x \in \mathcal{D}} p(m) = 1$.
+More generally a probability distribution on dictionaries is defined by a probability density $p : \mathcal{D} \rightarrow [0, \infty)$ such that $\int p(m) \mu_\mathcal{D}(\text{d}m) = 1$. 
+The probability is distributed the finite sets of keys $A \subseteq \mathcal{A}$ where $|A| < \infty$:
+\begin{equation}
+1 = \int p(m) \mu_\mathcal{D}(\text{d}m) = \sum_{\substack{A \subseteq \mathcal{A}\\|A| < \infty}} \int p(m) \mu_{A}(dm)
+\end{equation}
+where the probability for each key set $A$ is:
+\begin{equation}\label{eq:integral}
+\int p(m) \mu_{A}(dm) = \sum_{\mathbf{x}_1} \int_{\mathbb{R}^{d}} p((A, (\mathbf{x}_1, \mathbf{x}_2))) d\mathbf{x}_2
+\end{equation}
+where $d: = \sum_{a \in A \cap \mathcal{J}} d_{a}$ and where $\mathbf{x}_1$ is an assignment to the discrete choices in $A$ and $\mathbf{x}_2$ is an assignment to the continuous choices.
+
+We now give an example to build intuition.
+Consider a generative model of univariate data points $y_1, \dots, y_n$ from a Gaussian mixture with an unknown number of components $k$, each with unknown mean $m_i$ and variance $s_i$. If we place a Gaussian prior on $m_i$, an inverse Gamma prior on $s_i$, and a Poisson prior on $k$, the resulting density on dictionaries $d$ is:
+%
+\begin{align*}
+p(d) =
+\begin{array}{l}
+p_{\mathrm{poisson}(3)}(d[\mathtt{k}]) \cdot\\
+\prod_{i=1}^{d[\mathtt{k}]} p_{\mathrm{normal}(0, 1)}(d[\mathtt{m}_i]) \cdot\\
+\prod_{i=1}^{d[\mathtt{k}]} p_{\mathrm{inversegamma}(1, 10)}(d[\mathtt{s}_i]) \cdot\\
+\prod_{i=1}^n  \frac{1}{d[\mathtt{k}]} \sum_{j=1}^{d[\mathtt{k}]} \cdot p_{\mathrm{normal}(d[\mathtt{m}_j], d[\mathtt{s}_i])}(d[\mathtt{y}_i])
+\end{array}
+\end{align*}
+%
+when $A_d = \{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq d[\texttt{k}]\} \cup \{\texttt{s}_i \mid 1 \leq i \leq d[\texttt{k}]\}$, and 0 otherwise. In this case, we have $V_\texttt{k} = \mathbb{N}$ with the counting measure for $\mu_\texttt{k}$, and for all other addresses $a \in \mathcal{A}$, $V_a = \mathbb{R}$ with the Lebesgue measure for $\mu_a$.
+For each $k \in \{0, 1, \ldots\}$, the probability for key set
+$\{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$
+is $p_{\mathrm{poisson}(s)}(k)$ (via Equation~(\ref{eq:integral})).
+
+\textbf{Conditional distributions via disintegration.} Consider a probability density $p$ on the space $\mathcal{D}$ of dictionaries. 
+%For a set of keys $A \subset \mathcal{A}$, let $p(A) := \int 1[A_m = A] p(m) \mu_\mathcal{D}(\text{d}m)$, the probability under $p$ of a dictionary with exactly the key set $A$. 
+We say a key $a \in \mathcal{A}$ \textit{almost always appears} if $\int \mathbf{1}[a \in A_m] p(m) \mu_\mathcal{D}(\text{d}m) = 1$. Suppose $B$ is a set of keys that almost always appear for $p$, and that $b = (B, \mathbf{b})$ is a dictionary with keys $B$. Furthermore, let $(A_m, \mathbf{m}) \oplus (A_n, \mathbf{n}) := (A_m \cup A_n, \mathbf{m} \times \mathbf{n})$ be the \textit{merge} of two dictionaries $m$ and $n$ defined on disjoint key sets $A_m$ and $A_n$. Then we can define the conditional density $p(d \mid b) := \mathbf{1}[A_d \cap B = \emptyset] \frac{p(d \oplus b)}{\int_{\{m \mid A_m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)}$ when the denominator is finite. If the reference measure $\mu_a$ associated with each key $a \in B$ is discrete (e.g., the counting measure), then this definition corresponds to the ordinary notion of conditioning on an event (namely, the event that a sample from $p$ agrees with the dictionary $b$ on all addresses in $B$). When this is not the case, it corresponds to a more general measure-theoretic notion called disintegration~\citep{chang1997conditioning}. 
+
+Consider the infinite univariate mixture model, and the conditional density given observed data $(B, \mathbf{b}) := \{\mathtt{y}_1 \mapsto y_1, \ldots, \mathtt{y}_{\mathtt{n}} \mapsto y_{\mathtt{n}}\}$.
+The conditional density $p(d | b)$ is nonzero only if $A_d = \{\texttt{k}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$ for some $k$ ($d$ does not contain y-values), and the denominator in the definition of $p(d | b)$ simplifies to the familiar sum of marginal likelihoods over all $k$, where each marginal likelihood is an integral over $\mathbb{R}^{2k}$.
 
 \subsection{Involutive MCMC with Dictionaries}
 
-The general measure-theoretic formulation of involutive MCMC in Algorithm~\ref{alg:involutive-mcmc} does not specify how to compute the Radon-Nikodym derivative that is required for the acceptance probability.
-When the algorithm is specialized for state spaces consisting of dictionaries, the acceptance probability simplifies and can be computed from standard Jacobian and probability density computations.
-Because dictionaries are flexible objects, the algorithm remains quite general.
+%The general measure-theoretic formulation of involutive MCMC in Algorithm~\ref{alg:involutive-mcmc} does not specify how to compute the Radon-Nikodym derivative that is required for the acceptance probability.
+%When the algorithm is specialized for state spaces consisting of dictionaries, the acceptance probability simplifies and can be computed from standard Jacobian and probability density computations.
+%Because dictionaries are flexible objects, the algorithm remains quite general.
 
-Suppose that the model distribution $p$ and auxiliary distributions $q_x$ are all probability distributions on dictionaries.
+Suppose that the model distribution and auxiliary distributions are probability distributions on dictionaries, with densities $p$ and $q_x$.
 Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries with keys $\mathcal{A}$, so that $Z = X \times Y \subseteq \mathcal{D} \times \mathcal{D}$.
 %And suppose that there exists an involution $f : Z \to Z$ such that (i) 
 Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the sets of keys $A_x$ and $A_y$ and the values $x_a$ and $y_a$ for all discrete keys $a$ are both constant (so that each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys in the two dictionaries).
