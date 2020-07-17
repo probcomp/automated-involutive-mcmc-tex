@@ -745,17 +745,20 @@ u\\ v\\ x\\ y
 \end{array}
 \end{equation}
 Using the cofactor expansion of the determinant, we observe that for any (`copy') row or column in an $M$-by-$M$ Jacobian matrix with a single $1$ and all other entries $0$, that absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding row and column omitted (even if that would remove other nonzero entries from the matrix).
-By applying this rule recursively, we can instead compute the determinant of a much smaller matrix; for the example with $M=4$, the absolute value of the determinant simplifies to the absolute value of a single entry ($|-1|$).
-Indeed, if those output variables that are the result of copying an input variable, then we can avoid computing those entries completely, and the computational complexity reduces from $M^2$ to $K^2$ where $K$ is the number of output variables that were copied from some input variable.
-The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of output variables that were copied immediately available to the interpreter.
-Many involutive MCMC kernels update only a constant number of variables that does not depend on the size $N$ of the trace or the total number of continous keys $M$.
+By applying this rule recursively, we can instead compute the determinant of a much smaller matrix; for the example above with $M=4$, the absolute value of the determinant simplifies to the absolute value of a single entry ($|-1|$).
+Indeed, if some input variable is copied to some output variable, then we can entirely avoid computing its row (and corresponding column) of the Jacobian, and the computational complexity reduces from $M^2$ to $(M-K)^2$ where $K$ is the number of input variables that were copied from some input variable.
+The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of input variables that were copied immediately available to the interpreter, which makes automating this optimization possible, as shown in \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc}.
+
+Many involutive MCMC kernels update only a constant number of variables that does not depend on the size $N$ of the trace or the total number of continous keys $M$, and the other variables are copied over unchanged.
 For example, consider the Jacobian for a split-merge reversible jump move~\citet{richardson1997bayesian}, which is implemented in Figure~\ref{fig:mixture}:
 \includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
-In this case, the size $N$ of the trace grows linearly in the number of clusters, and the number of data points, but the Jacobian determinant can be calculated from only the $6$-by-$6$ submatrix of the Jacobian that involves the parameters of the cluster being split (or the clusters being merged).
-While a reasonable hand-coded implementation of this algorithm would likely exploit this sparsity as well, our differentiable programming languages for traces automates it.
+Black squares indicate nonzero entries.
+In this case, the size $N$ of the trace grows linearly both in the number of clusters and the number of data points, but the Jacobian determinant can be calculated from only the $6$-by-$6$ submatrix of the Jacobian that involves the parameters of the one cluster being split (or the two clusters being merged).
+While a reasonable hand-coded implementation of this algorithm would likely perform this optimization as well, Algorithm~\ref{alg:auto-involutive-mcmc} automates it.
 
 % TODO show an performance table of moves per second with and without the sparsity reduction (?)
 \subsection{Incremental Computation of Model Density Ratio and Implicit Copies}
+
 While it is possible to compute the ratio of densities in Equation~(\ref{eq:density-ratio}) by separately computing the four densities of the four traces, this scales linearly in the total number of random choices in the traces, because every random choice in each trace needs to be visited to compute the products in Equation~(\ref{eq:density-product}).
 Often, the number of random choices in the auxiliary traces $y$ and $y'$ are constant size $O(1)$ whereas the number of random choices in the model traces $x$ and $x'$ is $O(N)$ where $N$ is the number of data points, or latent components
 (see Figure~\ref{fig:mixture} for an example, where at most two clusters are affected by each application of the MCMC kernel).
@@ -771,7 +774,6 @@ As a simple example, if there are $N$ latent variables, and the move only update
 TODO: show an example
 
 
-\subsection{Incremental Computation of Model Density Ratio and Implicit Copies}
 While it is possible to compute the ratio of densities in Equation~(\ref{eq:density-ratio}) by separately computing the four densities of the four traces, this scales linearly in the total number of random choices in the traces, because every random choice in each trace needs to be visited to compute the products in Equation~(\ref{eq:density-product}).
 Often, the number of random choices in the auxiliary traces $y$ and $y'$ are constant size $O(1)$ whereas the number of random choices in the model traces $x$ and $x'$ is $O(N)$ where $N$ is the number of data points, or latent components
 (see Figure~\ref{fig:mixture} for an example, where at most two clusters are affected by each application of the MCMC kernel).
