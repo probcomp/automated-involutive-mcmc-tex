@@ -714,6 +714,7 @@ The Gen implementation uses forward-mode AD whereas our PyTorch implementation u
 The procedure \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc} shows the implementation of the interpreter for the language that uses reverse-mode AD.
 The interpreter executes $\mathcal{F}$ using regular Julia or Python semantics, but intercepts calls to \texttt{@write}, \texttt{@read}, and \texttt{@copy} statements, and in addition to performing the desired operation, records the set of continuous addresses that are read, written, and copied.
 After $\mathcal{F}$ is finished executing, AD uses the recorded addresses to compute the Jacobian $|J h_e|(z)$; in the case of reverse-mode AD by iterating over output continuous addresses and backpropagating from each one to all of the input continous addresses, computing the Jacobian row-by-row.
+Note that the $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are omitted from the syntax in \textproc{run-involution} to simplify notation ($a \in \mathcal{I}$ indicates a discrete choice and otherwise a choice is continuous).
 
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORAMNCE} \label{sec:sparsity}
 
