@@ -285,11 +285,11 @@ Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{A \subset \m
 a finite set of keys $A \subset \mathcal{A}$ at which it has values, and an assignment $\mathbf{x}$ of values $x_a$ for each.
 
 \textbf{Relationship to representation of~\citet{green1995reversible}.}
-\citet{green1995reversible} uses a state space that is the countable union of `models', where for each model there is a Eucliean space of parameters.
+\citet{green1995reversible} uses a state space that is the countable union of `models', where for each model there is a vector of real-valued parameters.
 Dictionaries possesses substantially more structure:
-Parameters have keys, so it is possible to express that parameters are shared across different structures.
-Instead of a monolithic `model', dictionaries use a more elaborate discrete state that includes the set of keys and the assignment to the discrete keys.
-The additional structure of dictionaries enables the automation technique Section~\ref{sec:automating}.
+Instead of monolithic `models', dictionaries use a more elaborate discrete state that includes the set of keys and the assignment to the discrete keys.
+Also, continuous keys play the role of real-valued parameters, so it is possible to express that a given real-valued parameter is shared between models.
+The additional structure of dictionaries enables the automation techniques in Section~\ref{sec:automating}.
 
 \textbf{A measure space of finite dictionaries.}
 We associate a measure $\mu_a$ on $V_a$ for each key---the counting measure for each discrete key and the Lebesgue-measure on $\mathbb{R}^{d_a}$ for each continuous key.
@@ -339,7 +339,7 @@ is $p_{\mathrm{poisson}(s)}(k)$ (via Equation~(\ref{eq:integral})).
 We say a key $a \in \mathcal{A}$ \textit{almost always appears} if $\int \mathbf{1}[a \in A_m] p(m) \mu_\mathcal{D}(\text{d}m) = 1$. Suppose $B$ is a set of keys that almost always appear for $p$, and that $b = (B, \mathbf{b})$ is a dictionary with keys $B$. Furthermore, let $(A_m, \mathbf{m}) \oplus (A_n, \mathbf{n}) := (A_m \cup A_n, \mathbf{m} \times \mathbf{n})$ be the \textit{merge} of two dictionaries $m$ and $n$ defined on disjoint key sets $A_m$ and $A_n$. Then we can define the conditional density $p(d \mid b) := \mathbf{1}[A_d \cap B = \emptyset] \frac{p(d \oplus b)}{\int_{\{m \mid A_m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)}$ when the denominator is finite. If the reference measure $\mu_a$ associated with each key $a \in B$ is discrete (e.g., the counting measure), then this definition corresponds to the ordinary notion of conditioning on an event (namely, the event that a sample from $p$ agrees with the dictionary $b$ on all addresses in $B$). When this is not the case, it corresponds to a more general measure-theoretic notion called disintegration~\citep{chang1997conditioning}. 
 
 Consider the infinite univariate mixture model, and the conditional density given observed data $(B, \mathbf{b}) := \{\mathtt{y}_1 \mapsto y_1, \ldots, \mathtt{y}_{\mathtt{n}} \mapsto y_{\mathtt{n}}\}$.
-The conditional density $p(d | b)$ is nonzero only if $A_d = \{\texttt{k}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$ for some $k$ ($d$ does not contain y-values), and the denominator in the definition of $p(d | b)$ simplifies to the familiar sum of marginal likelihoods over all $k$, where each marginal likelihood is an integral over $\mathbb{R}^{2k}$.
+The conditional density $p(d | b)$ is nonzero only if $A_d = \{\texttt{k}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$ for some $k$ ($d$ does not contain y-values), and the denominator in the definition of $p(d | b)$ simplifies to the familiar sum of marginal likelihoods over all $k$, where each marginal likelihood is a Riemann integral over $\mathbb{R}^{2k}$.
 
 \subsection{Involutive MCMC with Dictionaries}
 
@@ -348,20 +348,30 @@ The conditional density $p(d | b)$ is nonzero only if $A_d = \{\texttt{k}\} \cup
 %Because dictionaries are flexible objects, the algorithm remains quite general.
 
 Suppose that the model distribution and auxiliary distributions are probability distributions on dictionaries, with densities $p$ and $q_x$.
-Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries with keys $\mathcal{A}$, so that $Z = X \times Y \subseteq \mathcal{D} \times \mathcal{D}$.
-%And suppose that there exists an involution $f : Z \to Z$ such that (i) 
-Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the sets of keys $A_x$ and $A_y$ and the values $x_a$ and $y_a$ for all discrete keys $a$ are both constant (so that each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys in the two dictionaries).
+Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries with keys $\mathcal{A}_P$ and $\mathcal{A}_Q$ respectively, so that $Z = X \times Y \subseteq \mathcal{D}_P \times \mathcal{D}_Q$ where $\mathcal{D}_P$ is the set of dictionaries on keys taken from $\mathcal{A}_P$ and similarly for $\mathcal{D}_Q$.
+% TODO: this is only needed for Algorithm 2, and it is relevant for the 
+To simplify the notation, and without loss of generality, we will assume that $\mathcal{A}_P$ and $\mathcal{A}_Q$ are disjoint\footnote{If $\mathcal{A}_P$ and $\mathcal{A}_Q$ are not disjoint then, they can be made so by adding a different prefix to each address.}, and we define $Z := \{ x \oplus y : p(x)q_x(y) > 0\} \subseteq \mathcal{D}$.
+where $\mathcal{D}$ is the set of dictionaries on keys from $\mathcal{A}_P \cup \mathcal{A}_Q$
+(recall $x \oplus y$ denotes the dictionary resulting from merging dictionaries $x$ and $y$ with disjoint keys).
+
+Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the sets of keys $A_x$ and $A_y$ and the values $x_a$ and $y_a$ for all discrete keys $a$ are both constant.
+Then each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys in the two dictionaries.
 Suppose there is an involution $g : E \to E$ between elements of the partition (a function with $g = g^{-1}$), and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ for each $e$ with $h_{e} = h_{g(e)}^{-1}$.
 Let $e(z) \in E$ denote the element of the partition for an alement $z \in Z$.
 Then, $f : Z \to Z$ given by $f(z) := h_{e(z)}(z)$ is an involution:
-\begin{equation}
+\begin{equation*}
 f(f(z)) = h_{e(f(z))}(h_{e(z)}(z)) = h_{g(e(z))}(h_{e(z)}(z)) = z
-\end{equation}
+\end{equation*}
 Let $|J h_e|(z)$ denote the absolute value of the Jacobian (determinant) of $h_e$, evaluated at $z$.
-Then, the acceptance probability simplifies to:
+Then, the acceptance probability in Algorithm~\ref{alg:involutive-mcmc} simplifies to:
 \begin{equation}
-\alpha(x, y) = \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot |J h_e|(z)
+\frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot |J h_e|(z)
 \end{equation}
+One example of a valid partition of $Z$ is given by equivalence classes of the following equivalence relation:
+\[
+z_1 \sim z_2 \iff (A_{z_1} = A_{z_2}) \land (z_1[a] = z_2[a] \; \forall a \in A_{z_1} \cap \mathcal{I})
+\]
+(dictionaries are equivalent if they contain the same keys and they agree on the value of all discrete keys).
 Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 
 
@@ -376,16 +386,18 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 
 \begin{algorithm*}[h]
 \begin{algorithmic}
+\Require probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$; differentiable program $\mathcal{F}$; initial state $x$
+\vspace{1mm}
 \Procedure{auto-involutive-mcmc}{$\mathcal{P}$, $\mathcal{Q}$, $\mathcal{F}$, $x$}
-    \State $(y, \log w_2) \gets \textproc{trace-and-score}(\mathcal{Q}_x)$ \Comment{Sample $y \sim q_x(\cdot)$ and compute log-density $\log q_x(y)$}
-    \State $(x', y', \log D) \gets \textproc{run-involution}(\mathcal{F}, (x, y))$ \Comment{Compute $(x', y') = f(x, y)$, log Radon-Nikodym deriv. $\log D$}
-    \State $\log w_1 \gets \textproc{score}(\mathcal{P}, x)$ \Comment{Compute log-density $\log p(x)$}
-    \State $\log w_3 \gets \textproc{score}(\mathcal{P}, x')$ \Comment{Compute log-density $\log p(x')$}
-    \State $\log w_4 \gets \textproc{score}(\mathcal{Q}_{x'}, y')$ \Comment{Compute log-density $\log q_{x'}(y')$}
-    \State $\alpha \gets \min\{1, \exp(\log w_3 - \log w_1 + \log w_4 - \log w_2 + \log J)\}$ \Comment{Compute acceptance probability}
+    \State $(y, \log q_x(y)) \gets \textproc{trace-and-score}(\mathcal{Q}_x)$ \Comment{Sample $y \sim q_x(\cdot)$; compute log-density via probabilistic program}
+    \State $(x' \oplus y', \log D) \gets \textproc{run-involution}(\mathcal{F}, x \oplus y)$ \Comment{{\small Compute $(x' \oplus y') = f(x \oplus y)$ and log(Radon-Nikodym derivative)}}
+    \State $\log p(x) \gets \textproc{score}(\mathcal{P}, x)$ \Comment{Compute log-density via probabilistic program}
+    \State $\log p(x') \gets \textproc{score}(\mathcal{P}, x')$ \Comment{Compute log-density via probabilistic program}
+    \State $\log q_{x'}(y') \gets \textproc{score}(\mathcal{Q}_{x'}, y')$ \Comment{Compute log-density via probabilistic program}
+    \State $\alpha \gets \min\{1, \exp(\log p(x') - \log p(x) + \log q_{x'}(y') - \log q_x(y) + \log D)\}$ \Comment{Compute acceptance probability}
     \State \textbf{with probability} \,$\alpha$ \,\Return $x'$ \algorithmicelse \, \Return $x$ 
 \EndProcedure\\
-
+\vspace{1mm}
 \begin{minipage}[t]{0.5\linewidth}
 \Procedure{trace-and-score}{$\mathcal{P}$}
    \State $\log w \gets 0$
@@ -410,23 +422,25 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
    \State \Return $\log w$
 \EndProcedure
 \end{minipage}\\
-
-\Procedure{run-involution}{$\mathcal{F}$, $(x, y)$}
+\vspace{1mm}
+\Procedure{run-involution}{$\mathcal{F}$, $z$}
 % TODO would be much simpler to describe if we didn't have to separate out x and y..
-    \LineComment{Run the involution, and keep track of continuous addresses}
-    \State $x' \gets \{\}$ \Comment{Initialize empty output dictionary}
+    \LineComment{Run the involution, and keep track of copied, read, and written continuous keys}
+    \State $z' \gets \{\}$ \Comment{Initialize empty output dictionary}
     \execute[$\mathcal{F}$], but with
-        \State $\mathtt{"write\_cont}(a, v)\mathtt{"} \equiv$ (1. set $x'[a] \gets v$ and 2. set $W \gets W \cup \{a\}$)
-        \State $\mathtt{"read\_cont}(a)\mathtt{"} \equiv$ (1. set $R \gets R \cup \{a\}$ and 2. evaluate to $x[a]$)
-        \State $\mathtt{"copy}(a_1, a_2)\mathtt{"} \equiv$ (1. set $x'[a_2] \gets x[a_1]$ and 2. set $C \gets C \cup \{a_2\}$)
+        \State $\mathtt{"write\_disc}(a, v)\mathtt{"} \equiv$ (set $z'[a] \gets v$)
+        \State $\mathtt{"read\_disc}(a)\mathtt{"} \equiv$ (evaluate to $z[a]$)
+        \State $\mathtt{"write\_cont}(a, v)\mathtt{"} \equiv$ (1. set $z'[a] \gets v$ and 2. set $W \gets W \cup \{a\}$)
+        \State $\mathtt{"read\_cont}(a)\mathtt{"} \equiv$ (1. set $R \gets R \cup \{a\}$ and 2. evaluate to $z[a]$)
+        \State $\mathtt{"copy}(a_1, a_2)\mathtt{"} \equiv$ (1. set $z'[a_2] \gets z[a_1]$ and 2. set $C \gets C \cup \{a_2\}$)
     \END
-    \LineComment{Use automatic differentiation to compute Jacobian, skipping copied addresses}
+    \LineComment{Use automatic differentiation of $\mathcal{F}$ to compute Jacobian, skipping copied addresses}
     \For{$i$ in $1, \ldots, |W \setminus C|$}
-        \State $J[i,:] \gets \nabla_{x_{R \setminus C}} \left( h_{e(x, y)}[(W \setminus C)_i] \right)$ \Comment{Gradient of $x'[(W \setminus C)_i]$ w.r.t. non-copied continuous inputs}
+        \State $a_i \gets (W \setminus C)_i$ \Comment{Pick $i$th key in $(W \setminus C)$; the order does not matter}
+        \State $J[i,:] \gets \nabla_{\mathbf{z}_{R \setminus C}} \left( h_{e(z)}[a_i] \right)$ \Comment{{\small Gradient of $z'[a_i] = h_{e(z)}[a_i]$ wrt non-copied continuous inputs ($z_a$ for $a \in R \setminus C$)}}
     \EndFor
-    \State \Return $(x', \log |\det(J)|)$
+    \State \Return $(z', \log(|\det(J)|))$
 \EndProcedure
-
 \end{algorithmic}
 \caption{Automated Involutive MCMC}
 \label{alg:auto-involutive-mcmc}
@@ -778,7 +792,6 @@ In Algorithm~\ref{alg:involutive-mcmc} the involution $f : Z \to Z$ maps a pair 
 When the densities $p$ and $q$ are defined with probabilistic programs, each element of these pairs is a trace.
 Recall that a trace is mathematically, a finite dictionary that maps addresses to values.
 Therefore, the involution is a map from pairs of traces to pairs of traces.
-%To simplify the notation, we can represent a pair of traces $(x, y)$ as a single trace $z$, in which each address in $x$ and $x'$ is prefixed with some unique identifier (e.g. \texttt{model}) and each address in $y$ is prefixed with some unique identifier $y'$ (e.g. \texttt{auxiliary}).
 Then, $Z$ is a set of such trace pairs, and the involution $f$ is a function from $Z$ onto itself that is its own invverse.
 
 \subsubsection{A Differentiable Programming Language for Manipulating Dictionaries}
