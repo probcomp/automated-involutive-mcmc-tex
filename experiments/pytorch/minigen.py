@@ -2,28 +2,50 @@ import torch
 from collections import namedtuple
 from itertools import chain
 
+# Helper: inject variables into a function's scope:
+from functools import wraps
+def inject_variables(context, func):
+    @wraps(func)
+    def new_func(*args, **kwargs):
+        func_globals = func.__globals__
+        saved_values = func_globals.copy()
+        func_globals.update(context)
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            for (var, val) in context.items():
+                if var in saved_values:
+                    func_globals.update({var: saved_values[var]})
+                else:
+                    del func_globals[var]
+        return result
+    return new_func
 
 ##############################################
 # minimal probabilistic programming language #
 ##############################################
 
-def sample(p, *args):
+def trace_and_score(p, *args):
     trace = {}
-    def trace_choice(dist, addr):
+    lpdf = torch.tensor(0.0)
+    def sample(dist, addr):
         val = dist.sample()
         trace[addr] = val
+        lpdf += dist.log_prob(val)
         return val
-    p(trace_choice, *args)
-    return trace
+    p = inject_variables({"sample" : sample}, p)
+    p(*args)
+    return (trace, lpdf)
 
-def logpdf(trace, p, *args):
+def score(trace, p, *args):
     lpdf = torch.tensor(0.0)
-    def trace_choice(dist, addr):
+    def sample(dist, addr):
         nonlocal lpdf
         val = trace[addr]
         lpdf += dist.log_prob(val)
         return val
-    p(trace_choice, *args)
+    p = inject_variables({"sample" : sample}, p)
+    p(*args)
     return lpdf
 
 
@@ -59,7 +81,7 @@ def check_type_label(type_label):
     if type_label != CONTINUOUS and type_label != DISCRETE:
         raise Exception("type label argument must be CONTINUOUS or DISCRETE")
 
-def read(state, addr, type_label):
+def _read(state, addr, type_label):
     (which, addr) = get_which(addr)
     check_type_label(type_label)
     if type_label == CONTINUOUS:
@@ -75,7 +97,7 @@ def read(state, addr, type_label):
         else:
             return state.input_aux_trace[addr]
 
-def write(state, addr, val, type_label):
+def _write(state, addr, val, type_label):
     (which, addr) = get_which(addr)
     check_type_label(type_label)
     if type_label == CONTINUOUS:
@@ -90,9 +112,8 @@ def write(state, addr, val, type_label):
         else:
             state.output_aux_trace[addr] = val
 
-def copy(state, addr1, addr2):
+def _copy(state, addr1, addr2):
     state.input_copied_addrs.append(addr1)
-    #state.output_copied_addrs.append(addr2)
     (which1, addr1) = get_which(addr1)
     (which2, addr2) = get_which(addr2)
     if which1 == MODEL:
@@ -104,9 +125,19 @@ def copy(state, addr1, addr2):
     else:
         state.output_aux_trace[addr2] = val
     
+def transform_involution(f, state):
+    context = {
+        "read" : lambda addr, type_label : _read(state, addr, type_label),
+        "write" : lambda addr, val, type_label : _write(state, addr, val, type_label),
+        "copy" : lambda addr1, addr2 : _copy(state, addr1, addr2)
+    }
+    new_f = inject_variables(context, f)
+    return new_f
+
 def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace, check):
     state = InvolutionRunnerState(input_model_trace, input_auxiliary_trace, {}, {}, {}, [], [])
-    f(state)
+    f_transformed = transform_involution(f, state)
+    f_transformed()
     grads = []
     for output_cont_tensor in state.output_cont_tensors:
         output_cont_tensor.backward(retain_graph=True)
@@ -125,7 +156,8 @@ def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace, ch
     # do the round trip check
     if check:
         rt_state = InvolutionRunnerState(state.output_model_trace, state.output_aux_trace, {}, {}, {}, [], [])
-        f(rt_state)
+        f_transformed = transform_involution(f, rt_state)
+        f_transformed()
         for (addr, val) in rt_state.output_model_trace.items():
             if isinstance(val, torch.Tensor):
                 if not torch.eq(val, input_model_trace[addr]):
@@ -150,17 +182,17 @@ def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace, ch
 def involution_mcmc_step(p, q, f, input_model_trace, check=False):
 
     # sample from auxiliary program
-    input_auxiliary_trace = sample(q, input_model_trace)
+    (input_auxiliary_trace, fwd_score) = trace_and_score(q, input_model_trace)
 
     # run involution
     (output_model_trace, output_auxiliary_trace, logabsdet) = involution_with_jacobian_det(
         f, input_model_trace, input_auxiliary_trace, check)
 
     # compute acceptance probability
-    prev_score = logpdf(input_model_trace, p)
-    new_score = logpdf(output_model_trace, p)
-    fwd_score = logpdf(input_auxiliary_trace, q, input_model_trace)
-    bwd_score = logpdf(output_auxiliary_trace, q, output_model_trace)
+    prev_score = score(input_model_trace, p)
+    new_score = score(output_model_trace, p)
+    #fwd_score = score(input_auxiliary_trace, q, input_model_trace)
+    bwd_score = score(output_auxiliary_trace, q, output_model_trace)
     prob_accept = min(1, torch.exp(new_score - prev_score + logabsdet + bwd_score - fwd_score))
 
     # accept or reject
@@ -181,18 +213,18 @@ Uniform = torch.distributions.uniform.Uniform
 
 pi = 3.1415927410125732
 
-def p(trace):
-    u = trace(Normal(0, 1), "u")
-    v = trace(Normal(0, 1), "v")
-    if trace(Bernoulli(0.5), "polar"):
-        trace(Gamma(1.0, 1.0), "r")
-        trace(Uniform(-pi/2, pi/2), "theta")
+def p():
+    u = sample(Normal(0, 1), "u")
+    v = sample(Normal(0, 1), "v")
+    if sample(Bernoulli(0.5), "polar"):
+        sample(Gamma(1.0, 1.0), "r")
+        sample(Uniform(-pi/2, pi/2), "theta")
     else:
-        trace(Normal(0.0, 1.0), "x")
-        trace(Normal(0.0, 1.0), "y")
+        sample(Normal(0.0, 1.0), "x")
+        sample(Normal(0.0, 1.0), "y")
     return None
 
-def q(trace, model_trace):
+def q(model_trace):
     return None
 
 def polar_to_cartesian(r, theta):
@@ -205,25 +237,25 @@ def cartesian_to_polar(x, y):
     y = torch.sqrt(x * x + y * y)
     return (theta, y)
 
-def f(state):
-    polar = read(state, (MODEL, "polar"), DISCRETE)
+def f():
+    polar = read((MODEL, "polar"), DISCRETE)
     if polar:
-        r = read(state, (MODEL, "r"), CONTINUOUS)
-        theta = read(state, (MODEL, "theta"), CONTINUOUS)
+        r = read((MODEL, "r"), CONTINUOUS)
+        theta = read((MODEL, "theta"), CONTINUOUS)
         (x, y) = polar_to_cartesian(r, theta)
-        write(state, (MODEL, "x"), x, CONTINUOUS)
-        write(state, (MODEL, "y"), y, CONTINUOUS)
+        write((MODEL, "x"), x, CONTINUOUS)
+        write((MODEL, "y"), y, CONTINUOUS)
     else:
-        x = read(state, (MODEL, "x"), CONTINUOUS)
-        y = read(state, (MODEL, "y"), CONTINUOUS)
+        x = read((MODEL, "x"), CONTINUOUS)
+        y = read((MODEL, "y"), CONTINUOUS)
         (r, theta) = cartesian_to_polar(x, y)
-        write(state, (MODEL, "r"), r, CONTINUOUS)
-        write(state, (MODEL, "theta"), theta, CONTINUOUS)
-    write(state, (MODEL, "polar"), not polar, DISCRETE)
-    copy(state, (MODEL, "u"), (MODEL, "u"))
-    u = read(state, (MODEL, "u"), CONTINUOUS)
-    v = read(state, (MODEL, "v"), CONTINUOUS)
-    write(state, (MODEL, "v"), u - v, CONTINUOUS)
+        write((MODEL, "r"), r, CONTINUOUS)
+        write((MODEL, "theta"), theta, CONTINUOUS)
+    write((MODEL, "polar"), not polar, DISCRETE)
+    copy((MODEL, "u"), (MODEL, "u"))
+    u = read((MODEL, "u"), CONTINUOUS)
+    v = read((MODEL, "v"), CONTINUOUS)
+    write((MODEL, "v"), u - v, CONTINUOUS)
 
 trace = {
         "polar" : True,
