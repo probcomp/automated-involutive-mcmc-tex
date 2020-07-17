@@ -328,6 +328,7 @@ Gen's involutive MCMC operator (shown in e) automatically computes the acceptanc
 
 \subsection{Involutive MCMC with Dictionaries}
 
+% TODO consider adding this back, to explain to reader why they are reading this:
 %The general measure-theoretic formulation of involutive MCMC in Algorithm~\ref{alg:involutive-mcmc} does not specify how to compute the Radon-Nikodym derivative that is required for the acceptance probability.
 %When the algorithm is specialized for state spaces consisting of dictionaries, the acceptance probability simplifies and can be computed from standard Jacobian and probability density computations.
 %Because dictionaries are flexible objects, the algorithm remains quite general.
@@ -349,7 +350,7 @@ f(f(z)) = h_{e(f(z))}(h_{e(z)}(z)) = h_{g(e(z))}(h_{e(z)}(z)) = z
 \end{equation*}
 Let $|J h_e|(z)$ denote the absolute value of the Jacobian (determinant) of $h_e$, evaluated at $z$.
 Then, the acceptance probability in Algorithm~\ref{alg:involutive-mcmc} simplifies to:
-\begin{equation}
+\begin{equation} \label{eq:acceptance-ratio-dictionaries}
 \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot |J h_e|(z)
 \end{equation}
 One example of a valid partition of $Z$ is given by equivalence classes of the following equivalence relation:
@@ -410,15 +411,15 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
     \LineComment{Run the involution, and keep track of copied, read, and written continuous keys}
     \State $z' \gets \{\}$ \Comment{Initialize empty output dictionary}
     \execute[$\mathcal{F}$], but with
-        \State $\mathtt{"write}(a, v)\mathtt{"} \equiv$
+        \State $\mathtt{"@write}(a, v)\mathtt{"} \equiv$
             (\algorithmicif\hspace{1mm} $a \in \mathcal{I}$
             \algorithmicthen\hspace{1mm} set $z'[a] \gets v$
             \algorithmicelse\hspace{1mm} set $z'[a] \gets v$ and set $W \gets W \cup \{a\})$
-        \State $\mathtt{"read}(a)\mathtt{"} \equiv$
+        \State $\mathtt{"@read}(a)\mathtt{"} \equiv$
             (\algorithmicif\hspace{1mm} $a \in \mathcal{I}$
             \algorithmicthen\hspace{1mm} evaluate to $z[a]$
             \algorithmicelse\hspace{1mm} set $R \gets R \cup \{a\}$ and evaluate to $z[a]$)
-        \State $\mathtt{"copy}(a_1, a_2)\mathtt{"} \equiv$ (set $z'[a_2] \gets z[a_1]$ and set $C \gets C \cup \{a_1\}$)
+        \State $\mathtt{"@copy}(a_1, a_2)\mathtt{"} \equiv$ (set $z'[a_2] \gets z[a_1]$ and set $C \gets C \cup \{a_1\}$)
     \END
     \LineComment{Use automatic differentiation of $\mathcal{F}$ to compute Jacobian, skipping copied addresses}
     \For{$i$ in $1$ to $|W|$}
@@ -444,7 +445,7 @@ individual univariate and multivariate random variables, or about conditional in
 the easier it will be for the implementation to exploit this structure automatically by using
 more efficient data structures and low-level manipulations.
 
-\subsection{Trace-Based Probabilistic Programming}
+\subsection{Trace-Based Probabilistic Programming} \label{sec:probabilistic-programming}
 
 \textit{Probabilistic programs} are flexible and structured representations for  probability distributions. Unlike densities (but like Bayesian networks), probabilistic programs can be efficiently sampled and contain explicitly represented information
 about some conditional independence relationships in a model. 
@@ -538,132 +539,150 @@ Figure~\ref{fig:mixture}b and Figure~\ref{fig:mixture}c show examples of probabi
 
 \subsection{Differentiable Programming with Traces} \label{sec:differentiable-programming-traces}
 
-The previous section described how the probability densities ($p$ and $q$) required for involutive MCMC on spaces of dictionaries can be specified and automatically computed using probabilistic programs.
-This section introduces a lightweight differentiable programming language for specifying involutions ($f : Z \to Z$) on dictionaries.
-The interpreter for the language computes the Radon-Nikodym derivative required for the acceptance probability using automatic differentiation.
-The language is implemented as part of the Gen system~\citep{cusumano2019gen}, which is embedded in the Julia language.
-We also provide a simplified PyTorch-based implementation of the language.
+Section~\ref{sec:probabilistic-programming} showed that if the densities $p$ and $q$ are specified using probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$, then density ratio in the acceptance probability for involutive MCMC on dictionaries Equation~(\ref{eq:acceptance-ratio-dictionaries}) can be automated using probabilistic programming techniques.
+This section shows that if the involution $f$ is specified in using a differentiable program $\mathcal{F}$ that transforms the execution traces of probabilistic programs, then the Jacobian factor in Equation~(\ref{eq:acceptance-ratio-dictionaries}) can be automated using automatic differentiation.
+The procedure \textproc{auto-involutive-mcmc} in Algorithm~\ref{alg:auto-involutive-mcmc} combines these two ideas and automates involutive MCMC given the programs $\mathcal{P}$, $\mathcal{Q}$, and $\mathcal{F}$.
 
-Recall that for involutive MCMC on a state space of dictionaries, we define $Z := \{x \oplus y : p(x) q_x(y) > 0\} \subseteq \mathcal{D}$, where $x \oplus y$ is the dictionary resulting from merging dictionaries $x$ and $y$ with disjoint keys.
-Intuitively, $z = x \oplus y$ the trace of a composite probabilistic program constructed by running $\mathcal{P}$ first, and then running $\mathcal{Q}$, passing the trace of $\mathcal{P}$ as its input.
+%The previous section described how the probability densities ($p$ and $q$) required for involutive MCMC on spaces of dictionaries can be specified and automatically computed using probabilistic programs.
+%This section introduces a lightweight differentiable programming language for specifying involutions ($f : Z \to Z$) on dictionaries.
+%The interpreter for the language computes the Radon-Nikodym derivative required for the acceptance probability using automatic differentiation.
+%The language is implemented as part of the Gen system~\citep{cusumano2019gen}, which is embedded in the Julia language.
+%We also provide a simplified PyTorch-based implementation of the language.
 
 \subsubsection{A Differentiable Programming Language for Manipulating Traces}
-We denote a program in the differentiable language by $\mathcal{F}$ and the involution it defines as $f$.
-Like the probabilistic programming language described in the previous section, our differentiable language for involutions on traces is embedded based on Julia.
-The differentiable language has specialized expressions for reading values from addresses in a trace, writing values to the addresses in a trace, and copying values from an address in one trace to an address in another trace.
-For example, to read a value from a trace, we use the \texttt{@read} keyword:
+Recall that for involutive MCMC on a state space of dictionaries, we define $Z := \{x \oplus y : p(x) q_x(y) > 0\} \subseteq \mathcal{D}$, where $x \oplus y$ is the dictionary resulting from merging dictionaries $x$ and $y$ with disjoint keys.
+The involution is a function $f : Z \to Z$.
+%Intuitively, $z = x \oplus y$ the trace of a composite probabilistic program constructed by running $\mathcal{P}$ first, and then running $\mathcal{Q}$, passing the trace of $\mathcal{P}$ as its input.
+
+We now introduce a simple differentiable programming language for specifying involutions $f$.
+The language needs to have syntax for reading the value from an address in $x \oplus y \in Z$ and writing to an address in $x' \oplus y' \in Z$.
+To read a value $(x \oplus y)[a]$ at address $a$, we use the \texttt{@read} keyword:
 \noindent
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    value = @read(<trace>, <address>, <type>)
+    value = @read(<address>, <type>)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-The first argument defines what trace we are reading from.
-The second argument is the address in that trace, which may be hierarchical.\footnote{
-Hierarchical addresses of the form $\mathtt{a.b.c}$ are constructed in the language using the syntax \texttt{a=>b=>c}.}
-The third argument is either $\mathtt{:}\mathtt{discrete}$ or $\mathtt{:}\mathtt{continuous}$, and informs the language runtime whether the random choice at that address is drawn from a discrete or continuous distribution (this information will be used to support automatic differentiation).
-Similarly, to write a value to a trace, we use a \texttt{@write} keyword:
+The first argument is the address $a$ and the second argument is either $\mathtt{discrete}$ or $\mathtt{continuous}$, and informs the interpreter whether the random choice at that address is drawn from a discrete or continuous distribution (this information will be used to support automatic differentiation).
+Recall that $x$ is the trace of the model probabilistic program, and $y$ is the trace of the auxiliary probabilistic program.
+Each address $a$ therefore is a pair, where the first element is either $\mathtt{model}$ or $\mathtt{aux}$, and the second element is the address within either $x$ or $y$.
+For example, to read the value of a continuous address $\mathtt{:}\mathtt{r}$ from the model trace ($x$):
 \noindent
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    @write(<trace>, <address>, <value>, <type>)
+    val = @read((model, :r), continuous)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-The mathematical behavior of the function is defined simply by writing Julia code that implements it.
-For example, the following code reads the values of parameters in polar coordinates and writes out their values in cartesian coordinates:
+The syntax for writing to an address in $x' \oplus y' \in Z$ is similar.
+For example to write a value $\mathtt{val}$ to $x'[\mathtt{:}\mathtt{r}]$:
 \noindent
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-r = @read(trace1, :r, :continuous)
-theta = @read(trace1, :theta, :continuous)
+    @write((model, :r), val, continuous)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+Note that the input traces $x, y$ are distinct from the output traces $x', y'$;
+input traces can only be read from, and output traces can only be written to.
+For example, it is not possible to write an output trace and then read the written value from it later.
+Often, we want to simply copy the value from some address in the input traces to some address in the output trace.
+While this is possible via a $\mathtt{@read}$ followed by a $\mathtt{@write}$, the language provides a special syntax for copies:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+    @copy(<from-address>, <to-address>)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+Like above, the two addresses here are both pairs of the trace and the address within that trace.
+For example, to copy the value from address $\mathtt{:}\mathtt{u}$ in $x$ to address $\mathtt{:}\mathtt{v}$ in $x'$, we use:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+    @copy((model, :u), (model, :v))
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+Of course, it is also possible to copy from $x$ to $y'$, from $y$ to $x'$ and from $y$ to $y'$.
+As we will see in Section~\ref{sec:sparsity}, it is preferable to copy when possible instead of reading and then writing, as this can improve the efficiency of automatic differentiation.
+
+
+
+%We denote a program in the differentiable language by $\mathcal{F}$ and the involution it defines as $f$.
+%Like the probabilistic programming language described in the previous section, our differentiable language for involutions on traces is embedded based on Julia.
+%The differentiable language has specialized expressions for reading values from addresses in a trace, writing values to the addresses in a trace, and copying values from an address in one trace to an address in another trace.
+%The first argument defines what trace we are reading from.
+%The second argument is the address in that trace, which may be hierarchical.\footnote{
+%Hierarchical addresses of the form $\mathtt{a.b.c}$ are constructed in the language using the syntax \texttt{a=>b=>c}.}
+%The third argument is either $\mathtt{:}\mathtt{discrete}$ or $\mathtt{:}\mathtt{continuous}$, and informs the language runtime whether the random choice at that address is drawn from a discrete or continuous distribution (this information will be used to support automatic differentiation).
+%Similarly, to write a value to a trace, we use a \texttt{@write} keyword:
+%\noindent
+%\begin{center}
+%\begin{tabular}{c}
+%{\begin{lstlisting}[basicstyle=\small\ttfamily]
+    %@write(<trace>, <address>, <value>, <type>)
+%\end{lstlisting}}
+%\end{tabular}
+%\end{center}
+%The mathematical behavior of the function is defined simply by writing Julia code that implements it.
+\paragraph{Constructing an Involution}
+The following code reads the values of parameters from the model in polar coordinates and writes out their values in cartesian coordinates:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+r = @read((model, :r), :continuous)
+theta = @read((model, :theta), :continuous)
 x = r * sin(theta)
 y = r * cos(theta)
-@write(trace2, :x, x, :continuous)
-@write(trace2, :y, y, :continuous)
+@write((model, :x), x, :continuous)
+@write((model, :y), y, :continuous)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-It is also possible to copy values from an address in one trace to an address in another trace:
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-@copy(<from-trace>, <from-addr>,
-      <to-trace>, <to-addr>)
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-As we will see in Section~\ref{sec:sparsity}, it is preferable to copy when possible instead of reading and then writing, as the additional information can improve the efficiency of automatic differentiation.
 
-The names of the input traces and output traces are defined as part of the function signature, which as the following form, where \texttt{h} is the name of the function being defined.
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-@tracefn h from (tr1, tr2) to (tr3, tr4) begin
-    ..
-end
-\end{lstlisting}}
-\end{tabular}
-\end{center}
- % TODO change it from trace_bijection to tracefn in the figures and implementation...
-Each input and output trace is given a name (e.g. \texttt{tr1}, \texttt{tr2}, \texttt{tr3}, and \texttt{tr4}).
-For involution MCMC, the function must have two input traces and two output traces.
-The first input trace is the input model trace ($x$), the second input trace is the input auxiliary trace ($y$), the first output trace is the output model trace ($x'$) and the second output trace is the output auxiliary trace ($y'$).
-
-\subsubsection{Reasoning About Involutions}
-Recall the earlier code snippet that maps from polar to cartesian coordinates.
 This code snippet defines a bijection from one coordinate system to another.
 However, it does not define an involution, because applying the function the first time produces a trace containing cartesian coordinates, and applying the function a second time to the resulting trace would fail, because the function reads in polar coordinates from its input trace.
 How can we make the function an involution?
-
-First, the function will need the ability to go from cartesian coordinates to polar coordinates, so the following code for the inverse of the forward transformation must appear in the function somewhere:
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-r = (x^2 + y^2)
-theta = atan(y, x)
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-To be an involution, the input and output traces must contain some information indicating whether they are using polar or cartesian coordinates, so the involution code knows which of the two transformations to read from, and which addresses to read from and write to.
+First, the function will need the ability to go from cartesian coordinates to polar coordinates, so the code for the inverse of the forward transformation must appear in the function somewhere.
+Also, to be an involution, the input and output traces must contain some information indicating whether they are using polar or cartesian coordinates, so the involution code knows which of the two transformations to read from, and which addresses to read from and write to.
 Below is a minimal example of the involution, that uses a Boolean address polar.
 Note that the involution negates the value of this address, to indicate that the coordinate system is switching with each application.
 \noindent
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-@tracefn h from (tr1, tr2) to (tr3, tr4)
-   polar = @read(tr1, :polar, :discrete)
+@tracefn f
+   polar = @read((model, :polar), discrete)
    if polar
-      r = @read(tr1, :r, :continuous)
-      theta = @read(tr1, :theta, :continuous)
+      r = @read((model, :r), continuous)
+      theta = @read((model, :theta), continuous)
       x = r * sin(theta)
       y = r * cos(theta)
-      @write(tr3, :x, x, :continuous)
-      @write(tr3, :y, y, :continuous)
+      @write((model, :x), x, continuous)
+      @write((model, :y), y, continuous)
    else
-      x = @read(tr1, :x, :continuous)
-      y = @read(tr1, :y, :continuous)
+      x = @read((model, :x), continuous)
+      y = @read((model, :y), continuous)
       r = (x^2 + y^2)
       theta = atan(y, x)
-      @write(tr3, :r, r, :continuous)
-      @write(tr3, :theta, theta, :continuous)
+      @write((model, :r), r, continuous)
+      @write((model, :theta), theta, continuous)
    end
-   @write(tr3, :polar, !polar, :discrete)
+   @write((model, :polar), !polar, discrete)
 end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-In order to apply this function in the context of involution MCMC, we require probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ that define space of input and output traces for the involution.
-A minimal example does not require any auxiliary random choices, so $\mathcal{Q}$ can be an empty probabilistic program.
-A minimal toy example of a probabilistic program $\mathcal{P}$ that is compatible with the involution \texttt{h} defined above is:
+In order to apply this function in the context of involutive MCMC, we require probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ that define space of input and output traces for the involution.
+The involution only reads and writes to model addresses, so $\mathcal{Q}$ can be an empty program:
 \noindent
 \begin{center}
 \begin{tabular}{c}
@@ -678,28 +697,32 @@ A minimal toy example of a probabilistic program $\mathcal{P}$ that is compatibl
         y ~ normal(0, 1)
     end
 end
+
+@gen function q(x)
+end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
 
-\subsubsection{Example: Split-Merge Reversible Jump}
-
-Figure~\ref{fig:mixture}(d) shows an involution expressed in the differentiable programming language introduced in this section, and Figure~\ref{fig:mixture}(f) shows a schematic of the information flow through the involution as it is applied twice in a row.
-The involution implements a split or a merge proposal in the infinite mixture model of Figure~\ref{fig:mixture}(b), depending on the trace of the auxiliary program in Figure~\ref{fig:mixture}(c).
-If there are at least two clusters, and the value of address $\mathtt{split}$ is false, then the involution proposes to merge two clusters by running code block 2 shown in green.
-Otherwise, the involution proposes to split a cluster by running code block 1 shown in yellow.
-Note that that code block 1 (yellow) is itself an involution on the discrete addresses in the traces---each application of code block 1 to the traces causes them to flip back and forth between a split and a merge proposal.
-Also note that code blocks 2 and 3 are continuously differentiable bijections on the continuous addresses in the traces, and they are inverses of one another.
-
 \subsubsection{Computing the Jacobian with Automatic Differentiation}
-Recall that the involution $f$ is composed of (i) an involution $g$ on elements $e$ of a partition of the state space, and (ii) a pair of continuous differentiable bijections $h_{e}$ and $h_{g(e)} = h_{e}^{-1}$ between each pair of corresponding elements of the partition.
+
+Recall that the involution $f$ must decompose into (i) an involution $g$ on elements $e \in E$ of a partition of the state space, and (ii) a pair of continuous differentiable bijections $h_{e}$ and $h_{g(e)} = h_{e}^{-1}$ between each pair of corresponding elements of the partition.
 Each function $h_e$ is a function from the values at continuous addresses in the input trace ($z[a]$ for $a \in A_z \cap \mathcal{J}$) to the values at continuous addresses in the output trace ($z'[a]$ for $a \in A_{z'} \cap \mathcal{J}$).
-We compute the Jacobian using automatic differentiation (AD).
+We compute the Jacobian using automatic differentiation (AD);
+different approaches are possible.
 The Gen implementation uses forward-mode AD whereas our PyTorch implementation uses reverse-mode AD.
 The procedure \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc} shows the implementation of the interpreter for the language that uses reverse-mode AD.
-The interpreter executes $\mathcal{F}$ using regular Julia or Python semantics, but intercepts calls to \texttt{write}, \texttt{read}, and \texttt{copy} statements, and in addition to performing the desired operation, records the set of continuous addresses that are read, written, and copied.
-After $\mathcal{F}$ is finished executing, AD is used to compute the Jacobian $|J h_e|(z)$; in the case of reverse-mode AD by iterating over output continuous addresses and backpropagating from each one to all of the input continous addresses, computing the Jacobian row-by-row.
-The address metadata that was recorded during the first pass through the function is used to make AD more efficient, as discussed in the next section.
+The interpreter executes $\mathcal{F}$ using regular Julia or Python semantics, but intercepts calls to \texttt{@write}, \texttt{@read}, and \texttt{@copy} statements, and in addition to performing the desired operation, records the set of continuous addresses that are read, written, and copied.
+After $\mathcal{F}$ is finished executing, AD uses the recorded addresses to compute the Jacobian $|J h_e|(z)$; in the case of reverse-mode AD by iterating over output continuous addresses and backpropagating from each one to all of the input continous addresses, computing the Jacobian row-by-row.
+
+%\subsubsection{Example: Involution for a Split-Merge Reversible Jump Kernel}
+%
+%Figure~\ref{fig:mixture}(d) shows an involution expressed in the differentiable programming language introduced in this section, and Figure~\ref{fig:mixture}(f) shows a schematic of the information flow through the involution as it is applied twice in a row.
+%The involution implements a split or a merge proposal in the infinite mixture model of Figure~\ref{fig:mixture}(b), depending on the trace of the auxiliary program in Figure~\ref{fig:mixture}(c).
+%If there are at least two clusters, and the value of address $\mathtt{split}$ is false, then the involution proposes to merge two clusters by running code block 2 shown in green.
+%Otherwise, the involution proposes to split a cluster by running code block 1 shown in yellow.
+%Note that that code block 1 (yellow) is itself an involution on the discrete addresses in the traces---each application of code block 1 to the traces causes them to flip back and forth between a split and a merge proposal.
+%Also note that code blocks 2 and 3 are continuously differentiable bijections on the continuous addresses in the traces, and they are inverses of one another.
 
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORAMNCE} \label{sec:sparsity}
 
