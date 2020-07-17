@@ -277,12 +277,12 @@ This section describes probability distributions on dictionaries, and gives a co
 Section~\ref{sec:automating} will then show how probability distributions on dictionaries can be specified with probabilistic programs, and how probabilistic programming techniques can automatically compute probability densities spaces of dictionaries.
 
 \textbf{The space of finite dictionaries.}
-We fix a countably infinite set $\mathcal{A}$ of possible keys, such that each key $a$ is either called \emph{discrete} ($a \in \mathcal{I}$) or \emph{continuous} ($a \in \mathcal{J}$), where $\mathcal{A} = \mathcal{I} \cup \mathcal{J}$.\footnote{
-It is possible to assign a general measure space to each address, but this is not necessary for our purposes.}
-Let $V_a$ denote the set of possible values for key $a$, where $V_a$ is a countable set for each discrete key, and where $V_a = \mathbb{R}^{d_a}$ for each continuous key for some $d_a$.
-Given a set of keys $A$, let $V_A = \times_{a \in A} V_a$ denote the set of \textit{assignments} of values to each key.
-Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in V_A\}$. That is, a dictionary specifies 
-a finite set of keys $A \subset \mathcal{A}$ at which it has values, and an assignment $\mathbf{x}$ of values $x_a$ for each.
+We fix a countably infinite set $\mathcal{K}$ of possible keys, such that each key $k$ is either called \emph{discrete} ($k \in \mathcal{I}$) or \emph{continuous} ($k \in \mathcal{J}$), where $\mathcal{K} = \mathcal{I} \cup \mathcal{J}$.\footnote{
+It is possible to assign a general measure space to each key, but this is not necessary for our purposes.}
+Let $V_k$ denote the set of possible values for key $k$, where $V_k$ is a countable set for each discrete key, and where $V_k = \mathbb{R}^{d_k}$ for each continuous key for some $d_k$.
+Given a set of keys $K$, let $V_K = \times_{k \in A} V_k$ denote the set of \textit{assignments} of values to each key.
+Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{K \subset \mathcal{K}, |K| < \infty} \{(K, \mathbf{x}) \mid \mathbf{x} \in V_K\}$. That is, a dictionary specifies 
+a finite set of keys $K \subset \mathcal{K}$ at which it has values, and an assignment $\mathbf{x}$ of values $x_k$ for each.
 
 \textbf{Relationship to representation of~\citet{green1995reversible}.}
 \citet{green1995reversible} uses a state space that is the countable union of `models', where for each model there is a vector of real-valued parameters.
@@ -292,29 +292,29 @@ Also, continuous keys play the role of real-valued parameters, so it is possible
 The additional structure of dictionaries enables the automation techniques in Section~\ref{sec:automating}.
 
 \textbf{A measure space of finite dictionaries.}
-We associate a measure $\mu_a$ on $V_a$ for each key---the counting measure for each discrete key and the Lebesgue-measure on $\mathbb{R}^{d_a}$ for each continuous key.
-For each finite set of keys $A$, we make $V_A$ a measure space using the standard product $\sigma$-algebra $\Sigma_A = \otimes_{a \in A} \Sigma_a$ and the product measure $\mu_A = \times_{a \in A} \mu_a$.
-We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\bigcup_{A \subset \mathcal{A}, |A| < \infty} \{(A, \mathbf{x}) \mid \mathbf{x} \in B_A\} \mid B_A \in \Sigma_A \, \text{for each finite } A \subset \mathcal{A}\}$ to obtain a measurable space
+We associate a measure $\mu_k$ on $V_k$ for each key---the counting measure for each discrete key and the Lebesgue-measure on $\mathbb{R}^{d_k}$ for each continuous key.
+For each finite set of keys $K$, we make $V_K$ a measure space using the standard product $\sigma$-algebra $\Sigma_K = \otimes_{k \in A} \Sigma_k$ and the product measure $\mu_K = \times_{k \in A} \mu_k$.
+We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\bigcup_{K \subset \mathcal{K}, |K| < \infty} \{(K, \mathbf{x}) \mid \mathbf{x} \in B_K\} \mid B_K \in \Sigma_K \, \text{for each finite } K \subset \mathcal{K}\}$ to obtain a measurable space
 of dictionaries.
-A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_A$: we set $\mu(B) := \sum_{A \in \mathcal{A}, |A| < \infty} \mu_A(\{\mathbf{x} \mid (A, \mathbf{x}) \in B\})$.
+A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_K$: we set $\mu(B) := \sum_{A \in \mathcal{K}, |K| < \infty} \mu_K(\{\mathbf{x} \mid (K, \mathbf{x}) \in B\})$.
 
-\textbf{Notation for dictionaries.} Given a dictionary $d = (A, \mathbf{x})$, we write $A_d$ for $A$ and $d[a]$ for the value $x_a$ associated with a key $a \in A$.
+\textbf{Notation for dictionaries.} Given a dictionary $d = (K, \mathbf{x})$, we write $K_d$ for $K$ and $d[k]$ for the value $x_k$ associated with a key $k \in K$.
 We also denote specific dictionaries using notation $\{k_1 \mapsto v_1, k_2 \mapsto v_2, \ldots\}$.
-For example, the dictionary $(A, \mathbf{x})$ with $A = \{1, \mathtt{"foo"}\}$ and $x_1 = 0.123$ and $x_{\mathtt{"foo"}} = 5$ is denoted 
+For example, the dictionary $(K, \mathbf{x})$ with $K = \{1, \mathtt{"foo"}\}$ and $x_1 = 0.123$ and $x_{\mathtt{"foo"}} = 5$ is denoted 
 $\{1 \mapsto 0.123, \mathtt{"foo"} \mapsto 5\}$.
 
 \textbf{Probability distributions on finite dictionaries.} 
 When all keys are discrete, a probability distribution on dictionaries is defined by a $p$ is a probability mass function $p : \mathcal{D} \to [0, 1]$ that assigns a probability $p(m)$ to each dictionary $m \in \mathcal{P}$ such that $\sum_{x \in \mathcal{D}} p(m) = 1$.
 More generally a probability distribution on dictionaries is defined by a probability density $p : \mathcal{D} \rightarrow [0, \infty)$ such that $\int p(m) \mu_\mathcal{D}(\text{d}m) = 1$. 
-The probability is distributed the finite sets of keys $A \subseteq \mathcal{A}$ where $|A| < \infty$:
+The probability is distributed the finite sets of keys $K \subseteq \mathcal{K}$ where $|K| < \infty$:
 \begin{equation}
-1 = \int p(m) \mu_\mathcal{D}(\text{d}m) = \sum_{\substack{A \subseteq \mathcal{A}\\|A| < \infty}} \int p(m) \mu_{A}(dm)
+1 = \int p(m) \mu_\mathcal{D}(\text{d}m) = \sum_{\substack{K \subseteq \mathcal{K}\\|K| < \infty}} \int p(m) \mu_{K}(dm)
 \end{equation}
-where the probability for each key set $A$ is:
+where the probability for each key set $K$ is:
 \begin{equation}\label{eq:integral}
-\int p(m) \mu_{A}(dm) = \sum_{\mathbf{x}_1} \int_{\mathbb{R}^{d}} p((A, (\mathbf{x}_1, \mathbf{x}_2))) d\mathbf{x}_2
+\int p(m) \mu_{K}(dm) = \sum_{\mathbf{x}_1} \int_{\mathbb{R}^{d}} p((K, (\mathbf{x}_1, \mathbf{x}_2))) d\mathbf{x}_2
 \end{equation}
-where $d: = \sum_{a \in A \cap \mathcal{J}} d_{a}$ and where $\mathbf{x}_1$ is an assignment to the discrete choices in $A$ and $\mathbf{x}_2$ is an assignment to the continuous choices.
+where $d: = \sum_{k \in A \cap \mathcal{J}} d_{k}$ and where $\mathbf{x}_1$ is an assignment to the discrete choices in $K$ and $\mathbf{x}_2$ is an assignment to the continuous choices.
 
 We now give an example to build intuition.
 Consider a generative model of univariate data points $y_1, \dots, y_n$ from a Gaussian mixture with an unknown number of components $k$, each with unknown mean $m_i$ and variance $s_i$. If we place a Gaussian prior on $m_i$, an inverse Gamma prior on $s_i$, and a Poisson prior on $k$, the resulting density on dictionaries $d$ is:
@@ -329,17 +329,17 @@ p_{\mathrm{poisson}(3)}(d[\mathtt{k}]) \cdot\\
 \end{array}
 \end{align*}
 %
-when $A_d = \{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq d[\texttt{k}]\} \cup \{\texttt{s}_i \mid 1 \leq i \leq d[\texttt{k}]\}$, and 0 otherwise. In this case, we have $V_\texttt{k} = \mathbb{N}$ with the counting measure for $\mu_\texttt{k}$, and for all other addresses $a \in \mathcal{A}$, $V_a = \mathbb{R}$ with the Lebesgue measure for $\mu_a$.
+when $K_d = \{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq d[\texttt{k}]\} \cup \{\texttt{s}_i \mid 1 \leq i \leq d[\texttt{k}]\}$, and 0 otherwise. In this case, we have $V_\texttt{k} = \mathbb{N}$ with the counting measure for $\mu_\texttt{k}$, and for all other keys $k \in \mathcal{K}$, $V_k = \mathbb{R}$ with the Lebesgue measure for $\mu_k$.
 For each $k \in \{0, 1, \ldots\}$, the probability for key set
 $\{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$
 is $p_{\mathrm{poisson}(s)}(k)$ (via Equation~(\ref{eq:integral})).
 
 \textbf{Conditional distributions via disintegration.} Consider a probability density $p$ on the space $\mathcal{D}$ of dictionaries. 
-%For a set of keys $A \subset \mathcal{A}$, let $p(A) := \int 1[A_m = A] p(m) \mu_\mathcal{D}(\text{d}m)$, the probability under $p$ of a dictionary with exactly the key set $A$. 
-We say a key $a \in \mathcal{A}$ \textit{almost always appears} if $\int \mathbf{1}[a \in A_m] p(m) \mu_\mathcal{D}(\text{d}m) = 1$. Suppose $B$ is a set of keys that almost always appear for $p$, and that $b = (B, \mathbf{b})$ is a dictionary with keys $B$. Furthermore, let $(A_m, \mathbf{m}) \oplus (A_n, \mathbf{n}) := (A_m \cup A_n, \mathbf{m} \times \mathbf{n})$ be the \textit{merge} of two dictionaries $m$ and $n$ defined on disjoint key sets $A_m$ and $A_n$. Then we can define the conditional density $p(d \mid b) := \mathbf{1}[A_d \cap B = \emptyset] \frac{p(d \oplus b)}{\int_{\{m \mid A_m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)}$ when the denominator is finite. If the reference measure $\mu_a$ associated with each key $a \in B$ is discrete (e.g., the counting measure), then this definition corresponds to the ordinary notion of conditioning on an event (namely, the event that a sample from $p$ agrees with the dictionary $b$ on all addresses in $B$). When this is not the case, it corresponds to a more general measure-theoretic notion called disintegration~\citep{chang1997conditioning}. 
+%For a set of keys $K \subset \mathcal{K}$, let $p(A) := \int 1[K_m = A] p(m) \mu_\mathcal{D}(\text{d}m)$, the probability under $p$ of a dictionary with exactly the key set $K$. 
+We say a key $k \in \mathcal{K}$ \textit{almost always appears} if $\int \mathbf{1}[k \in K_m] p(m) \mu_\mathcal{D}(\text{d}m) = 1$. Suppose $B$ is a set of keys that almost always appear for $p$, and that $b = (B, \mathbf{b})$ is a dictionary with keys $B$. Furthermore, let $(K_m, \mathbf{m}) \oplus (K_n, \mathbf{n}) := (K_m \cup K_n, \mathbf{m} \times \mathbf{n})$ be the \textit{merge} of two dictionaries $m$ and $n$ defined on disjoint key sets $K_m$ and $K_n$. Then we can define the conditional density $p(d \mid b) := \mathbf{1}[K_d \cap B = \emptyset] \frac{p(d \oplus b)}{\int_{\{m \mid K_m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)}$ when the denominator is finite. If the reference measure $\mu_k$ associated with each key $k \in B$ is discrete (e.g., the counting measure), then this definition corresponds to the ordinary notion of conditioning on an event (namely, the event that a sample from $p$ agrees with the dictionary $b$ on all keys in $B$). When this is not the case, it corresponds to a more general measure-theoretic notion called disintegration~\citep{chang1997conditioning}. 
 
 Consider the infinite univariate mixture model, and the conditional density given observed data $(B, \mathbf{b}) := \{\mathtt{y}_1 \mapsto y_1, \ldots, \mathtt{y}_{\mathtt{n}} \mapsto y_{\mathtt{n}}\}$.
-The conditional density $p(d | b)$ is nonzero only if $A_d = \{\texttt{k}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$ for some $k$ ($d$ does not contain y-values), and the denominator in the definition of $p(d | b)$ simplifies to the familiar sum of marginal likelihoods over all $k$, where each marginal likelihood is a Riemann integral over $\mathbb{R}^{2k}$.
+The conditional density $p(d | b)$ is nonzero only if $K_d = \{\texttt{k}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$ for some $k$ ($d$ does not contain y-values), and the denominator in the definition of $p(d | b)$ simplifies to the familiar sum of marginal likelihoods over all $k$, where each marginal likelihood is a Riemann integral over $\mathbb{R}^{2k}$.
 
 \subsection{Involutive MCMC with Dictionaries}
 
@@ -348,13 +348,13 @@ The conditional density $p(d | b)$ is nonzero only if $A_d = \{\texttt{k}\} \cup
 %Because dictionaries are flexible objects, the algorithm remains quite general.
 
 Suppose that the model distribution and auxiliary distributions are probability distributions on dictionaries, with densities $p$ and $q_x$.
-Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries with keys $\mathcal{A}_P$ and $\mathcal{A}_Q$ respectively, so that $Z = X \times Y \subseteq \mathcal{D}_P \times \mathcal{D}_Q$ where $\mathcal{D}_P$ is the set of dictionaries on keys taken from $\mathcal{A}_P$ and similarly for $\mathcal{D}_Q$.
+Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries with keys $\mathcal{K}_P$ and $\mathcal{K}_Q$ respectively, so that $Z = X \times Y \subseteq \mathcal{D}_P \times \mathcal{D}_Q$ where $\mathcal{D}_P$ is the set of dictionaries on keys taken from $\mathcal{K}_P$ and similarly for $\mathcal{D}_Q$.
 % TODO: this is only needed for Algorithm 2, and it is relevant for the 
-To simplify the notation, and without loss of generality, we will assume that $\mathcal{A}_P$ and $\mathcal{A}_Q$ are disjoint\footnote{If $\mathcal{A}_P$ and $\mathcal{A}_Q$ are not disjoint then, they can be made so by adding a different prefix to each address.}, and we define $Z := \{ x \oplus y : p(x)q_x(y) > 0\} \subseteq \mathcal{D}$.
-where $\mathcal{D}$ is the set of dictionaries on keys from $\mathcal{A}_P \cup \mathcal{A}_Q$
+To simplify the notation, and without loss of generality, we will assume that $\mathcal{K}_P$ and $\mathcal{K}_Q$ are disjoint\footnote{If $\mathcal{K}_P$ and $\mathcal{K}_Q$ are not disjoint then, they can be made so by adding a different prefix to the keys of each set.}, and we define $Z := \{ x \oplus y : p(x)q_x(y) > 0\} \subseteq \mathcal{D}$.
+where $\mathcal{D}$ is the set of dictionaries on keys from $\mathcal{K}_P \cup \mathcal{K}_Q$
 (recall $x \oplus y$ denotes the dictionary resulting from merging dictionaries $x$ and $y$ with disjoint keys).
 
-Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the sets of keys $A_x$ and $A_y$ and the values $x_a$ and $y_a$ for all discrete keys $a$ are both constant.
+Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the sets of keys $K_x$ and $K_y$ and the values $x_k$ and $y_k$ for all discrete keys $k$ are both constant.
 Then each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys in the two dictionaries.
 Suppose there is an involution $g : E \to E$ between elements of the partition (a function with $g = g^{-1}$), and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ for each $e$ with $h_{e} = h_{g(e)}^{-1}$.
 Let $e(z) \in E$ denote the element of the partition for an alement $z \in Z$.
@@ -369,7 +369,7 @@ Then, the acceptance probability in Algorithm~\ref{alg:involutive-mcmc} simplifi
 \end{equation}
 One example of a valid partition of $Z$ is given by equivalence classes of the following equivalence relation:
 \[
-z_1 \sim z_2 \iff (A_{z_1} = A_{z_2}) \land (z_1[a] = z_2[a] \; \forall a \in A_{z_1} \cap \mathcal{I})
+z_1 \sim z_2 \iff (K_{z_1} = K_{z_2}) \land (z_1[k] = z_2[k] \; \forall k \in K_{z_1} \cap \mathcal{I})
 \]
 (dictionaries are equivalent if they contain the same keys and they agree on the value of all discrete keys).
 Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
@@ -402,9 +402,9 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 \Procedure{trace-and-score}{$\mathcal{P}$}
    \State $s \gets 0$
    \State $x \gets \{\}$
-   \execute[$\mathcal{P}$], but with $\mathtt{"}a \sim \mathrm{distribution}\mathtt{"} \equiv$ (
+   \execute[$\mathcal{P}$], but with $\mathtt{"}k \sim \mathrm{distribution}\mathtt{"} \equiv$ (
         \State 1. set $v \sim \mathrm{distribution}$
-        \State 2. set $x[a] \gets v$
+        \State 2. set $x[k] \gets v$
         \State 3. set $s \gets s + \textproc{logpdf}(\mathrm{distribution}, v)$
         \State 4. evaluate to $v$)
     \END
@@ -415,14 +415,14 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 \begin{minipage}[t]{0.49\linewidth}
 \Procedure{score}{$\mathcal{P}$, $x$}
     \State $s \gets 0$
-    \State $A \gets\{\}$
-    \execute[$\mathcal{P}$], but with $\mathtt{"}a \sim \mathrm{distribution}\mathtt{"} \equiv$ (
-        \State 1. set $v \gets x[a]$
-        \State 2. set $A \gets A \cup \{a\}$
+    \State $K \gets\{\}$
+    \execute[$\mathcal{P}$], but with $\mathtt{"}k \sim \mathrm{distribution}\mathtt{"} \equiv$ (
+        \State 1. set $v \gets x[k]$
+        \State 2. set $K \gets K \cup \{k\}$
         \State 3. set $s \gets s + \textproc{logpdf}(\mathrm{distribution}, v)$
         \State 4. evaluate to $v$)
     \END
-   \State \algorithmicif\hspace{1mm} $A \ne A_x$ \algorithmicthen\hspace{1mm} $s \gets -\infty$ \algorithmicend
+   \State \algorithmicif\hspace{1mm} $K \ne K_x$ \algorithmicthen\hspace{1mm} $s \gets -\infty$ \algorithmicend
    \State \Return $s$
 \EndProcedure
 \end{minipage}\\
@@ -432,20 +432,20 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
     \LineComment{Run the involution, and keep track of copied, read, and written continuous keys}
     \State $z' \gets \{\}$ \Comment{Initialize empty output dictionary}
     \execute[$\mathcal{F}$], but with
-        \State $\mathtt{"write}(a, v)\mathtt{"} \equiv$
-            (\algorithmicif\hspace{1mm} $a \in \mathcal{I}$
-            \algorithmicthen\hspace{1mm} set $z'[a] \gets v$
-            \algorithmicelse\hspace{1mm} set $z'[a] \gets v$ and set $W \gets W \cup \{a\})$
-        \State $\mathtt{"read}(a)\mathtt{"} \equiv$
-            (\algorithmicif\hspace{1mm} $a \in \mathcal{I}$
-            \algorithmicthen\hspace{1mm} evaluate to $z[a]$
-            \algorithmicelse\hspace{1mm} set $R \gets R \cup \{a\}$ and evaluate to $z[a]$)
-        \State $\mathtt{"copy}(a_1, a_2)\mathtt{"} \equiv$ (set $z'[a_2] \gets z[a_1]$ and set $C \gets C \cup \{a_1\}$)
+        \State $\mathtt{"write}(k, v)\mathtt{"} \equiv$
+            (\algorithmicif\hspace{1mm} $k \in \mathcal{I}$
+            \algorithmicthen\hspace{1mm} set $z'[k] \gets v$
+            \algorithmicelse\hspace{1mm} set $z'[k] \gets v$ and set $W \gets W \cup \{k\})$
+        \State $\mathtt{"read}(k)\mathtt{"} \equiv$
+            (\algorithmicif\hspace{1mm} $k \in \mathcal{I}$
+            \algorithmicthen\hspace{1mm} evaluate to $z[k]$
+            \algorithmicelse\hspace{1mm} set $R \gets R \cup \{k\}$ and evaluate to $z[k]$)
+        \State $\mathtt{"copy}(k_1, k_2)\mathtt{"} \equiv$ (set $z'[k_2] \gets z[k_1]$ and set $C \gets C \cup \{k_1\}$)
     \END
     \LineComment{Use automatic differentiation of $\mathcal{F}$ to compute Jacobian, skipping copied addresses}
     \For{$i$ in $1$ to $|W|$}
-        \State $a_i \gets W_i$ \Comment{Pick $i$th key in $W$; the order does not matter}
-        \State $J[i,:] \gets \nabla_{\mathbf{z}_{R \setminus C}} \left( h_{e(z)}[a_i] \right)$ \Comment{{\small Gradient of $z'[a_i] = h_{e(z)}[a_i]$ w.r.t. non-copied continuous inputs ($z_a$ for $a \in R \setminus C$)}}
+        \State $k_i \gets W_i$ \Comment{Pick $i$th key in $W$; the order does not matter}
+        \State $J[i,:] \gets \nabla_{\mathbf{z}_{R \setminus C}} \left( h_{e(z)}[a_i] \right)$ \Comment{{\small Gradient of $z'[k_i] = h_{e(z)}[k_i]$ w.r.t. non-copied continuous inputs ($z_k$ for $k \in R \setminus C$)}}
     \EndFor
     \State \Return $(z', \log(|\det(J)|))$
 \EndProcedure
@@ -474,8 +474,8 @@ But unlike Bayesian networks, they do not assume a fixed number of random variab
 
 At the most basic level, a probabilistic program is a program that makes random choices. 
 Any such program induces a probability distribution over its possible \textit{execution traces}, records of each random choice it makes.
-If each random choice is associated with a unique \textit{address} from a countable set
-of addresses $\mathcal{A}$, 
+If each random choice is associated with a unique \textit{address} from the set of
+dictionary keys $\mathcal{K}$, 
 then these traces can be viewed as finite dictionaries, mapping the address of each random choice to its value. 
 The distribution induced by a probabilistic program over
 its execution traces can thus be understood as a measure on the space $(\mathcal{D}, \Sigma_\mathcal{D}, \mu_\mathcal{D})$ introduced in the previous section. Furthermore, densities of trace distributions with respect to $\mu_\mathcal{D}$ are typically easy to compute.
@@ -486,15 +486,15 @@ Gen programs.
 \subsubsection{A Language for Probabilistic Programs with Traces}
 
 The Gen probabilistic programming language augments the syntax of Julia~\citep{julia}
-with a single new construct, the \texttt{\{a\} $\sim$ d} expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form \texttt{\{a\} $\sim$ d}, (i) evaluating the \textit{address expression} \texttt{a} to obtain an address $a \in \mathcal{A}$; (ii) evaluating the \textit{distribution expression} $d$ to obtain a distribution $d$ over the measurable space $V_a$; (iii) sampling a value $x_a \sim d$ and adding the mapping $\{a \mapsto x_a\}$ to a dictionary called the program trace; and (iv) returning the sampled value $x_a$ to the program, to continue execution. When execution terminates, the program trace has accumulated a mapping for each random choice encountered during the program's execution.
+with a single new construct, the \texttt{\{a\} $\sim$ d} expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form \texttt{\{a\} $\sim$ d}, (i) evaluating the \textit{address expression} \texttt{a} to obtain an address $k \in \mathcal{K}$; (ii) evaluating the \textit{distribution expression} $d$ to obtain a distribution $d$ over the measurable space $V_k$; (iii) sampling a value $x_k \sim d$ and adding the mapping $\{k \mapsto x_k\}$ to a dictionary called the program trace; and (iv) returning the sampled value $x_k$ to the program, to continue execution. When execution terminates, the program trace has accumulated a mapping for each random choice encountered during the program's execution.
 
 As a concrete example, consider Figure~\ref{fig:mixture}a, which defines a Gen program for a Gaussian mixture model with an unknown number of components. The program \texttt{p} accepts as input an integer \texttt{n}, a number of data points. Each $\texttt{n}$ defines
 a distinct distribution over dictionaries.
 
 The first line of the program samples a number of mixture components from a Poisson prior using the address \texttt{:k}. (This line could also be written \texttt{k = \{:k\} $\sim$ poisson\_plus\_one(1)}: the \textit{address} is the symbol \texttt{:k}, and the result of the choice is assigned to a Julia variable called \texttt{k}. Because this is a common pattern, Gen provides the syntactic sugar \texttt{x $\sim$ d} as shorthand for \texttt{x = \{:x\} $\sim$ d}.) The program then samples \texttt{k} means and \texttt{k} variances from Gaussian and inverse Gamma priors, respectively. Each of these 2\texttt{k} random choices has its own address, determined by the address expression preceding it. For example, the mean for the fourth mixture component (if \texttt{k} $\geq 4$) has address \texttt{(:mu, 4)}. The mixture weights are then sampled at the address \texttt{:weights} from a Dirichlet distribution, and $\texttt{n}$ data points are sampled at addresses \texttt{(:x, 1)}, \dots, \texttt{(:x, n)}. The random choice at address $\mathtt{:}\mathtt{k}$ is discrete with $V_{\texttt{:k}} = \integers_{\ge 1}$, and the other random choices are continuous. 
-Overall, the program defines a distribution over traces with the following density over traces $(A, \mathbf{x})$ with respect to $\mu_\mathcal{D}$:
+Overall, the program defines a distribution over traces with the following density over traces $(K, \mathbf{x})$ with respect to $\mu_\mathcal{D}$:
 \begin{align*}
-p(n)((A, \mathbf{x})) =
+p(n)((K, \mathbf{x})) =
 \begin{array}{l}
 p_{\mathrm{poisson}(1)}(x_{\mathtt{:}\mathtt{k}}-1) \cdot\\
 \prod_{i=1}^{x_{\mathtt{:}\mathtt{k}}} p_{\mathrm{normal}(0, 10)}(x_{(\mathtt{:}\mathtt{mu}, i)}) \cdot\\
@@ -504,7 +504,7 @@ p_{\mathrm{dirichlet}(2.0,\dots,2.0)}(x_{\mathtt{:}\mathtt{weights}})\cdot\\
 \;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\;\; p_{\mathrm{normal}(x_{\mathtt{(:mu, j)}}, x_{(\mathtt{:}\mathtt{var}, j)})}(x_{(\mathtt{:}\mathtt{x}, i)})
 \end{array}
 \end{align*}
-when $A$ contains exactly the addresses $\mathtt{:}\mathtt{k}, \mathtt{:}\mathtt{weights}, (\mathtt{:}\mathtt{x}, i)$ for $i = 1, \dots, n$, and $(\mathtt{:}\mathtt{mu}, j)$ and $(\mathtt{:}\mathtt{var}, j)$ for $j = 1, \dots, x_{\mathtt{:}\mathtt{k}}$; otherwise, the density is 0.
+when $K$ contains exactly the addresses $\mathtt{:}\mathtt{k}, \mathtt{:}\mathtt{weights}, (\mathtt{:}\mathtt{x}, i)$ for $i = 1, \dots, n$, and $(\mathtt{:}\mathtt{mu}, j)$ and $(\mathtt{:}\mathtt{var}, j)$ for $j = 1, \dots, x_{\mathtt{:}\mathtt{k}}$; otherwise, the density is 0.
 
 \paragraph{Automatic Sampling and Density Computation for Probabilistic Programs.}
 Sampling traces from, and computing densities of dictionaries under, the distribution on traces
@@ -517,7 +517,7 @@ but recording the value of every encountered choice into a dictionary, which it 
 halts with probability 1. Otherwise, it could loop infinitely, and even if it terminates,
 the density will be incorrect.) 
 
-The density of an arbitrary dictionary $(A, \mathbf{x})$ under any probabilistic program's distribution on traces can be computed using \textsc{score}. The idea is to run the probabilistic program, and whenever a random choice \texttt{\{a\} $\sim$ d} is encountered, to look up the value $x_a$ in the dictionary, compute its density under the primitive distribution $d$, multiply this density into a running total, and return control to the probabilistic program as if the sampling instruction had executed and returned $x_a$. At the end, the running total can be returned as the trace's density. If at any point an address $a \not\in A$ is encountered, or if not all addresses in $A$ have been visited at the end of execution, the algorithm returns $0$ as the density.
+The density of an arbitrary dictionary $(K, \mathbf{x})$ under any probabilistic program's distribution on traces can be computed using \textsc{score}. The idea is to run the probabilistic program, and whenever a random choice \texttt{\{a\} $\sim$ d} is encountered, to look up the value $x_k$ in the dictionary, compute its density under the primitive distribution $d$, multiply this density into a running total, and return control to the probabilistic program as if the sampling instruction had executed and returned $x_k$. At the end, the running total can be returned as the trace's density. If at any point an address $k \not\in K$ is encountered, or if not all addresses in $K$ have been visited at the end of execution, the algorithm returns $0$ as the density.
 
 
 \subsubsection{Automatically Computing Density Ratios in Involutive MCMC}
@@ -692,7 +692,7 @@ end
 %If the space $Z$ can be partitioned into a countable number of sets $Z_1, Z_2, \ldots$, such that the each element of the partition is in one-to-one correspondence with another element ($f_1 : \{Z_1, Z_2, \ldots\} \to \{Z_1, Z_2, \ldots\}$ for some bijection $f_1$), and such that $f_{2,i} : Z_i \to Z_{f_1(i)}$ is a continuously differentiable bijection, and such that $f(z) = f_{2,i(z)}(z)$, then a Radon-Nikodym can be constructed from the Jacobian of the function $f_{2,i(z)}$ where $i(z) = Z_j$ for $z \in Z_j$.
 %We denote the Jacobian (determinant) of a function $g$ by $| J g |$.
 %See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
-%Applying this to the setting where $Z$ is a set of pairs of traces of probabilistic programs as formalized in the preivous section is straightforward when the partition of $Z$ is the countable disjoint union over all pairs $(A, \mathbf{d})$ where $A \subseteq \mathcal{A}$ are trace structures and $\mathbf{d}$ are assignments to discrete choices.
+%Applying this to the setting where $Z$ is a set of pairs of traces of probabilistic programs as formalized in the preivous section is straightforward when the partition of $Z$ is the countable disjoint union over all pairs $(K, \mathbf{d})$ where $K \subseteq \mathcal{K}$ are trace structures and $\mathbf{d}$ are assignments to discrete choices.
 %
 
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORAMNCE} \label{sec:sparsity}
@@ -887,31 +887,31 @@ Reversible jump MCMC~\citep{green1995reversible,hastie2012model} is a special ca
 the implementation of reversible jump MCMC kernels can be automated using the probabilistic and differentiable programming languages presented in this paper.
 We now review reversible jump MCMC, then show how it can be automated using the techniques presented earlier, and give an example.
 
-The reversible jump MCMC framework involves a set of `models' $k \in \mathcal{K}$, and a prior distribution on models $p(k)$.
-For each model, there is a latent continuous parameter vector $\theta_k \in \mathbb{R}^{n(k)}$ where $n(k)$ is the dimension of model $k$, and a likelihood function $L_{D,k}(\theta_k)$ for each $k$ given data $D$.
-The latent state $x$ is a pair $(k, \theta_k)$ of model and continuous parameter.
+The reversible jump MCMC framework involves a set of `models' $h \in \mathcal{H}$, and a prior distribution on models $p(h)$.
+For each model, there is a latent continuous parameter vector $\theta_h \in \mathbb{R}^{n(h)}$ where $n(h)$ is the dimension of model $h$, and a likelihood function $L_{D,h}(\theta_h)$ for each $h$ given data $D$.
+The latent state $x$ is a pair $(h, \theta_h)$ of model and continuous parameter.
 There is a set of \emph{move types} $\mathcal{M}$.
-Each move type $m \in \mathcal{M}$ is associated with an unordered pair of models $(k_1, k_2)$ and a dimensionality $d(m)$ such that $d(m) \ge n(k_1)$ and $d(m) \ge n(k_2)$ (zero, one, or more than one move types maybe assocaite with a given pair of models).
-For each latent state $x = (k, \theta_k)$, there is a probability distribution $q_{x}(m)$ on move types such that $q_{x}(m) > 0$ implies that $k$ is one of the models for move type $m$.
-For each move type $m \in \mathcal{K}$ between $k_1$ and $k_2$ there is a pair of continuously differentiable bijections $h_{m, k_1 \to k_2} : \mathbb{R}^{d(m)} \to \mathbb{R}^{d(m)}$ and $h_{m, k_2 \to k_1} := h_{m, k_1 \to k_2}^{-1}$, and a pair of proposal densities $q_{m,k_1 \to k_2}(u_{k_1 \to k_2})$ and $q_{m,k_2 \to k_1}(u_{k_2 \to k_1})$ where $u_{k_1 \to k_2} \in \mathbb{R}^{d(m) - n(k_1)}$ and $u_{k_2 \to k_1} \in \mathbb{R}^{d(m) - n(k_2)}$.
-A proposal is made from state $x = (k, \theta_k)$ by (i) sampling a move type $m \sim q_{x}(\cdot)$, and (ii) sampling continuous variable $u \sim q_{m,k \to k'}(\cdot)$ for $(k, k')$ associated with $m$, and (iii) computing $(\theta_{k}', u') := h_{m,k \to k'}(\theta_k, u)$, and proposing new state $x' = (k', \theta_k')$.
+Each move type $m \in \mathcal{M}$ is associated with an unordered pair of models $(h_1, h_2)$ and a dimensionality $d(m)$ such that $d(m) \ge n(h_1)$ and $d(m) \ge n(h_2)$ (zero, one, or more than one move types may be associated with a given pair of models).
+For each latent state $x = (h, \theta_h)$, there is a probability distribution $q_{x}(m)$ on move types such that $q_{x}(m) > 0$ implies that $h$ is one of the models for move type $m$.
+For each move type $m \in \mathcal{M}$ between $h_1$ and $h_2$ there is a pair of continuously differentiable bijections $g_{m, h_1 \to h_2} : \mathbb{R}^{d(m)} \to \mathbb{R}^{d(m)}$ and $g_{m, h_2 \to h_1} := g_{m, h_1 \to h_2}^{-1}$, and a pair of proposal densities $q_{m,h_1 \to h_2}(u_{h_1 \to h_2})$ and $q_{m,h_2 \to h_1}(u_{h_2 \to h_1})$ where $u_{h_1 \to h_2} \in \mathbb{R}^{d(m) - n(h_1)}$ and $u_{h_2 \to h_1} \in \mathbb{R}^{d(m) - n(h_2)}$.
+A proposal is made from state $x = (h, \theta_h)$ by (i) sampling a move type $m \sim q_{x}(\cdot)$, and (ii) sampling continuous variable $u \sim q_{m,h \to h'}(\cdot)$ for $(h, h')$ associated with $m$, and (iii) computing $(\theta_{h}', u') := g_{m,h \to h'}(\theta_h, u)$, and proposing new state $x' = (h', \theta_h')$.
 The move is accepted with probability:
 \begin{equation}
 {
 \min\left\{ 1,
-\frac{p(k')}{p(k)} \frac{p_{k'}(\theta_{k'})}{p_k(\theta_k)} \frac{L_{D,k'}(\theta_k')}{L_{D,k}(\theta_k)}
+\frac{p(h')}{p(h)} \frac{p_{h'}(\theta_{h'})}{p_h(\theta_h)} \frac{L_{D,h'}(\theta_h')}{L_{D,h}(\theta_h)}
 \frac{q_{x'}(m)}{q_{x}(m)}
-\frac{q_{m,k' \to k}(u)}{q_{m,k \to k'}(u)}
+\frac{q_{m,h' \to h}(u)}{q_{m,h \to h'}(u)}
 \right\}
 }
 \end{equation}
 
-To represent reversible jump MCMC using involutive MCMC implemented with probabilistic programs, we write a probabilistic program $\mathcal{P}$ that encodes the space of models $\mathcal{K}$, the prior distribution on models, $p(k)$, the per-model priors $p_k(\theta_k)$ and the per-model likelihoods $L_{D,k}(\theta_k)$.
-The set of all models $k$ corresponds to the set of all pairs $(A_P, \mathbf{d}_P)$ where $A_\mathcal{P}$ represent possible trace structures (i.e. control-flow paths through $\mathcal{P}$) and $\mathbf{d}_P$ are the set of assignments to discrete random choices made by $\mathcal{P}$.
+To represent reversible jump MCMC using involutive MCMC implemented with probabilistic programs, we write a probabilistic program $\mathcal{P}$ that encodes the space of models $\mathcal{H}$, the prior distribution on models, $p(h)$, the per-model priors $p_h(\theta_h)$ and the per-model likelihoods $L_{D,h}(\theta_h)$.
+The set of all models $h$ corresponds to the set of all pairs $(K_\mathcal{P}, \mathbf{d}_\mathcal{P})$ where $K_\mathcal{P}$ represent possible trace structures (i.e. control-flow paths through $\mathcal{P}$) and $\mathbf{d}_\mathcal{P}$ are the set of assignments to discrete random choices made by $\mathcal{P}$.
 The per-model continuous parameters $\theta$ correspond to continuous random choices $\mathbf{c}_\mathcal{P}$.
 % TODO explain the likelihood
-An auxiliary probabilistic program $\mathcal{Q}$ encodes both the probability distribution on moves types using discrete random choices and possibly stochastic control flow ($(A_\mathcal{Q}, \mathbf{d}_\mathcal{Q})$), and the per-move-type probability densities on $u$ using continuous random choices $\mathbf{c}_\mathcal{Q}$.
-The involution $f$ factors into an (i) involution $f_1$ on pairs $i = ((A_\mathcal{P}, \mathbf{d}_\mathcal{P}), (A_\mathcal{Q}, \mathbf{d}_\mathcal{Q}))$ that defines the association between move types $\mathcal{M}$ and the model pairs ($k_1, k_2$); and (ii) a family of bijections $f_{1,i}$ on the space of pairs $(\mathbf{c}_\mathcal{P}, \mathbf{c}_\mathcal{Q})$ of continuous random choices for both programs for fixed values of the discrete random choices and fixed trace structure.
+An auxiliary probabilistic program $\mathcal{Q}$ encodes both the probability distribution on moves types using discrete random choices and possibly stochastic control flow ($(K_\mathcal{Q}, \mathbf{d}_\mathcal{Q})$), and the per-move-type probability densities on $u$ using continuous random choices $\mathbf{c}_\mathcal{Q}$.
+The involution $f$ factors into an (i) involution $f_1$ on pairs $i = ((K_\mathcal{P}, \mathbf{d}_\mathcal{P}), (H_\mathcal{Q}, \mathbf{d}_\mathcal{Q}))$ that defines the association between move types $\mathcal{M}$ and the model pairs ($h_1, h_2$); and (ii) a family of bijections $f_{1,i}$ on the space of pairs $(\mathbf{c}_\mathcal{P}, \mathbf{c}_\mathcal{Q})$ of continuous random choices for both programs for fixed values of the discrete random choices and fixed trace structure.
 
 Figure~\ref{fig:mixture} shows a split-merge reversible jump kernel for an infinite Gaussian mixture model~\citep{richardson1997bayesian} implemented using the probabilistic and differentiable programming languages described in this paper.
 Figure~\ref{fig:mixture}(b) shows the infinite Gaussian mixture model, specified as a probabilistic program $\mathcal{P}$.
@@ -1016,8 +1016,8 @@ and the involution swaps the old value with the newly proposed value:
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-@copy(p_in, subtree_address, q_out, :new_subtree)
-@copy(q_in, :new_subtree, p_out, subtree_address)
+@copy(p_in, subtree_kddress, q_out, :new_subtree)
+@copy(q_in, :new_subtree, p_out, subtree_kddress)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -1058,7 +1058,7 @@ All acknowledgments go at the end of the paper, including thanks to reviewers wh
 %\begin{equation}
 %\int_X p(x) \ell_x(A) \mu(dx) = p(A) \mbox{ for all } A \in \Sigma
 %\end{equation}
-%where $\ell_x(A)$ is the probability of transitioning into set $A$ from $x$, and is given by:
+%where $\ell_x(A)$ is the probability of transitioning into set $K$ from $x$, and is given by:
 %\begin{equation}
 %\ell_x(A) := \int_U k_{(x, u)}(A \times U) \mu(du)
 %\end{equation}
@@ -1080,7 +1080,7 @@ Then, $f : Z \to Z : (i, \mathbf{x}) \mapsto (f_1(i), f_{2,i}(\mathbf{x}))$ is a
 f(f(i, \mathbf{x})) = f(f_1(i), f_{2,i}(\mathbf{x})) = (f_1(f_1(i)), f_{2,f_1(i)}(f_{2,i}(\mathbf{x}))) = (i, \mathbf{x})
 \end{equation}
 Let $\Sigma_n$ and $\mu_n$ denote the Lebesgue $\sigma$-algebra and Lebesgue measure on $\mathbb{R}^n$, respectively.
-Let $\Sigma \subset \mathcal{P}(Z)$ be the $\sigma$-algebra of sets of the form $\cup_{i \in I} \{(i, \mathbf{x}) : \mathbf{x} \in A_i\}$ for some $A_i \in \Sigma_{n_i}$ for each $i \in I$.
+Let $\Sigma \subset \mathcal{P}(Z)$ be the $\sigma$-algebra of sets of the form $\cup_{i \in I} \{(i, \mathbf{x}) : \mathbf{x} \in K_i\}$ for some $K_i \in \Sigma_{n_i}$ for each $i \in I$.
 %Let $\Sigma$ be the $\sigma$-algebra on $Z$ generated by the sets $G := \{ \{(i, \mathbf{x}) : \mathbf{x} \in A\} : i \in I, A \in \Sigma_{n_i} \}$.
 %Note that the sets $G$ form a $\pi$-system:
 %\begin{align}
@@ -1089,30 +1089,30 @@ Let $\Sigma \subset \mathcal{P}(Z)$ be the $\sigma$-algebra of sets of the form 
 %\end{align}
 Let $\mu$ denote the measure on measurable space $(Z, \Sigma)$ given by:%, uniquely defined by its value on the sets $G$:
 \begin{equation}
-\mu(\cup_{i \in I} \{(i, \mathbf{x}) : \mathbf{x} \in A_i\}) := \sum_{i \in I} \mu_{n_i}(A_i)
+\mu(\cup_{i \in I} \{(i, \mathbf{x}) : \mathbf{x} \in K_i\}) := \sum_{i \in I} \mu_{n_i}(K_i)
 \end{equation}
 We wish to show that the Radon-Nikodym derivative of the pushforward of $\mu$ by $f$ with respect to $\mu$, evaluated at $(i, \mathbf{x})$, is the absolute value of the Jacobian (determinant) of the function $f_{2,i}$ evaluated at $\mathbf{x}$, which is denoted $(J f_{2,i})(\mathbf{x})$:
 \begin{equation}
 \frac{d (\mu \circ f^{-1})}{d \mu}(i, \mathbf{x})
 = \left| (Jf_{2,i})(\mathbf{x})\right|
 \end{equation}
-Consider $(\mu \circ f^{-1})(A)$ for $A \in \Sigma$:
+Consider $(\mu \circ f^{-1})(A)$ for $K \in \Sigma$:
 \begin{align}
-(\mu \circ f^{-1})(\cup_{i \in I} \{ (i, \mathbf{x}) : \mathbf{x} \in A_i \})
-&= \mu(f^{-1}(\cup_{i \in I} \{ (i, \mathbf{x}) : \mathbf{x} \in A_i \}))\\
-&= \mu(\cup_{i \in I} f^{-1}(\{ (i, \mathbf{x}) : \mathbf{x} \in A_i \}))\\
-&= \mu(\cup_{i \in I} \{ (f_1(i), \mathbf{x}) : \mathbf{x} \in f_{2,i}(A_i) \})\\
-&= \sum_{i \in I} \mu_{n_i}(f_{2,i}(A_i))
+(\mu \circ f^{-1})(\cup_{i \in I} \{ (i, \mathbf{x}) : \mathbf{x} \in K_i \})
+&= \mu(f^{-1}(\cup_{i \in I} \{ (i, \mathbf{x}) : \mathbf{x} \in K_i \}))\\
+&= \mu(\cup_{i \in I} f^{-1}(\{ (i, \mathbf{x}) : \mathbf{x} \in K_i \}))\\
+&= \mu(\cup_{i \in I} \{ (f_1(i), \mathbf{x}) : \mathbf{x} \in f_{2,i}(K_i) \})\\
+&= \sum_{i \in I} \mu_{n_i}(f_{2,i}(K_i))
 \end{align}
-It suffices to show that for all $A \in \Sigma$:
+It suffices to show that for all $K \in \Sigma$:
 \begin{equation}
-\int_A \left| (Jf_{2,i})(\mathbf{x})\right| \mu(dz) = \sum_{i \in I} \mu_{n_i}(f_{2,i}(A_i))
+\int_K \left| (Jf_{2,i})(\mathbf{x})\right| \mu(dz) = \sum_{i \in I} \mu_{n_i}(f_{2,i}(K_i))
 \end{equation}
 Expanding the left-hand side:
 \begin{align}
-\int_A \left| (Jf_{2,i})(\mathbf{x})\right| \mu(dz)
-= \sum_{i \in I} \int_{A_i} \left| (Jf_{2,i})(\mathbf{x})\right| \mu_{n_i}(d \mathbf{x}) % TODO how to justify this? it seems obvious
-= \sum_{i \in I} \mu_{n_i}(f_{2,i}(A_i)) % Borgachev Theorem 4.7.1 
+\int_K \left| (Jf_{2,i})(\mathbf{x})\right| \mu(dz)
+= \sum_{i \in I} \int_{K_i} \left| (Jf_{2,i})(\mathbf{x})\right| \mu_{n_i}(d \mathbf{x}) % TODO how to justify this? it seems obvious
+= \sum_{i \in I} \mu_{n_i}(f_{2,i}(K_i)) % Borgachev Theorem 4.7.1 
 \end{align}
 where the final step uses Borgachev Theorem 3.7.1 with $g := 1$, and $F := f_{2,i}$.
 
@@ -1120,7 +1120,7 @@ where the final step uses Borgachev Theorem 3.7.1 with $g := 1$, and $F := f_{2,
 
 \begin{lemma}
 Given $\sigma$-finite measures $(X_P, \Sigma_P, \mu_P)$ and $(X_Q, \Sigma_Q, \mu_Q)$,
-if $X \in \Sigma_P \otimes \Sigma_Q$ then $\Sigma = \{A \in \Sigma_P \otimes \Sigma_Q : A \subseteq X\}$ is a $\sigma$-algebra on $X$, and $\mu : \Sigma \to [0, \infty)$ given by $\mu(A) := (\mu_P \times \mu_Q)(A)$ is $\sigma$-finite measure on measurable space $(X, \Sigma)$.
+if $X \in \Sigma_P \otimes \Sigma_Q$ then $\Sigma = \{A \in \Sigma_P \otimes \Sigma_Q : K \subseteq X\}$ is a $\sigma$-algebra on $X$, and $\mu : \Sigma \to [0, \infty)$ given by $\mu(A) := (\mu_P \times \mu_Q)(A)$ is $\sigma$-finite measure on measurable space $(X, \Sigma)$.
 \end{lemma}
 \begin{proof}
 TODO: write out the detailed steps, proving each property of a $\sigma$-algebra%$ TODO
@@ -1148,10 +1148,10 @@ Suppose $f$ is a one-to-one function from $Z$ onto $Z$ such that $f^{-1} = f$.
 Consider the probability kernel $k$ defined by $k_z(A) := [f(z) \in A] \alpha(z, f(z)) + [z \in A] (1 - \alpha(z, f(z)))$ (where $\alpha(z, f(z))$ gives the probability of accepting a proposed transition from $z$ to $f(z)$).
 Let $\nu(dz) := \pi(dz) + (\pi \circ f^{-1})(dz)$.
 Let $h(z)$ be a density for $\pi$ with respect to $\nu$.
-Let $A := \{z \in Z : h(z) > 0 \mbox{ and } h(f(z)) > 0\}$.
+Let $K := \{z \in Z : h(z) > 0 \mbox{ and } h(f(z)) > 0\}$.
 $k$ satisfies detailed balance with respect to $\pi$ if and only if:
 \begin{enumerate}
-\item $\alpha(z, f(z)) = 0$ for $\pi$-almost all $z \not \in A$
+\item $\alpha(z, f(z)) = 0$ for $\pi$-almost all $z \not \in K$
 \item $\alpha(z, f(z)) \frac{h(z)}{h(f(z))} = \alpha(f(z), z)$
 \end{enumerate}
 \end{lemma}
@@ -1207,13 +1207,13 @@ $\nu \circ f^{-1}$ is absolutely continuous with respect to $\mu \circ f^{-1}$ a
 \begin{proof}
 First, $\nu \circ f^{-1}$ is absolutely continuous with respect to $\mu \circ f^{-1}$ because
 $(\mu \circ f^{-1})(A) = 0$ implies $\mu(f^{-1}(A)) = 0$ implies $\nu(f^{-1}(A)) = 0$ implies $(\nu \circ f^{-1})(A) = 0$.
-To show that $z \mapsto (d \nu / d \mu)(f(z))$ is the Radon-Nikodym derivative $d (\nu \circ f^{-1}) / d (\mu \circ f^{-1})$, it suffices to show that for all $A \in \Sigma$:
+To show that $z \mapsto (d \nu / d \mu)(f(z))$ is the Radon-Nikodym derivative $d (\nu \circ f^{-1}) / d (\mu \circ f^{-1})$, it suffices to show that for all $K \in \Sigma$:
 \begin{equation}
-\int_A \left( \frac{d \nu}{d \mu} (f(z)) \right) ( \mu \circ f^{-1} )(dz) = (\nu \circ f^{-1})(A) := \nu(f^{-1}(A))
+\int_K \left( \frac{d \nu}{d \mu} (f(z)) \right) ( \mu \circ f^{-1} )(dz) = (\nu \circ f^{-1})(A) := \nu(f^{-1}(A))
 \end{equation}
-Applying Theorem 3.6.1 in Bogachev with $Y := A$, $y := z$, $x := z'$, $X := f^{-1}(A)$, and $g(y) := (d\nu / d\mu)(f(y))$:
+Applying Theorem 3.6.1 in Bogachev with $Y := K$, $y := z$, $x := z'$, $X := f^{-1}(A)$, and $g(y) := (d\nu / d\mu)(f(y))$:
 \begin{align}
-\int_A \left( \frac{d \nu}{d \mu} (f(z)) \right) ( \mu \circ f^{-1} )(dz)
+\int_K \left( \frac{d \nu}{d \mu} (f(z)) \right) ( \mu \circ f^{-1} )(dz)
 &= \int_Y g(y) ( \mu \circ f^{-1} )(dy)\\
 &= \int_X g(f(x)) \mu(dx) \;\;\;\; [\mbox{Bogachev Theorem 3.6.1}]\\
 &= \int_{f^{-1}(A)} (d\nu / d\mu)(f(f(z'))) \mu(dz')\\
@@ -1252,17 +1252,17 @@ Expanding $d(\nu \circ f^{-1}) / d \nu$ using the chain rule:
 \subsection{Proof of stationarity for involution} \label{sec:involution-is-stationary}
 Detailed balance of the the involution kernel with respect to the measure induced by $\pi$ implies:
 \begin{equation}
-\int_B \pi(z) k'_z(A) \mu(dz) = \int_A \pi(z) k'_z(B) \mu(dz) \;\; \mbox{ for all } A, B \in \Sigma
+\int_B \pi(z) k'_z(A) \mu(dz) = \int_K \pi(z) k'_z(B) \mu(dz) \;\; \mbox{ for all } K, B \in \Sigma
 \end{equation}
 Stationarity with respect to $\pi$ follows by substituting $Z$ for $B$:
 \begin{align}
-\int_Z \pi(z) k'_z(A) \mu(dz) &= \int_A \pi(z) k'_z(Z) \mu(dz) = \int_A \pi(z) \mu(dz) \;\; \mbox{ for all } A \in \Sigma\\
+\int_Z \pi(z) k'_z(A) \mu(dz) &= \int_K \pi(z) k'_z(Z) \mu(dz) = \int_K \pi(z) \mu(dz) \;\; \mbox{ for all } A \in \Sigma\\
 \end{align}
 
 \subsection{Proof of stationarity for end-to-end kernel} \label{sec:involutive-mcmc-is-stationary}
 We are given that the involution is stationary with respect to (the measure induced by) $\pi(x, u) := p(x) q_x(u)$:
 \begin{equation}
-\int_Z k'_z(A) \pi(z) \mu(dz) = \int_A \pi(z) \mu(dz) \mbox{ for all } A \in \Sigma
+\int_Z k'_z(A) \pi(z) \mu(dz) = \int_K \pi(z) \mu(dz) \mbox{ for all } A \in \Sigma
 \end{equation}
 The end-to-end kernel is defined fir all $x \in X_P$ such that $p(x) > 0$ as:
 \begin{equation}
@@ -1270,7 +1270,7 @@ k_x(A) := \int_U k'_{x,u}(A \times U) q_x(u) \mu_U(du) \;\; \mbox{for all} \;\; 
 \end{equation}
 Stationarity of the end-to-end kernel with respect to the measure induced by $p$ is:
 \begin{equation}
-\int_X k_x(A) p(x) \mu_P(dx) = \int_A p(x) \mu_P(dx) \mbox{ for all } A \in \Sigma_P
+\int_X k_x(A) p(x) \mu_P(dx) = \int_K p(x) \mu_P(dx) \mbox{ for all } A \in \Sigma_P
 \end{equation}
 Expanding:
 \begin{align*}
@@ -1279,8 +1279,8 @@ Expanding:
     &= \int_{Z} k'_{x,u}(\{(x', u') \in Z : x' \in A\}) \pi(z) \mu(dz)\\ % TODO justify
     &= \int_{\{(x, u) \in Z : x \in A\}} \pi(z) \mu(dz)\;\;\; [\mbox{ Stationarity of $k'$ with respect to $\pi$}]\\
     &= \int_{\{(x, u) \in Z : x \in A\}} q_x(u) p(x) \mu(dz)\\
-    &= \int_A \left( \int_U q_x(u) \mu_Q(du) \right) p(x) \mu_P(dx)\\
-    &= \int_A p(x) \mu_P(dx)
+    &= \int_K \left( \int_U q_x(u) \mu_Q(du) \right) p(x) \mu_P(dx)\\
+    &= \int_K p(x) \mu_P(dx)
 \end{align*}
 % TODO characterize the various assumptions that allow us to e.g. rearrange the order of integration, etc.
 
@@ -1306,43 +1306,43 @@ Expanding:
 %\pi(\{(t', u') \in Z : t' \in B_T\}) &= p(B_T)\\
 %\end{align}
 %
-%the set of addresses $\mathcal{A}$ is partitioned into two spaces $\mathcal{A}_1$ and $\mathcal{A}_2$\\
+%the set of addresses $\mathcal{K}$ is partitioned into two spaces $\mathcal{K}_1$ and $\mathcal{K}_2$\\
 %
 %each structure $S$ partitions into two structures $S_1$ and $S_2$
 %
-%then $Z := \cup_{S \in \mathcal{S}} \{(S, \mathbf{x}) : \mathbf{x} \in \times_{a \in S} X_a \}$\\
+%then $Z := \cup_{S \in \mathcal{S}} \{(S, \mathbf{x}) : \mathbf{x} \in \times_{k \in S} X_k \}$\\
 %
 %Space for $Z$:
 %\[
-%\cup_{S \in \mathcal{S}} \{((\mathcal{A}_1 \cap S) \cup (\mathcal{A}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in \times_{a \in S_1} X_a, \mathbf{x_2} \in \times_{a \in S_2} X_a\}
+%\cup_{S \in \mathcal{S}} \{((\mathcal{K}_1 \cap S) \cup (\mathcal{K}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in \times_{k \in S_1} X_k, \mathbf{x_2} \in \times_{k \in S_2} X_k\}
 %\]
 %
 %Space for $T$:
 %\[
-%\cup_{S_1 \in \mathcal{S}} \{(S_1, \mathbf{x_1}) : \mathbf{x_1} \in \times_{a \in S_1}\}
+%\cup_{S_1 \in \mathcal{S}} \{(S_1, \mathbf{x_1}) : \mathbf{x_1} \in \times_{k \in S_1}\}
 %\]
 %
 %\begin{align}
 %\pi(
-%\cup_{S \in \mathcal{S} : A_1 \cap S = S_1} \{(S_1 \cup (\mathcal{A}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in B_{S_1}, \mathbf{x_2} \in \times_{a \in S_2} X_a\}
+%\cup_{S \in \mathcal{S} : K_1 \cap S = S_1} \{(S_1 \cup (\mathcal{K}_2 \cap S), \mathbf{x_1}, \mathbf{x_2}) : \mathbf{x_1} \in B_{S_1}, \mathbf{x_2} \in \times_{k \in S_2} X_k\}
 %) &= p(B_T)\\
-%\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{a \in S_2} X_a} \pi(S_1, S_2, \mathbf{x}_1, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
-%\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{a \in S_2} X_a} p(S_1, \mathbf{x}_1) q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
-%\sum_{S \in \mathcal{S} : A_1 \cap S = S_1} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
-%\sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T)\\
-%\int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
+%\sum_{S \in \mathcal{S} : K_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{k \in S_2} X_k} \pi(S_1, S_2, \mathbf{x}_1, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
+%\sum_{S \in \mathcal{S} : K_1 \cap S = S_1} \int_{B_{S_1} \times \otimes_{k \in S_2} X_k} p(S_1, \mathbf{x}_1) q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_1 \cup S_2}(d \mathbf{x}_1 \mathbf{x}_2) &= p(B_T)\\
+%\sum_{S \in \mathcal{S} : K_1 \cap S = S_1} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{k \in S_2 X_k}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
+%\sum_{S_2 \subseteq K_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \int_{\otimes_{k \in S_2 X_k}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T)\\
+%\int_{B_{S_1}} p(S_1, \mathbf{x}_1) \left( \sum_{S_2 \subseteq K_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{k \in S_2 X_k}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) \right) \mu_{S_1}(d \mathbf{x}_1) &= p(B_T) [\mbox{Fubini / Tonnelli?}]\\
 %\end{align}
 %It suffices to show that
 %\begin{align}
-%\sum_{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{a \in S_2 X_a}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) = 1 \mbox{ for all } (S_1, \mathbf{x}_1) \in T
+%\sum_{S_2 \subseteq K_2 : S_1 \cup S_2 \in \mathcal{S}} \int_{\otimes_{k \in S_2 X_k}} q_{(S_1,\mathbf{x}_1)}(S_2, \mathbf{x}_2) \mu_{S_2}(d \mathbf{x}_2) = 1 \mbox{ for all } (S_1, \mathbf{x}_1) \in T
 %\end{align}
 %It suffices to show that for each $(S_1, \mathbf{x}_1) \in T$, we have that $q_{(S_1, \mathbf{x}_1)}$ is the density of a (terminating with probability one) probabilistic program with structruers $\mathcal{S}_2$ such that
 %\[
-%\mathcal{S}_2 = \{S_2 \subseteq A_2 : S_1 \cup S_2 \in \mathcal{S}\}
+%\mathcal{S}_2 = \{S_2 \subseteq K_2 : S_1 \cup S_2 \in \mathcal{S}\}
 %\]
 %
 %\[
-%B_1 = \cup_{S_1 \in \mathcal{S}_1} \{(S_1, \mathbf{x}_1) : \mathbf{x}_1 \in B_{S_1}\}\;\;\; \mbox{where} \;\; B_{S_1} \in \otimes_{a \in S_1} \Sigma_{a} \;\;\; [\mbox{Measurable set } B_1]
+%B_1 = \cup_{S_1 \in \mathcal{S}_1} \{(S_1, \mathbf{x}_1) : \mathbf{x}_1 \in B_{S_1}\}\;\;\; \mbox{where} \;\; B_{S_1} \in \otimes_{k \in S_1} \Sigma_{k} \;\;\; [\mbox{Measurable set } B_1]
 %\]
 %% TODO the proof above should have a sum over S_1
 
@@ -1362,26 +1362,26 @@ The model reference measure $(X, \Sigma_P, \mu_P)$ and density that were require
 To define the auxiliary densities, we use a second probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
 The set of possible inputs to $Q$ is $\{x \in T : p(x) > 0\}$, and for each such $x$ the probabilistic program $Q$ defines a density $q_x : T \to [0, \infty)$ with respect to the reference measure on traces.\footnote{
 Note that we the same measure space $(T, \Sigma, \mu)$ on traces for both the model and auxiliary probabilistic program.
-If both programs sample some random choice at the same address $a$ and require different measure spaces $(V_a, \Sigma_a, \mu_a)$ for the address, this can be handled formally by making the addresses sampled by the two programs disjoint by prepending either the prefix `p.' or `q.' to addresses.
+If both programs sample some random choice at the same address $k$ and require different measure spaces $(V_k, \Sigma_k, \mu_k)$ for the address, this can be handled formally by making the addresses sampled by the two programs disjoint by prepending either the prefix `p.' or `q.' to addresses.
 This is only required for book-keeping in the formalism, and these prefixes do not need to be actually added to the addresses used in the programs.}
 
 The involutive MCMC framework of Section~\ref{sec:involutive-mcmc} requires that $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu_P \times \mu_Q$-measurable.
 We now give a sufficient condition for this to hold.
-Let $D \subseteq \mathcal{A}$ denote the subset of addresses that are discrete (i.e. where $V_a$ is a countable set and $\mu_a$ is the counting measure).
-For $\mathbf{x} \in \times_{a \in A} V_a$ let $\mathbf{x} = (\mathbf{d}, \mathbf{c})$ where $\mathbf{d} \in \times_{a \in A \cap D} V_a$ and $\mathbf{c} = \times_{a \in A \setminus D} V_a$, so that $\mathbf{d}$ is the discrete part of $\mathbf{x}$ and $\mathbf{c}$ is the non-discrete part.
+Let $D \subseteq \mathcal{K}$ denote the subset of addresses that are discrete (i.e. where $V_k$ is a countable set and $\mu_k$ is the counting measure).
+For $\mathbf{x} \in \times_{k \in A} V_k$ let $\mathbf{x} = (\mathbf{d}, \mathbf{c})$ where $\mathbf{d} \in \times_{k \in A \cap D} V_k$ and $\mathbf{c} = \times_{k \in A \setminus D} V_k$, so that $\mathbf{d}$ is the discrete part of $\mathbf{x}$ and $\mathbf{c}$ is the non-discrete part.
  %TODO make this a proposition
 \begin{lemma}
-Suppose that $p$ and $q$ are such that $p(A, (\mathbf{d}, \mathbf{c})) > 0$ implies
-$p(A, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{a \in A \setminus D} V_a$,
-and that $q_x(A, (\mathbf{d}, \mathbf{c})) > 0$ where $x = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}})$ implies that
-$q_{x'}(A, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{a \in A \setminus D} V_a$ and all $x' = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}}')$ where $\tilde{\mathbf{c}}' \in \prod_{a \in \tilde{A} \setminus D} V_a$.
+Suppose that $p$ and $q$ are such that $p(K, (\mathbf{d}, \mathbf{c})) > 0$ implies
+$p(K, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{k \in A \setminus D} V_k$,
+and that $q_x(K, (\mathbf{d}, \mathbf{c})) > 0$ where $x = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}})$ implies that
+$q_{x'}(K, (\mathbf{d}, \mathbf{c}')) > 0$ for all $\mathbf{c}' \in \prod_{k \in A \setminus D} V_k$ and all $x' = (\tilde{A}, \tilde{\mathbf{d}}, \tilde{\mathbf{c}}')$ where $\tilde{\mathbf{c}}' \in \prod_{k \in \tilde{A} \setminus D} V_k$.
 Then, $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu \times \mu$-measurable where $\mu$ is the reference measure on traces.
 \end{lemma}
 \begin{proof}
 For $p$ and $q$ satisfying these conditions,
-$Z = \cup_{(A_1,A_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \{((A_1, (\mathbf{d}_1, \mathbf{c}_1)), (A_2, (\mathbf{d}_2, \mathbf{c}_2))) : \mathbf{c}_1 \in \times_{a \in A_1 \setminus D} V_a, \mathbf{c}_2 \in \times_{a \in A_2 \setminus D} V_a\}$ for some countable set $E \subseteq \{(A_1, A_2, \mathbf{d}_1, \mathbf{d}_2) : A_1, A_2 \subseteq \mathcal{A}, |A_1| < \infty, |A_2| < \infty, \mathbf{d}_1 \in \times_{a \in A_1 \cap D} V_a, \mathbf{d}_2 \in \times_{a \in A_2 \cap D} V_a\}$ of address sets and discrete choice values for both programs.
+$Z = \cup_{(K_1,K_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \{((K_1, (\mathbf{d}_1, \mathbf{c}_1)), (K_2, (\mathbf{d}_2, \mathbf{c}_2))) : \mathbf{c}_1 \in \times_{k \in K_1 \setminus D} V_k, \mathbf{c}_2 \in \times_{k \in K_2 \setminus D} V_k\}$ for some countable set $E \subseteq \{(K_1, K_2, \mathbf{d}_1, \mathbf{d}_2) : K_1, K_2 \subseteq \mathcal{K}, |K_1| < \infty, |K_2| < \infty, \mathbf{d}_1 \in \times_{k \in K_1 \cap D} V_k, \mathbf{d}_2 \in \times_{k \in K_2 \cap D} V_k\}$ of address sets and discrete choice values for both programs.
 The measure of $Z$ is
-$(\mu \times \mu)(Z) = \sum_{(A_1,A_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \prod_{a \in (A_1 \setminus D) \cup (A_2 \setminus D)} \mu_a(V_a)$.
+$(\mu \times \mu)(Z) = \sum_{(K_1,K_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \prod_{k \in (K_1 \setminus D) \cup (K_2 \setminus D)} \mu_k(V_k)$.
 % TODO double check me.,
 \end{proof}
 
