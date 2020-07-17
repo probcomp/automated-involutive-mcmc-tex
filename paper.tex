@@ -398,26 +398,27 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
     \State \textbf{with probability} \,$\alpha$ \,\Return $x'$ \algorithmicelse \, \Return $x$ 
 \EndProcedure\\
 \vspace{1mm}
-\begin{minipage}[t]{0.5\linewidth}
+\begin{minipage}[t]{0.49\linewidth}
 \Procedure{trace-and-score}{$\mathcal{P}$}
    \State $\log w \gets 0$
    \State $x \gets \{\}$
-   \execute[$\mathcal{P}$], but with $\mathtt{"a \sim d"} \equiv$ (
-        \State \hspace{5mm} 1. set $v \sim d$
-        \State \hspace{5mm} 2. set $x[a] \gets v$
-        \State \hspace{5mm} 3. set $\log w \gets \log w + \textproc{logpdf}(d, v)$
-        \State \hspace{5mm} 4. evaluate to $v$)
+   \execute[$\mathcal{P}$], but with $\mathtt{"}a \sim \mathrm{distribution}\mathtt{"} \equiv$ (
+        \State 1. set $v \sim \mathrm{distribution}$
+        \State 2. set $x[a] \gets v$
+        \State 3. set $\log w \gets \log w + \textproc{logpdf}(\mathrm{distribution}, v)$
+        \State 4. evaluate to $v$)
     \END
    \State \Return $(x, \log w)$
 \EndProcedure
 \end{minipage}%
-\begin{minipage}[t]{0.5\linewidth}
+\hfill
+\begin{minipage}[t]{0.49\linewidth}
 \Procedure{score}{$\mathcal{P}$, $x$}
    \State $\log w \gets 0$
-   \execute[$\mathcal{P}$], but with $\mathtt{"a \sim d"} \equiv$ (
-        \State \hspace{5mm} 1. set $v \gets x[a]$
-        \State \hspace{5mm} 2. set $\log w \gets \log w + \textproc{logpdf}(d, v)$
-        \State \hspace{5mm} 3. evaluate to $v$)
+   \execute[$\mathcal{P}$], but with $\mathtt{"}a \sim \mathrm{distribution}\mathtt{"} \equiv$ (
+        \State 1. set $v \gets x[a]$
+        \State 2. set $\log w \gets \log w + \textproc{logpdf}(\mathrm{distribution}, v)$
+        \State 3. evaluate to $v$)
     \END
    \State \Return $\log w$
 \EndProcedure
@@ -428,16 +429,20 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
     \LineComment{Run the involution, and keep track of copied, read, and written continuous keys}
     \State $z' \gets \{\}$ \Comment{Initialize empty output dictionary}
     \execute[$\mathcal{F}$], but with
-        \State $\mathtt{"write\_disc}(a, v)\mathtt{"} \equiv$ (set $z'[a] \gets v$)
-        \State $\mathtt{"read\_disc}(a)\mathtt{"} \equiv$ (evaluate to $z[a]$)
-        \State $\mathtt{"write\_cont}(a, v)\mathtt{"} \equiv$ (1. set $z'[a] \gets v$ and 2. set $W \gets W \cup \{a\}$)
-        \State $\mathtt{"read\_cont}(a)\mathtt{"} \equiv$ (1. set $R \gets R \cup \{a\}$ and 2. evaluate to $z[a]$)
-        \State $\mathtt{"copy}(a_1, a_2)\mathtt{"} \equiv$ (1. set $z'[a_2] \gets z[a_1]$ and 2. set $C \gets C \cup \{a_2\}$)
+        \State $\mathtt{"write}(a, v)\mathtt{"} \equiv$
+            (\algorithmicif\hspace{1mm} $a \in \mathcal{I}$
+            \algorithmicthen\hspace{1mm} set $z'[a] \gets v$
+            \algorithmicelse\hspace{1mm} set $z'[a] \gets v$ and set $W \gets W \cup \{a\})$
+        \State $\mathtt{"read}(a)\mathtt{"} \equiv$
+            (\algorithmicif\hspace{1mm} $a \in \mathcal{I}$
+            \algorithmicthen\hspace{1mm} evaluate to $z[a]$
+            \algorithmicelse\hspace{1mm} set $R \gets R \cup \{a\}$ and evaluate to $z[a]$)
+        \State $\mathtt{"copy}(a_1, a_2)\mathtt{"} \equiv$ (set $z'[a_2] \gets z[a_1]$ and set $C \gets C \cup \{a_1\}$)
     \END
     \LineComment{Use automatic differentiation of $\mathcal{F}$ to compute Jacobian, skipping copied addresses}
-    \For{$i$ in $1, \ldots, |W \setminus C|$}
-        \State $a_i \gets (W \setminus C)_i$ \Comment{Pick $i$th key in $(W \setminus C)$; the order does not matter}
-        \State $J[i,:] \gets \nabla_{\mathbf{z}_{R \setminus C}} \left( h_{e(z)}[a_i] \right)$ \Comment{{\small Gradient of $z'[a_i] = h_{e(z)}[a_i]$ wrt non-copied continuous inputs ($z_a$ for $a \in R \setminus C$)}}
+    \For{$i$ in $1$ to $|W|$}
+        \State $a_i \gets W_i$ \Comment{Pick $i$th key in $W$; the order does not matter}
+        \State $J[i,:] \gets \nabla_{\mathbf{z}_{R \setminus C}} \left( h_{e(z)}[a_i] \right)$ \Comment{{\small Gradient of $z'[a_i] = h_{e(z)}[a_i]$ w.r.t. non-copied continuous inputs ($z_a$ for $a \in R \setminus C$)}}
     \EndFor
     \State \Return $(z', \log(|\det(J)|))$
 \EndProcedure
