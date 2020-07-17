@@ -467,7 +467,7 @@ But the technique is not limited to the Gen system---we also provide the impleme
 Our probabilistic programming language augments the syntax of Julia~\citep{bezanson2017julia}
 with a new construct, the \texttt{\{a\} $\sim$ d} expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form \texttt{\{a\} $\sim$ d}, (i) evaluating the \textit{address expression} \texttt{a} to obtain an address $a \in \mathcal{A}$; (ii) evaluating the \textit{distribution expression} $d$ to obtain a distribution $d$ over the measurable space $V_a$; (iii) sampling a value $x_a \sim d$ and adding the mapping $\{a \mapsto x_a\}$ to a dictionary called the program trace; and (iv) returning the sampled value $x_a$ to the program, to continue execution. When execution terminates, the program trace has accumulated a mapping for each random choice encountered during the program's execution.
 
-As a concrete example, consider the probabilistic program in Figure~\ref{fig:mixture}a, which defines a Gaussian mixture model with an unknown number of components:
+As a concrete example, consider the probabilistic program in Figure~\ref{fig:mixture}b, which defines a Gaussian mixture model with an unknown number of components:
 \noindent
 \begin{center}
 \begin{tabular}{c}
@@ -520,20 +520,21 @@ The density of an arbitrary dictionary $(A, \mathbf{x})$ under any probabilistic
 
 \subsubsection{Automatically Computing Density Ratios in Involutive MCMC}
 
-Given two probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ satisfying a simple technical requirement (described in Section~\ref{sec:technical-requirement}), we can interpret them as specifying the model density $p$ and auxiliary densities $q_x$ for use with involutive MCMC on dictionaries (Algorithm~\ref{alg:involutive-mcmc}). (In this case, the program $\mathcal{Q}$ 
+If the two probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ satisfy a simple technical requirement (described in Section~\ref{sec:technical-requirement}), we can interpret them as specifying the model density $p$ and auxiliary densities $q_x$ for use with involutive MCMC on dictionaries (Algorithm~\ref{alg:involutive-mcmc}). (In this case, the program $\mathcal{Q}$ 
 accepts a trace $x$ of $\mathcal{P}$ as input, and the distribution for $q_x$ is given by $\mathcal{Q}_x$.)
-The acceptance probability of involutive MCMC includes the following ratio of densities:
+
+However, typically, we cannot use a probabilistic program $\mathcal{P}$ to represent the target distribution directly: probabilistic programs implement simulators for a distribution, but target densities are typically not tractable to simulate (hence the need for MCMC). Instead, we may wish to sample from a target $p$ that arises from conditioning a probabilistic program $\mathcal{P}$'s distribution over traces on observations of the values at some addresses. Let $\tilde{p}$ denote $\mathcal{P}$'s distribution over traces, and let $b = (B, \textbf{b})$ be a dictionary of observations, as described in Section~\ref{sec:dists-on-dicts}. Then, as shown in that section, the target distribution $p(x) = \tilde{p}(x \mid b) = \frac{\tilde{p}(x \oplus b)}{\mathcal{L}(b)}$, where $\mathcal{L}(b) = \int_{\{m \mid m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)$ is the marginal likelihood of $b$, and does not depend on $x$. Then $\tilde{p}(x \oplus b) = \mathcal{L}(b)p(x)$. If we use $\tilde{p}(x \oplus b)$ in place of $p(x)$ to compute the ratio of densities in Algorithm~\ref{alg:involutive-mcmc}, we will wind up with the same output, because $\mathcal{L}(b)$ will cancel in the numerator and denominator:
 \begin{equation}
 \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)}
+= \frac{\tilde{p}(x' \oplus b) q_{x'}(y')}{\tilde{p}(x \oplus b) q_x(y)}
+= \frac{\tilde{p}(x' | b) q_{x'}(y')}{\tilde{p}(x | b) q_x(y)}
 \end{equation}
 
-This ratio can be computed term-wise using \textsc{score} on the probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$.
-
-However, typically, we cannot use a probabilistic program $\mathcal{P}$ to represent the target distribution directly: probabilistic programs implement simulators for a distribution, but target densities are typically not tractable to simulate (hence the need for MCMC). Instead, we may wish to sample from a target $p$ that arises from conditioning a probabilistic program $\mathcal{P}$'s distribution over traces on observations of the values at some addresses. Let $\tilde{p}$ denote $\mathcal{P}$'s distribution over traces, and let $b = (B, \textbf{b})$ be a dictionary of observations, as described in Section~\ref{sec:dists-on-dicts}. Then, as shown in that section, the target distribution $p(x) = \tilde{p}(x \mid b) = \frac{\tilde{p}(x \oplus b)}{\mathcal{L}(b)}$, where $\mathcal{L}(b) = \int_{\{m \mid m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)$ is the marginal likelihood of $b$, and does not depend on $x$. Then $\tilde{p}(x \oplus b) = \mathcal{L}(b)p(x)$. If we use $\tilde{p}(x \oplus b)$ in place of $p(x)$ to compute the ratio above, we will wind up with the same output, because $\mathcal{L}(b)$ will cancel in the numerator and denominator.
-
-Thus, this ratio can be computed term-by-term using \textsc{score} (Algorithm~\ref{alg:auto-involutive-mcmc}): to compute $q_x(y')$, we run the algorithm directly on the program $\mathcal{Q}_x$, and to compute $p(x)$ and $p(x')$, we actually merge the dictionary $x$ with the observations $b$ and compute $\mathcal{L}(b)p(x) = \tilde{p}(x \oplus b)$ instead, by running the algorithm on $\mathcal{P}$ with trace $x \oplus b$. The density $q_x(y)$ can be computed while $y$ is being sampled, using \textsc{trace-and-score}.
+Thus, this ratio can be computed term-by-term using \textsc{score} on the probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$: (Algorithm~\ref{alg:auto-involutive-mcmc}): to compute $q_x(y')$, we run the algorithm directly on the program $\mathcal{Q}_x$, and to compute $p(x)$ and $p(x')$, we actually merge the dictionary $x$ with the observations $b$ and compute $\mathcal{L}(b)p(x) = \tilde{p}(x \oplus b)$ instead, by running the algorithm on $\mathcal{P}$ with trace $x \oplus b$. The density $q_x(y)$ can be computed while $y$ is being sampled, using \textsc{trace-and-score}.
 
 Section~\ref{sec:sparsity} describes a more efficient approach that exploits sparsity in the involution and resulting cancellation in the ratio for improved efficiency, but requires a more sophisticated probabilistic programming runtime system.
+
+Figure~\ref{fig:mixture}b and Figure~\ref{fig:mixture}c show examples of probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ respectively, for a split-merge reversible jump move.
 
 \subsection{Differentiable Programming with Traces} \label{sec:differentiable-programming-traces}
 
