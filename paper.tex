@@ -715,15 +715,6 @@ The procedure \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mc
 The interpreter executes $\mathcal{F}$ using regular Julia or Python semantics, but intercepts calls to \texttt{@write}, \texttt{@read}, and \texttt{@copy} statements, and in addition to performing the desired operation, records the set of continuous addresses that are read, written, and copied.
 After $\mathcal{F}$ is finished executing, AD uses the recorded addresses to compute the Jacobian $|J h_e|(z)$; in the case of reverse-mode AD by iterating over output continuous addresses and backpropagating from each one to all of the input continous addresses, computing the Jacobian row-by-row.
 
-%\subsubsection{Example: Involution for a Split-Merge Reversible Jump Kernel}
-%
-%Figure~\ref{fig:mixture}(d) shows an involution expressed in the differentiable programming language introduced in this section, and Figure~\ref{fig:mixture}(f) shows a schematic of the information flow through the involution as it is applied twice in a row.
-%The involution implements a split or a merge proposal in the infinite mixture model of Figure~\ref{fig:mixture}(b), depending on the trace of the auxiliary program in Figure~\ref{fig:mixture}(c).
-%If there are at least two clusters, and the value of address $\mathtt{split}$ is false, then the involution proposes to merge two clusters by running code block 2 shown in green.
-%Otherwise, the involution proposes to split a cluster by running code block 1 shown in yellow.
-%Note that that code block 1 (yellow) is itself an involution on the discrete addresses in the traces---each application of code block 1 to the traces causes them to flip back and forth between a split and a merge proposal.
-%Also note that code blocks 2 and 3 are continuously differentiable bijections on the continuous addresses in the traces, and they are inverses of one another.
-
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORAMNCE} \label{sec:sparsity}
 
 \subsubsection{Incremental Computation of Model Density Ratio}
