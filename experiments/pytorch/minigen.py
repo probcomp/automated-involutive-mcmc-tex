@@ -34,16 +34,22 @@ def logpdf(trace, p, *args):
 InvolutionRunnerState = namedtuple("InvolutionRunnerState",
     [   "input_model_trace", "input_aux_trace",
         "output_model_trace", "output_aux_trace",
-        "input_cont_tensors", "output_cont_tensors"
+        "input_cont_tensors", "output_cont_tensors",
+        "input_copied_addrs"
     ])
 
 # model and address identifiers
 MODEL = "model"
 AUX = "aux"
 
-def check_which(which):
+def get_which(addr):
+    exc = Exception("address argument must be (MODEL, *) or (AUX, *)")
+    if len(addr) != 2:
+        raise exc
+    (which, addr) = addr
     if which != MODEL and which != AUX:
-        raise Exception("address argument must be (MODEL, *) or (AUX, *)")
+        raise exc
+    return (which, addr)
 
 # user-provided type information for reads and writes
 CONTINUOUS = "continuous"
@@ -54,15 +60,14 @@ def check_type_label(type_label):
         raise Exception("type label argument must be CONTINUOUS or DISCRETE")
 
 def read(state, addr, type_label):
-    (which, addr) = addr
-    check_which(which)
+    (which, addr) = get_which(addr)
     check_type_label(type_label)
     if type_label == CONTINUOUS:
         if which == MODEL:
             val = torch.tensor(state.input_model_trace[addr], requires_grad=True)
         else:
             val = torch.tensor(state.input_aux_trace[addr], requires_grad=True)
-        state.input_cont_tensors.append(val)
+        state.input_cont_tensors[(which, addr)] = val
         return val
     else:
         if which == MODEL:
@@ -71,8 +76,7 @@ def read(state, addr, type_label):
             return state.input_aux_trace[addr]
 
 def write(state, addr, val, type_label):
-    (which, addr) = addr
-    check_which(which)
+    (which, addr) = get_which(addr)
     check_type_label(type_label)
     if type_label == CONTINUOUS:
         if which == MODEL:
@@ -86,23 +90,56 @@ def write(state, addr, val, type_label):
         else:
             state.output_aux_trace[addr] = val
 
-#def copy_model_to_model(state, addr1, addr2):
-#def copy_model_to_aux(state, addr1, addr2):
-#def copy_aux_to_model(state, addr1, addr2):
-#def copy_aux_to_aux(state, addr1, addr2):
-
-def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace):
-    state = InvolutionRunnerState(input_model_trace, input_auxiliary_trace, {}, {}, [], [])
+def copy(state, addr1, addr2):
+    state.input_copied_addrs.append(addr1)
+    #state.output_copied_addrs.append(addr2)
+    (which1, addr1) = get_which(addr1)
+    (which2, addr2) = get_which(addr2)
+    if which1 == MODEL:
+        val = state.input_model_trace[addr1]
+    else:
+        val = state.input_aux_trace[addr1]
+    if which2 == MODEL:
+        state.output_model_trace[addr2] = val 
+    else:
+        state.output_aux_trace[addr2] = val
+    
+def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace, check):
+    state = InvolutionRunnerState(input_model_trace, input_auxiliary_trace, {}, {}, {}, [], [])
     f(state)
     grads = []
     for output_cont_tensor in state.output_cont_tensors:
         output_cont_tensor.backward(retain_graph=True)
         grad = []
-        for input_cont_tensor in state.input_cont_tensors:
-            grad.append(input_cont_tensor.grad.clone())
-            input_cont_tensor.grad.zero_()
+        for (addr, input_cont_tensor) in state.input_cont_tensors.items():
+            # skip it if it was copied
+            if addr in state.input_copied_addrs:
+                continue
+            if input_cont_tensor.grad is None:
+                grad.append(torch.zeros_like(input_cont_tensor))
+            else:
+                grad.append(input_cont_tensor.grad.clone())
+                input_cont_tensor.grad.zero_()
         grads.append(grad)
     (_, logabsdet) = torch.tensor(grads).slogdet()
+    # do the round trip check
+    if check:
+        rt_state = InvolutionRunnerState(state.output_model_trace, state.output_aux_trace, {}, {}, {}, [], [])
+        f(rt_state)
+        for (addr, val) in rt_state.output_model_trace.items():
+            if isinstance(val, torch.Tensor):
+                if not torch.eq(val, input_model_trace[addr]):
+                    raise Exception("involution check failed at model:", addr, val, input_model_trace[addr])
+            else:
+                if val != input_model_trace[addr]:
+                    raise Exception("involution check failed model: ", addr, val, input_model_trace[addr])
+        for (addr, val) in rt_state.output_aux_trace.items():
+            if isinstance(val, torch.Tensor):
+                if not torch.eq(val, input_aux_trace[addr]):
+                    raise Exception("involution check failed at aux:", addr, val, input_aux_trace[addr])
+            else:
+                if val != input_aux_trace[addr]:
+                    raise Exception("involution check failed aux: ", addr, val, input_aux_trace[addr])
     return (state.output_model_trace, state.output_aux_trace, logabsdet)
 
 
@@ -110,14 +147,14 @@ def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace):
 # involutive MCMC #
 ###################
 
-def involution_mcmc_step(p, q, f, input_model_trace):
+def involution_mcmc_step(p, q, f, input_model_trace, check=False):
 
     # sample from auxiliary program
     input_auxiliary_trace = sample(q, input_model_trace)
 
     # run involution
     (output_model_trace, output_auxiliary_trace, logabsdet) = involution_with_jacobian_det(
-        f, input_model_trace, input_auxiliary_trace)
+        f, input_model_trace, input_auxiliary_trace, check)
 
     # compute acceptance probability
     prev_score = logpdf(input_model_trace, p)
@@ -145,6 +182,8 @@ Uniform = torch.distributions.uniform.Uniform
 pi = 3.1415927410125732
 
 def p(trace):
+    u = trace(Normal(0, 1), "u")
+    v = trace(Normal(0, 1), "v")
     if trace(Bernoulli(0.5), "polar"):
         trace(Gamma(1.0, 1.0), "r")
         trace(Uniform(-pi/2, pi/2), "theta")
@@ -181,13 +220,19 @@ def f(state):
         write(state, (MODEL, "r"), r, CONTINUOUS)
         write(state, (MODEL, "theta"), theta, CONTINUOUS)
     write(state, (MODEL, "polar"), not polar, DISCRETE)
+    copy(state, (MODEL, "u"), (MODEL, "u"))
+    u = read(state, (MODEL, "u"), CONTINUOUS)
+    v = read(state, (MODEL, "v"), CONTINUOUS)
+    write(state, (MODEL, "v"), u - v, CONTINUOUS)
 
 trace = {
         "polar" : True,
         "r": 1.2,
-        "theta" : 0.12
+        "theta" : 0.12,
+        "u" : -0.123,
+        "v" : 3.31
 }
 
 for it in range(1, 100):
-    (trace, acc) = involution_mcmc_step(p, q, f, trace)
+    (trace, acc) = involution_mcmc_step(p, q, f, trace, check=True)
     print(trace, acc)
