@@ -395,32 +395,35 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
     \State $\log p(x') \gets \textproc{score}(\mathcal{P}, x')$ \Comment{Compute log-density via probabilistic program}
     \State $\log q_{x'}(y') \gets \textproc{score}(\mathcal{Q}_{x'}, y')$ \Comment{Compute log-density via probabilistic program}
     \State $\alpha \gets \min\{1, \exp(\log p(x') - \log p(x) + \log q_{x'}(y') - \log q_x(y) + \log D)\}$ \Comment{Compute acceptance probability}
-    \State \textbf{with probability} \,$\alpha$ \,\Return $x'$ \algorithmicelse \, \Return $x$ 
+    \State \textbf{with probability} \,$\alpha$ \,\Return $x'$ \algorithmicelse \, \Return $x$  \algorithmicend
 \EndProcedure\\
 \vspace{1mm}
 \begin{minipage}[t]{0.49\linewidth}
 \Procedure{trace-and-score}{$\mathcal{P}$}
-   \State $\log w \gets 0$
+   \State $s \gets 0$
    \State $x \gets \{\}$
    \execute[$\mathcal{P}$], but with $\mathtt{"}a \sim \mathrm{distribution}\mathtt{"} \equiv$ (
         \State 1. set $v \sim \mathrm{distribution}$
         \State 2. set $x[a] \gets v$
-        \State 3. set $\log w \gets \log w + \textproc{logpdf}(\mathrm{distribution}, v)$
+        \State 3. set $s \gets s + \textproc{logpdf}(\mathrm{distribution}, v)$
         \State 4. evaluate to $v$)
     \END
-   \State \Return $(x, \log w)$
+   \State \Return $(x, s)$
 \EndProcedure
 \end{minipage}%
 \hfill
 \begin{minipage}[t]{0.49\linewidth}
 \Procedure{score}{$\mathcal{P}$, $x$}
-   \State $\log w \gets 0$
-   \execute[$\mathcal{P}$], but with $\mathtt{"}a \sim \mathrm{distribution}\mathtt{"} \equiv$ (
+    \State $s \gets 0$
+    \State $A \gets\{\}$
+    \execute[$\mathcal{P}$], but with $\mathtt{"}a \sim \mathrm{distribution}\mathtt{"} \equiv$ (
         \State 1. set $v \gets x[a]$
-        \State 2. set $\log w \gets \log w + \textproc{logpdf}(\mathrm{distribution}, v)$
-        \State 3. evaluate to $v$)
+        \State 2. set $A \gets A \cup \{a\}$
+        \State 3. set $s \gets s + \textproc{logpdf}(\mathrm{distribution}, v)$
+        \State 4. evaluate to $v$)
     \END
-   \State \Return $\log w$
+   \State \algorithmicif\hspace{1mm} $A \ne A_x$ \algorithmicthen\hspace{1mm} $s \gets -\infty$ \algorithmicend
+   \State \Return $s$
 \EndProcedure
 \end{minipage}\\
 \vspace{1mm}
