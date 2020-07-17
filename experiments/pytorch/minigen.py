@@ -37,35 +37,59 @@ InvolutionRunnerState = namedtuple("InvolutionRunnerState",
         "input_cont_tensors", "output_cont_tensors"
     ])
 
-def read_model_cont(state, addr):
-    val = torch.tensor(state.input_model_trace[addr], requires_grad=True)
-    state.input_cont_tensors.append(val)
-    return val
+# model and address identifiers
+MODEL = "model"
+AUX = "aux"
 
-def read_model_disc(state, addr):
-    return state.input_model_trace[addr]
+def check_which(which):
+    if which != MODEL and which != AUX:
+        raise Exception("address argument must be (MODEL, *) or (AUX, *)")
 
-def write_model_cont(state, addr, val):
-    state.output_model_trace[addr] =val 
-    state.output_cont_tensors.append(val)
+# user-provided type information for reads and writes
+CONTINUOUS = "continuous"
+DISCRETE = "discrete"
 
-def write_model_disc(state, addr, val):
-    state.output_model_trace[addr] = val
+def check_type_label(type_label):
+    if type_label != CONTINUOUS and type_label != DISCRETE:
+        raise Exception("type label argument must be CONTINUOUS or DISCRETE")
 
-def read_aux_cont(state, addr):
-    val = torch.tensor(state.input_aux_trace[addr], requires_grad=True)
-    state.input_cont_tensors.append(val)
-    return val
+def read(state, addr, type_label):
+    (which, addr) = addr
+    check_which(which)
+    check_type_label(type_label)
+    if type_label == CONTINUOUS:
+        if which == MODEL:
+            val = torch.tensor(state.input_model_trace[addr], requires_grad=True)
+        else:
+            val = torch.tensor(state.input_aux_trace[addr], requires_grad=True)
+        state.input_cont_tensors.append(val)
+        return val
+    else:
+        if which == MODEL:
+            return state.input_model_trace[addr]
+        else:
+            return state.input_aux_trace[addr]
 
-def read_aux_disc(state, addr):
-    return state.input_aux_trace[addr]
+def write(state, addr, val, type_label):
+    (which, addr) = addr
+    check_which(which)
+    check_type_label(type_label)
+    if type_label == CONTINUOUS:
+        if which == MODEL:
+            state.output_model_trace[addr] = val 
+        else:
+            state.output_aux_trace[addr] = val
+        state.output_cont_tensors.append(val)
+    else:
+        if which == MODEL:
+            state.output_model_trace[addr] = val
+        else:
+            state.output_aux_trace[addr] = val
 
-def write_aux_cont(state, addr, value):
-    state.output_aux_trace[addr] = val
-    state.output_cont_tensors.append(val)
-
-def write_aux_disc(state, addr, val):
-    state.output_aux_trace[addr] = val
+#def copy_model_to_model(state, addr1, addr2):
+#def copy_model_to_aux(state, addr1, addr2):
+#def copy_aux_to_model(state, addr1, addr2):
+#def copy_aux_to_aux(state, addr1, addr2):
 
 def involution_with_jacobian_det(f, input_model_trace, input_auxiliary_trace):
     state = InvolutionRunnerState(input_model_trace, input_auxiliary_trace, {}, {}, [], [])
@@ -143,20 +167,20 @@ def cartesian_to_polar(x, y):
     return (theta, y)
 
 def f(state):
-    polar = read_model_disc(state, "polar")
+    polar = read(state, (MODEL, "polar"), DISCRETE)
     if polar:
-        r = read_model_cont(state, "r")
-        theta = read_model_cont(state, "theta")
+        r = read(state, (MODEL, "r"), CONTINUOUS)
+        theta = read(state, (MODEL, "theta"), CONTINUOUS)
         (x, y) = polar_to_cartesian(r, theta)
-        write_model_cont(state, "x", x)
-        write_model_cont(state, "y", y)
+        write(state, (MODEL, "x"), x, CONTINUOUS)
+        write(state, (MODEL, "y"), y, CONTINUOUS)
     else:
-        x = read_model_cont(state, "x")
-        y = read_model_cont(state, "y")
+        x = read(state, (MODEL, "x"), CONTINUOUS)
+        y = read(state, (MODEL, "y"), CONTINUOUS)
         (r, theta) = cartesian_to_polar(x, y)
-        write_model_cont(state, "r", r)
-        write_model_cont(state, "theta", theta)
-    write_model_disc(state, "polar", not polar)
+        write(state, (MODEL, "r"), r, CONTINUOUS)
+        write(state, (MODEL, "theta"), theta, CONTINUOUS)
+    write(state, (MODEL, "polar"), not polar, DISCRETE)
 
 trace = {
         "polar" : True,
