@@ -458,15 +458,36 @@ then these traces can be viewed as finite dictionaries, mapping the address of e
 The distribution induced by a probabilistic program over
 its execution traces can thus be understood as a measure on the space $(\mathcal{D}, \Sigma_\mathcal{D}, \mu_\mathcal{D})$ introduced in the previous section. Furthermore, densities of trace distributions with respect to $\mu_\mathcal{D}$ are typically easy to compute.
 
-In this section, we introduce the Gen language~\citep{gen-pldi} for probabilistic programs, and present a technique for automating the implementation of involutive MCMC algorithms when the model $p$ and auxiliary distribution $q_x$ are both represented as
-Gen programs. 
+In this section, we introduce a probabilistic programming language from the Gen probabilistic programming system~\citep{cusumano2019gen}, and present a technique for automating the implementation of involutive MCMC algorithms when the model $p$ and auxiliary distribution $q_x$ are both represented as
+probabilistic programs in this language.
+But the technique is not limited to the Gen system---we also provide the implementation of a minimal probabilistic programming language in PyTorch that supports the automation technique.
 
-\subsubsection{A Language for Probabilistic Programs with Traces}
+\subsubsection{A Probabilistic Programming Language}
 
-The Gen probabilistic programming language augments the syntax of Julia~\citep{julia}
-with a single new construct, the \texttt{\{a\} $\sim$ d} expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form \texttt{\{a\} $\sim$ d}, (i) evaluating the \textit{address expression} \texttt{a} to obtain an address $a \in \mathcal{A}$; (ii) evaluating the \textit{distribution expression} $d$ to obtain a distribution $d$ over the measurable space $V_a$; (iii) sampling a value $x_a \sim d$ and adding the mapping $\{a \mapsto x_a\}$ to a dictionary called the program trace; and (iv) returning the sampled value $x_a$ to the program, to continue execution. When execution terminates, the program trace has accumulated a mapping for each random choice encountered during the program's execution.
+Our probabilistic programming language augments the syntax of Julia~\citep{bezanson2017julia}
+with a new construct, the \texttt{\{a\} $\sim$ d} expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form \texttt{\{a\} $\sim$ d}, (i) evaluating the \textit{address expression} \texttt{a} to obtain an address $a \in \mathcal{A}$; (ii) evaluating the \textit{distribution expression} $d$ to obtain a distribution $d$ over the measurable space $V_a$; (iii) sampling a value $x_a \sim d$ and adding the mapping $\{a \mapsto x_a\}$ to a dictionary called the program trace; and (iv) returning the sampled value $x_a$ to the program, to continue execution. When execution terminates, the program trace has accumulated a mapping for each random choice encountered during the program's execution.
 
-As a concrete example, consider Figure~\ref{fig:mixture}a, which defines a Gen program for a Gaussian mixture model with an unknown number of components. The program \texttt{p} accepts as input an integer \texttt{n}, a number of data points. Each $\texttt{n}$ defines
+As a concrete example, consider the probabilistic program in Figure~\ref{fig:mixture}a, which defines a Gaussian mixture model with an unknown number of components:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@gen function p(n::Int)
+  k ~ poisson_plus_one(1)
+  means = [
+    ({(:mu, j)} ~ normal(0, 10)) for j in 1:k]
+  vars = [
+    ({(:var, j)} ~ inv_gamma(1, 10)) for j in 1:k]
+  weights ~ dirichlet([2.0 for j in 1:k])
+  for i in 1:n
+    {(:x, i)} ~ mixture_of_normals(
+        weights, means, vars)
+  end
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+The program \texttt{p} accepts as input an integer \texttt{n}, a number of data points. Each $\texttt{n}$ defines
 a distinct distribution over dictionaries.
 
 The first line of the program samples a number of mixture components from a Poisson prior using the address \texttt{:k}. (This line could also be written \texttt{k = \{:k\} $\sim$ poisson\_plus\_one(1)}: the \textit{address} is the symbol \texttt{:k}, and the result of the choice is assigned to a Julia variable called \texttt{k}. Because this is a common pattern, Gen provides the syntactic sugar \texttt{x $\sim$ d} as shorthand for \texttt{x = \{:x\} $\sim$ d}.) The program then samples \texttt{k} means and \texttt{k} variances from Gaussian and inverse Gamma priors, respectively. Each of these 2\texttt{k} random choices has its own address, determined by the address expression preceding it. For example, the mean for the fourth mixture component (if \texttt{k} $\geq 4$) has address \texttt{(:mu, 4)}. The mixture weights are then sampled at the address \texttt{:weights} from a Dirichlet distribution, and $\texttt{n}$ data points are sampled at addresses \texttt{(:x, 1)}, \dots, \texttt{(:x, n)}. The random choice at address $\mathtt{:}\mathtt{k}$ is discrete with $V_{\texttt{:k}} = \integers_{\ge 1}$, and the other random choices are continuous. 
