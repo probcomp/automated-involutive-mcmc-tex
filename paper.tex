@@ -522,18 +522,18 @@ The density of an arbitrary dictionary $(A, \mathbf{x})$ under any probabilistic
 
 \subsubsection{Automatically Computing Density Ratios in Involutive MCMC}
 
-Given two probabilistic programs $P$ and $Q$ satisfying a simple technical requirement (described in Section~\ref{sec:technical-requirement}), we can interpret them as specifying the model density $p$ and auxiliary densities $q_x$ for use with involutive MCMC on dictionaries (Algorithm~\ref{alg:involutive-mcmc}). (In this case, the program $Q$ 
-accepts a trace $x$ of $P$ as input, and the distribution for $q_x$ is given by $Q(x)$.)
+Given two probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ satisfying a simple technical requirement (described in Section~\ref{sec:technical-requirement}), we can interpret them as specifying the model density $p$ and auxiliary densities $q_x$ for use with involutive MCMC on dictionaries (Algorithm~\ref{alg:involutive-mcmc}). (In this case, the program $\mathcal{Q}$ 
+accepts a trace $x$ of $\mathcal{P}$ as input, and the distribution for $q_x$ is given by $\mathcal{Q}_x$.)
 The acceptance probability of involutive MCMC includes the following ratio of densities:
 \begin{equation}
 \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)}
 \end{equation}
 
-This ratio can be computed term-wise using \textsc{score} on the probabilistic programs $P$ and $Q$.
+This ratio can be computed term-wise using \textsc{score} on the probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$.
 
-However, typically, we cannot use a probabilistic program $P$ to represent the target distribution directly: probabilistic programs implement simulators for a distribution, but target densities are typically not tractable to simulate (hence the need for MCMC). Instead, we may wish to sample from a target $p$ that arises from conditioning a probabilistic program $P$'s distribution over traces on observations of the values at some addresses. Let $\tilde{p}$ denote $P$'s distribution over traces, and let $b = (B, \textbf{b})$ be a dictionary of observations, as described in Section~\ref{sec:dists-on-dicts}. Then, as shown in that section, the target distribution $p(x) = \tilde{p}(x \mid b) = \frac{\tilde{p}(x \oplus b)}{Z(b)}$, where $Z(b) = \int_{\{m \mid m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)$ is the partition function. Then $\tilde{p}(x \oplus b) = Z(b)p(x)$. If we use $\tilde{p}(x \oplus b)$ in place of $p(x)$ to compute the ratio above, we will wind up with the same output, because $Z(b)$ will cancel in the numerator and denominator.
+However, typically, we cannot use a probabilistic program $\mathcal{P}$ to represent the target distribution directly: probabilistic programs implement simulators for a distribution, but target densities are typically not tractable to simulate (hence the need for MCMC). Instead, we may wish to sample from a target $p$ that arises from conditioning a probabilistic program $\mathcal{P}$'s distribution over traces on observations of the values at some addresses. Let $\tilde{p}$ denote $\mathcal{P}$'s distribution over traces, and let $b = (B, \textbf{b})$ be a dictionary of observations, as described in Section~\ref{sec:dists-on-dicts}. Then, as shown in that section, the target distribution $p(x) = \tilde{p}(x \mid b) = \frac{\tilde{p}(x \oplus b)}{\mathcal{L}(b)}$, where $\mathcal{L}(b) = \int_{\{m \mid m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)$ is the marginal likelihood of $b$, and does not depend on $x$. Then $\tilde{p}(x \oplus b) = \mathcal{L}(b)p(x)$. If we use $\tilde{p}(x \oplus b)$ in place of $p(x)$ to compute the ratio above, we will wind up with the same output, because $\mathcal{L}(b)$ will cancel in the numerator and denominator.
 
-Thus, this ratio can be computed term-by-term using \textsc{score} (Algorithm~\ref{alg:auto-involutive-mcmc}): to compute $q_x(y')$, we run the algorithm directly on the program $Q(x)$, and to compute $p(x)$ and $p(x')$, we actually merge the dictionary $x$ with the observations $b$ and compute $Z(b)p(x) = \tilde{p}(x \oplus b)$ instead, by running the algorithm on $P()$ with trace $x \oplus b$. The density $q_x(y)$ can be computed while $y$ is being sampled, using \textsc{trace-and-score}.
+Thus, this ratio can be computed term-by-term using \textsc{score} (Algorithm~\ref{alg:auto-involutive-mcmc}): to compute $q_x(y')$, we run the algorithm directly on the program $\mathcal{Q}_x$, and to compute $p(x)$ and $p(x')$, we actually merge the dictionary $x$ with the observations $b$ and compute $\mathcal{L}(b)p(x) = \tilde{p}(x \oplus b)$ instead, by running the algorithm on $\mathcal{P}$ with trace $x \oplus b$. The density $q_x(y)$ can be computed while $y$ is being sampled, using \textsc{trace-and-score}.
 
 Section~\ref{sec:sparsity} describes a more efficient approach that exploits sparsity in the involution and resulting cancellation in the ratio for improved efficiency, but requires a more sophisticated probabilistic programming runtime system.
 
@@ -664,9 +664,9 @@ end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-In order to apply this function in the context of involution MCMC, we require probabilistic programs $P$ and $Q$ that define space of input and output traces for the involution.
-A minimal example does not require any auxiliary random choices, so $Q$ can be an empty probabilistic program.
-A minimal toy example of a probabilistic program $P$ that is compatible with the involution \texttt{h} defined above is:
+In order to apply this function in the context of involution MCMC, we require probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ that define space of input and output traces for the involution.
+A minimal example does not require any auxiliary random choices, so $\mathcal{Q}$ can be an empty probabilistic program.
+A minimal toy example of a probabilistic program $\mathcal{P}$ that is compatible with the involution \texttt{h} defined above is:
 \noindent
 \begin{center}
 \begin{tabular}{c}
@@ -906,17 +906,17 @@ The move is accepted with probability:
 }
 \end{equation}
 
-To represent reversible jump MCMC using involutive MCMC implemented with probabilistic programs, we write a probabilistic program $P$ that encodes the space of models $\mathcal{K}$, the prior distribution on models, $p(k)$, the per-model priors $p_k(\theta_k)$ and the per-model likelihoods $L_{D,k}(\theta_k)$.
-The set of all models $k$ corresponds to the set of all pairs $(A_P, \mathbf{d}_P)$ where $A_P$ represent possible trace structures (i.e. control-flow paths through $P$) and $\mathbf{d}_P$ are the set of assignments to discrete random choices made by $P$.
-The per-model continuous parameters $\theta$ correspond to continuous random choices $\mathbf{c}_P$.
+To represent reversible jump MCMC using involutive MCMC implemented with probabilistic programs, we write a probabilistic program $\mathcal{P}$ that encodes the space of models $\mathcal{K}$, the prior distribution on models, $p(k)$, the per-model priors $p_k(\theta_k)$ and the per-model likelihoods $L_{D,k}(\theta_k)$.
+The set of all models $k$ corresponds to the set of all pairs $(A_P, \mathbf{d}_P)$ where $A_\mathcal{P}$ represent possible trace structures (i.e. control-flow paths through $\mathcal{P}$) and $\mathbf{d}_P$ are the set of assignments to discrete random choices made by $\mathcal{P}$.
+The per-model continuous parameters $\theta$ correspond to continuous random choices $\mathbf{c}_\mathcal{P}$.
 % TODO explain the likelihood
-An auxiliary probabilistic program $Q$ encodes both the probability distribution on moves types using discrete random choices and possibly stochastic control flow ($(A_Q, \mathbf{d}_Q)$), and the per-move-type probability densities on $u$ using continuous random choices $\mathbf{c}_Q$.
-The involution $f$ factors into an (i) involution $f_1$ on pairs $i = ((A_P, \mathbf{d}_P), (A_Q, \mathbf{d}_Q))$ that defines the association between move types $\mathcal{M}$ and the model pairs ($k_1, k_2$); and (ii) a family of bijections $f_{1,i}$ on the space of pairs $(\mathbf{c}_P, \mathbf{c}_Q)$ of continuous random choices for both programs for fixed values of the discrete random choices and fixed trace structure.
+An auxiliary probabilistic program $\mathcal{Q}$ encodes both the probability distribution on moves types using discrete random choices and possibly stochastic control flow ($(A_\mathcal{Q}, \mathbf{d}_\mathcal{Q})$), and the per-move-type probability densities on $u$ using continuous random choices $\mathbf{c}_\mathcal{Q}$.
+The involution $f$ factors into an (i) involution $f_1$ on pairs $i = ((A_\mathcal{P}, \mathbf{d}_\mathcal{P}), (A_\mathcal{Q}, \mathbf{d}_\mathcal{Q}))$ that defines the association between move types $\mathcal{M}$ and the model pairs ($k_1, k_2$); and (ii) a family of bijections $f_{1,i}$ on the space of pairs $(\mathbf{c}_\mathcal{P}, \mathbf{c}_\mathcal{Q})$ of continuous random choices for both programs for fixed values of the discrete random choices and fixed trace structure.
 
 Figure~\ref{fig:mixture} shows a split-merge reversible jump kernel for an infinite Gaussian mixture model~\citep{richardson1997bayesian} implemented using the probabilistic and differentiable programming languages described in this paper.
-Figure~\ref{fig:mixture}(b) shows the infinite Gaussian mixture model, specified as a probabilistic program $P$.
+Figure~\ref{fig:mixture}(b) shows the infinite Gaussian mixture model, specified as a probabilistic program $\mathcal{P}$.
 The program takes the number of data points as input, then samples the number of clusters from a Poisson distribution, then samples cluster parameters and mixture proportions, and finally samples the data points from the resulting finite mixture.
-Figure~\ref{fig:mixture}(c) shows the auxiliary probabilistic program $Q$ for the split-merge kernel.
+Figure~\ref{fig:mixture}(c) shows the auxiliary probabilistic program $\mathcal{Q}$ for the split-merge kernel.
 This program takes a trace of the model program as input, and randomly decides whether to split a cluster and increase the number of clusters by one or merge two clusters and decrease the number of clusters by one.
 Then, the program randomly picks which cluster to split, or which clusters to merge.
 This kernel always merges the last cluster with a random other cluster; for ergodicity the move can be composed with a simple move (that has acceptance probability $1$) that swaps a random cluster with the last cluster.
