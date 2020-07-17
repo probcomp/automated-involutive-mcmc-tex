@@ -717,7 +717,45 @@ Note that the $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are omitted f
 
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORMANCE} \label{sec:sparsity}
 
-\subsubsection{Incremental Computation of Model Density Ratio}
+Suppose $N$ and $N'$ are the total number of random choices in the input traces $x \oplus y$ and output traces $x' \oplus y'$ respectively, and $M$ is the number of continuous random choices (which is the same in the input traces and output traces).
+Then, the number of operations requried in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N) + O(M^2)$ (where each call to \textproc{logpdf} and the computation of each entry in the Jacobian both count as one operation).
+The linear term represents the complexity of sampling $y'$ and computing the four log-densities used to compute the acceptance probability.
+The quadratic term represents the complexity of computing the Jacobian matrix and its determinant.
+It is possible to reduce the computational complexity of an automated involutive MCMC kernel by exploiting special structure in the involution $f$, in some cases to $O(1)$.
+This section describes how an automated involutive MCMC implementation can reduce the computational complexity of the Jacobian computation and the density ratio computation.
+These techniques are used in the Gen implementation of automated involutive MCMC, and one of the techniques is used in our minimal PyTorch implementation.
+
+\subsection{Sparsity-Aware Automatic Jacobian Computation}
+
+The naive implementation of Algorithm~\ref{alg:auto-involutive-mcmc} computes by the Jacobian by first computing the $M$-by-$M$ Jacobian matrix $J h_{e(z)}$ via automatic differentiation, and them computing the absolute value of its determinant.
+However, we observe that in many applications of involutive MCMC, the values at continuous choices in the input traces are directly copied into the output traces (either at the same, or different, keys).
+These copy operations result in columns in the Jacobian matrix that have a single $1$ entry with remaining entries are $0$.
+For example, for the function $(u, v, x, y) \mapsto (u, 2 u - v, y, x) = (u', v', x', y')$, the Jacobian is (with columns corresponding to $u'$, $v'$, $x'$, and $y'$ and rows corresponding to $u$, $v$, $x$, and $y$):
+\begin{equation}
+\left[
+\begin{array}{cccc}
+1 & 2 & 0 & 0\\
+0 & -1 & 0 & 0\\
+0 & 0 & 0 & 1\\
+0 & 0 & 1 & 0
+\end{array}
+\right]
+\begin{array}{c}
+u\\ v\\ x\\ y
+\end{array}
+\end{equation}
+Using the cofactor expansion of the determinant, we observe that for any (`copy') row or column in an $M$-by-$M$ Jacobian matrix with a single $1$ and all other entries $0$, that absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding row and column omitted (even if that would remove other nonzero entries from the matrix).
+By applying this rule recursively, we can instead compute the determinant of a much smaller matrix; for the example with $M=4$, the absolute value of the determinant simplifies to the absolute value of a single entry ($|-1|$).
+Indeed, if those output variables that are the result of copying an input variable, then we can avoid computing those entries completely, and the computational complexity reduces from $M^2$ to $K^2$ where $K$ is the number of output variables that were copied from some input variable.
+The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of output variables that were copied immediately available to the interpreter.
+Many involutive MCMC kernels update only a constant number of variables that does not depend on the size $N$ of the trace or the total number of continous keys $M$.
+For example, consider the Jacobian for a split-merge reversible jump move~\citet{richardson1997bayesian}, which is implemented in Figure~\ref{fig:mixture}:
+\includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
+In this case, the size $N$ of the trace grows linearly in the number of clusters, and the number of data points, but the Jacobian determinant can be calculated from only the $6$-by-$6$ submatrix of the Jacobian that involves the parameters of the cluster being split (or the clusters being merged).
+While a reasonable hand-coded implementation of this algorithm would likely exploit this sparsity as well, our differentiable programming languages for traces automates it.
+
+% TODO show an performance table of moves per second with and without the sparsity reduction (?)
+\subsection{Incremental Computation of Model Density Ratio and Implicit Copies}
 While it is possible to compute the ratio of densities in Equation~(\ref{eq:density-ratio}) by separately computing the four densities of the four traces, this scales linearly in the total number of random choices in the traces, because every random choice in each trace needs to be visited to compute the products in Equation~(\ref{eq:density-product}).
 Often, the number of random choices in the auxiliary traces $y$ and $y'$ are constant size $O(1)$ whereas the number of random choices in the model traces $x$ and $x'$ is $O(N)$ where $N$ is the number of data points, or latent components
 (see Figure~\ref{fig:mixture} for an example, where at most two clusters are affected by each application of the MCMC kernel).
@@ -726,8 +764,6 @@ However, due to conditional independencies in the model, the densities $p(x')$ a
 Gen's trace API includes an \emph{incremental update} operation~\citep{gen-paper}, which takes a previous trace $x$, and a partial trace $u$ containing the values of random choices that should be changed (or added if there is stochastic structure in the model), and returns a new trace $x'$.
 This allows for $O(1)$ computation of $p(x') / p(x)$ when the modeling language runtime system is able to detect and exploit the cancellation.
 
-\subsubsection{Implicit Copies}
-
 If an address is present in the input model trace and is needed to form a complete output model trace but was not written to or copied to in by the function body, then it will be implicitly copied from the previous trace by the runtime implementation.
 This significantly reduces the amount of code that has to be written when only a small subset of the model trace is being modified during the application of the involution MCMC move (which is common in applications of reversible jump MCMC).
 As a simple example, if there are $N$ latent variables, and the move only updates 1 of them, then the involution needs to contain only $O(1)$ lines of code instead of $O(N)$ lines.
@@ -735,26 +771,20 @@ As a simple example, if there are $N$ latent variables, and the move only update
 TODO: show an example
 
 
-\subsection{Sparsity-Aware Automatic Jacobian Computation}
+\subsection{Incremental Computation of Model Density Ratio and Implicit Copies}
+While it is possible to compute the ratio of densities in Equation~(\ref{eq:density-ratio}) by separately computing the four densities of the four traces, this scales linearly in the total number of random choices in the traces, because every random choice in each trace needs to be visited to compute the products in Equation~(\ref{eq:density-product}).
+Often, the number of random choices in the auxiliary traces $y$ and $y'$ are constant size $O(1)$ whereas the number of random choices in the model traces $x$ and $x'$ is $O(N)$ where $N$ is the number of data points, or latent components
+(see Figure~\ref{fig:mixture} for an example, where at most two clusters are affected by each application of the MCMC kernel).
+In these cases, the ratio of model trace densities $p(x') / p(x)$ dominates the asymptotic running time of computing the density ratio of Equation~\ref{eq:density-ratio}.
+However, due to conditional independencies in the model, the densities $p(x')$ and $p(x)$ often share common factors that cancel, which affords an opportunity for $O(1)$ computation of the ratio.
+Gen's trace API includes an \emph{incremental update} operation~\citep{gen-paper}, which takes a previous trace $x$, and a partial trace $u$ containing the values of random choices that should be changed (or added if there is stochastic structure in the model), and returns a new trace $x'$.
+This allows for $O(1)$ computation of $p(x') / p(x)$ when the modeling language runtime system is able to detect and exploit the cancellation.
 
-It is possible to automatically compute the Jacobian determinant in Equation~(\ref{eq:accept-prob-jacobian}) using automatic differentiation of the involution $f$.
-Note that while the involution can manipulate both discrete and continuous random choices, the Jacobian is the matrix of partial derivatives associated with the continuous random choices only.
-The differentiable programming language implementation distinguishes between continuous and discrete choices with the help of the user-provided type tags.
-The sums of the number of continuous dimensions across all addresses in the input and the output traces respectively must match, because otherwise $f$ cannot factor into continuously differentiable bijections $f_{2,i}$, which is necessary for the involutive MCMC acceptance ratio to simplify to Equation~(\ref{eq:accept-prob-jacobian}) (see Section~\ref{sec:radon-nikodym-special-case}).
+If an address is present in the input model trace and is needed to form a complete output model trace but was not written to or copied to in by the function body, then it will be implicitly copied from the previous trace by the runtime implementation.
+This significantly reduces the amount of code that has to be written when only a small subset of the model trace is being modified during the application of the involution MCMC move (which is common in applications of reversible jump MCMC).
+As a simple example, if there are $N$ latent variables, and the move only updates 1 of them, then the involution needs to contain only $O(1)$ lines of code instead of $O(N)$ lines.
 
-The Jacobian is computed automatically by applying forward-mode automatic differentiation separately for each continuous random choice in the input traces, which scales as $O(N^2)$ where $N$ is the number of such choices.
-Common determinant implementations based on the LU-decomposition scale on the order $O(N^2)$ for an $N$-by-$N$ matrix.
-Therefore, the basic algorithm computes $|J f_{2,i(x,y)} |$ in $O(N^2)$ where $N$ is the number of continuous addresses in $x$ or $y$.
-
-To derive a more efficient algorithm, we use the cofactor expansion of the determinant, and observe that any row or column in the Jacobian matrix that contains a single $1$ and all other ($N-1$) entries $0$ implies that the absolute value of the determinant is equivalent to the absolute value of the $N-1$-by-$N-1$ sub-matrix with the corresponding row and column omitted (even if that would remove other nonzero entries from the matrix).
-Applying this rule recursively allows a significant reduction in the size of the determinant computation when the Jacobian matrix possesses sparsity.
-Sparse Jacobians are common in applications of involutive MCMC, and reversible jump MCMC in particular.
-For example, consider the Jacobian for the split-merge move of~\citet{richardson1997bayesian}, implemented in Figure~\ref{fig:mixture}:
-\includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
-In this case, the Jacobian determinant can be simplified to the determinant of a $6$-by-$6$ matrix that does not grow in size with the number of clusters and number of data points, because unaffected clusters and data points have their values \emph{copied} from the input model trace to the output model trace.
-While a reasonable hand-coded implementation of this algorithm would likely exploit this sparsity as well, it would require careful and error-prone reasoning and implementation, which our approach automates.
-
-% TODO show an performance table of moves per second with and without the sparsity reduction (?)
+TODO: show an example
 
 \section{A DYNAMIC CHECK FOR DETECTING BUGS}
 
