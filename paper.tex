@@ -319,7 +319,7 @@ Example of reversible jump MCMC~\citep{green1995reversible} implemented using in
 The example implements a `split-merge move' in a infinite Gaussian mixture model~\citep{richardson1997bayesian} using three Gen programs:
 (1) a probabilistic program $\mathtt{p}$ encoding the generative model (shown in b),
 (2) a probabilistic program $\mathtt{q}$ encoding an auxiliary probability distribution (shown in c),
-and (3) a differentiable program $\mathtt{h}$ that encodes an involution on the space of pairs of traces of $\mathtt{p}$ and $\mathtt{q}$ (shown in d).
+and (3) a differentiable program $\mathtt{f}$ that encodes an involution on the space of pairs of traces of $\mathtt{p}$ and $\mathtt{q}$ (shown in d).
 Gen's involutive MCMC operator (shown in e) automatically computes the acceptance probability.
 }
     \label{fig:mixture}
@@ -565,13 +565,27 @@ To read a value $(x \oplus y)[a]$ at address $a$, we use the \texttt{@read} keyw
 \end{center}
 The first argument is the address $a$ and the second argument is either $\mathtt{discrete}$ or $\mathtt{continuous}$, and informs the interpreter whether the random choice at that address is drawn from a discrete or continuous distribution (this information will be used to support automatic differentiation).
 Recall that $x$ is the trace of the model probabilistic program, and $y$ is the trace of the auxiliary probabilistic program.
-Each address $a$ therefore is a pair, where the first element is either $\mathtt{model}$ or $\mathtt{aux}$, and the second element is the address within either $x$ or $y$.
-For example, to read the value of a continuous address $\mathtt{:}\mathtt{r}$ from the model trace ($x$):
+Each address $a$ therefore needs to specify which of these traces to read from, and the address within that trace.
+The traces are given names in the function signature:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\footnotesize\ttfamily]
+@transform f (model_in, aux_in) to (model_out, aux_out)
+begin
+..
+end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+Here, the traces $x$, $y$, $x'$ and $y'$ are given names $\mathtt{model\_in}$, $\mathtt{aux\_in}$, $\mathtt{model\_out}$, and $\mathtt{aux\_out}$, respectively.
+The syntax for address $\mathtt{a}$ within trace $\mathtt{trace}$ is $\mathtt{trace[a]}$.
+For example, to read the value of a continuous address $\mathtt{:}\mathtt{r}$ from the input model trace ($x$):
 \noindent
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    val = @read((model, :r), continuous)
+    val = @read(model_in[:r], continuous)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -581,7 +595,7 @@ For example to write a value $\mathtt{val}$ to $x'[\mathtt{:}\mathtt{r}]$:
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    @write((model, :r), val, continuous)
+    @write(model_in[:r], val, continuous)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -604,7 +618,7 @@ For example, to copy the value from address $\mathtt{:}\mathtt{u}$ in $x$ to add
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    @copy((model, :u), (model, :v))
+    @copy(model_in[:u], model_in[:v])
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -636,12 +650,12 @@ The following code reads the values of parameters from the model in polar coordi
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-r = @read((model, :r), :continuous)
-theta = @read((model, :theta), :continuous)
+r = @read(model_in[:r], :continuous)
+theta = @read(model_in[:theta], :continuous)
 x = r * sin(theta)
 y = r * cos(theta)
-@write((model, :x), x, :continuous)
-@write((model, :y), y, :continuous)
+@write((model_out[:x], x, :continuous)
+@write((model_out[:y], y, :continuous)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -658,23 +672,23 @@ Note that the involution negates the value of this address, to indicate that the
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
 @tracefn f
-   polar = @read((model, :polar), discrete)
+   polar = @read(model_in[:polar], discrete)
    if polar
-      r = @read((model, :r), continuous)
-      theta = @read((model, :theta), continuous)
+      r = @read(model_in[:r]), continuous)
+      theta = @read(model_in[:theta], continuous)
       x = r * sin(theta)
       y = r * cos(theta)
-      @write((model, :x), x, continuous)
-      @write((model, :y), y, continuous)
+      @write(model_out[:x], x, continuous)
+      @write(model_out[:y], y, continuous)
    else
-      x = @read((model, :x), continuous)
-      y = @read((model, :y), continuous)
+      x = @read(model_in[:x], continuous)
+      y = @read(model_in[:y], continuous)
       r = (x^2 + y^2)
       theta = atan(y, x)
-      @write((model, :r), r, continuous)
-      @write((model, :theta), theta, continuous)
+      @write(model_out[:r], r, continuous)
+      @write(model_out[:theta], theta, continuous)
    end
-   @write((model, :polar), !polar, discrete)
+   @write(model_out[:polar], !polar, discrete)
 end
 \end{lstlisting}}
 \end{tabular}
@@ -883,7 +897,8 @@ As another, simpler example of this type of error, consider the \texttt{split\_p
 \textit{Discrete logic errors.} Another common class of errors is 
 for the discrete logic of an involution to be flawed. Consider the following incorrect 
 implementation of a \textit{birth-death} move for the mixture model in Figure~\ref{fig:mixture}, which either adds a new mixture component or selects an existing one
-at random to delete:
+at random to delete
+(we name the traces $\mathtt{tr1}$, $\mathtt{tr2}$, $\mathtt{tr3}$, ad $\mathtt{tr4}$ for reasons of space):
 
 \begin{center}
 \begin{tabular}{c}
@@ -899,31 +914,31 @@ at random to delete:
   end
 end
 
-@tracefn h from (tr1, tr2) to (tr3, tr4)
+@transform h (tr1, tr2) to (tr3, tr4) begin
    is_birth = @read(tr2, :is_birth, :discrete)
-   @write(tr4, :is_birth, !is_birth, :discrete)
-   k = @read(tr1, :k, :discrete)
-   weights = @read(tr1, :weights, :continuous)
+   @write(tr4[:is_birth], !is_birth, :discrete)
+   k = @read(tr1[:k], :discrete)
+   weights = @read(tr1[:weights], :continuous)
    if is_birth
-     @write(tr3, :k, k+1, :discrete)
-     new_mu = @read(tr2, :new_mu, :continuous)
-     new_var = @read(tr2, :new_var, :continuous)
-     @write(tr3, (:mu, k+1), new_mu, :continuous)
-     @write(tr3, (:var, k+1), new_var, :continuous)
+     @write(tr3[:k], k+1, :discrete)
+     new_mu = @read(tr2[:new_mu], :continuous)
+     new_var = @read(tr2[:new_var], :continuous)
+     @write(tr3[(:mu, k+1)], new_mu, :continuous)
+     @write(tr3[(:var, k+1)], new_var, :continuous)
      new_weights = add_weight(weights)
-     @write(tr4, :deletion_idx, k+1, :discrete)
+     @write(tr4[:deletion_idx], k+1, :discrete)
    else
-     idx = @read(tr2, :deletion_idx, :discrete)
-     @copy(tr1, (:mu, idx), tr4, :new_mu)
-     @copy(tr1, (:var, idx), tr4, :new_var)
+     idx = @read(tr2[:deletion_idx], :discrete)
+     @copy(tr1[(:mu, idx)], tr4[:new_mu])
+     @copy(tr1[(:var, idx)], tr4[:new_var])
      for i in (idx+1):k
-       @copy(tr1, (:mu, i), tr3, (:mu, i-1))
-       @copy(tr1, (:var, i), tr3, (:var, i-1))
+       @copy(tr1[(:mu, i)], tr3[(:mu, i-1)])
+       @copy(tr1[(:var, i)], tr3[(:var, i-1)])
      end
-     @write(tr3, :k, k-1, :discrete)
+     @write(tr3[:k], k-1, :discrete)
      new_weights = delete_weight(weights, idx)
    end
-   @write(tr3, :weights, new_weights, :continuous)
+   @write(tr3[:weights], new_weights, :continuous)
 end
 \end{lstlisting}}
 \end{tabular}
@@ -1014,7 +1029,7 @@ The first part of the involution (Figure~\ref{fig:structure-learning}e) copies t
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-@copy((aux, :path), (aux, :path))
+@copy(aux_in[:path], aux_out[:path])
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -1051,8 +1066,8 @@ The involution program swaps the old subtree with the newly proposed subtree:
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-@copy((model, subtree_address), (model, :new_subtree))
-@copy((aux, :new_subtree), (aux, subtree_address))
+@copy(model_in[subtree_address], aux_out[:new_subtree])
+@copy(aux_in[:new_subtree], model_out[subtree_address])
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -1095,7 +1110,7 @@ In both cases, our automated involutive MCMC algorithm automatically computes th
 
 \begin{figure*}[ht]
     \centering
-    \includegraphics[width=0.8\textwidth]{figures/structure-learning.pdf}
+    \includegraphics[width=0.95\textwidth]{figures/structure-learning.pdf}
     \caption{
 A mixture kernel implemented using involutive MCMC in Gen, applied to infer the covariance function of a Gaussian process.
 The prior on covariance functions is based on a probabilistic context-free grammar.
@@ -1104,7 +1119,7 @@ The mixture kernel chooses a random subtree to replace via a random walk on the 
 The mixture kernel is composed from three Gen programs:
 (1) a probabilistic program $\mathtt{p}$ encoding the generative model (shown in a),
 (2) a probabilistic program $\mathtt{q}$ encoding an auxiliary probability distribution (shown in b), and
-(3) a differentiable program $\mathtt{h}$ that encodes an involution (shown in d).
+(3) a differentiable program $\mathtt{f}$ that encodes an involution (shown in d).
 }
     \label{fig:structure-learning}
 \end{figure*}
