@@ -419,7 +419,7 @@ Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
             (\algorithmicif\hspace{1mm} $k \in \mathcal{I}$
             \algorithmicthen\hspace{1mm} evaluate to $z[k]$
             \algorithmicelse\hspace{1mm} set $R \gets R \cup \{k\}$ and evaluate to $z[k]$)
-        \State $\mathtt{"copy}(k_1, k_2)\mathtt{"} \equiv$ (set $z'[k_2] \gets z[k_1]$ and set $C \gets C \cup \{k_1\}$)
+        \State $\mathtt{"@copy}(k_1, k_2)\mathtt{"} \equiv$ (set $z'[k_2] \gets z[k_1]$ and set $C \gets C \cup \{k_1\}$)
     \END
     \LineComment{Use automatic differentiation of $\mathcal{F}$ to compute Jacobian, skipping copied addresses}
     \For{$i$ in $1$ to $|W|$}
@@ -718,7 +718,7 @@ Note that the $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are omitted f
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORMANCE} \label{sec:sparsity}
 
 Suppose $N$ and $N'$ are the total number of random choices in the input traces $x \oplus y$ and output traces $x' \oplus y'$ respectively, and $M$ is the number of continuous random choices (which is the same in the input traces and output traces).
-Then, the number of operations requried in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N) + O(M^2)$ (where each call to \textproc{logpdf} and the computation of each entry in the Jacobian both count as one operation).
+Then, the number of operations requried in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N + N') + O(M^2)$ (where each call to \textproc{logpdf} and the computation of each entry in the Jacobian both count as one operation).
 The linear term represents the complexity of sampling $y'$ and computing the four log-densities used to compute the acceptance probability.
 The quadratic term represents the complexity of computing the Jacobian matrix and its determinant.
 It is possible to reduce the computational complexity of an automated involutive MCMC kernel by exploiting special structure in the involution $f$, in some cases to $O(1)$.
@@ -749,44 +749,61 @@ By applying this rule recursively, we can instead compute the determinant of a m
 Indeed, if some input variable is copied to some output variable, then we can entirely avoid computing its row (and corresponding column) of the Jacobian, and the computational complexity reduces from $M^2$ to $(M-K)^2$ where $K$ is the number of input variables that were copied from some input variable.
 The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of input variables that were copied immediately available to the interpreter, which makes automating this optimization possible, as shown in \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc}.
 
-Many involutive MCMC kernels update only a constant number of variables that does not depend on the size $N$ of the trace or the total number of continous keys $M$, and the other variables are copied over unchanged.
+Many involutive MCMC kernels update only a constant number of variables that does not depend on the sizes $N$ and $N'$ of the input and output traces or the total number of continous keys $M$; the other variables are copied over unchanged.
 For example, consider the Jacobian for a split-merge reversible jump move~\citet{richardson1997bayesian}, which is implemented in Figure~\ref{fig:mixture}:
 \includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
 Black squares indicate nonzero entries.
 In this case, the size $N$ of the trace grows linearly both in the number of clusters and the number of data points, but the Jacobian determinant can be calculated from only the $6$-by-$6$ submatrix of the Jacobian that involves the parameters of the one cluster being split (or the two clusters being merged).
-While a reasonable hand-coded implementation of this algorithm would likely perform this optimization as well, Algorithm~\ref{alg:auto-involutive-mcmc} automates it.
+Therefore, the computation complexity of the acceptance ratio computation reduces from $O(N + N') + O(M^2)$ to $O(N + N')$.
+While a reasonable hand-coded implementation of this algorithm would likely perform this sort of optimization as well, Algorithm~\ref{alg:auto-involutive-mcmc} automates it.
 
 % TODO show an performance table of moves per second with and without the sparsity reduction (?)
-\subsection{Incremental Computation of Model Density Ratio and Implicit Copies}
+\subsection{Incremental Computation of Output Traces and Density Ratios}
 
-While it is possible to compute the ratio of densities in Equation~(\ref{eq:density-ratio}) by separately computing the four densities of the four traces, this scales linearly in the total number of random choices in the traces, because every random choice in each trace needs to be visited to compute the products in Equation~(\ref{eq:density-product}).
-Often, the number of random choices in the auxiliary traces $y$ and $y'$ are constant size $O(1)$ whereas the number of random choices in the model traces $x$ and $x'$ is $O(N)$ where $N$ is the number of data points, or latent components
-(see Figure~\ref{fig:mixture} for an example, where at most two clusters are affected by each application of the MCMC kernel).
-In these cases, the ratio of model trace densities $p(x') / p(x)$ dominates the asymptotic running time of computing the density ratio of Equation~\ref{eq:density-ratio}.
-However, due to conditional independencies in the model, the densities $p(x')$ and $p(x)$ often share common factors that cancel, which affords an opportunity for $O(1)$ computation of the ratio.
-Gen's trace API includes an \emph{incremental update} operation~\citep{gen-paper}, which takes a previous trace $x$, and a partial trace $u$ containing the values of random choices that should be changed (or added if there is stochastic structure in the model), and returns a new trace $x'$.
-This allows for $O(1)$ computation of $p(x') / p(x)$ when the modeling language runtime system is able to detect and exploit the cancellation.
+It is possible to further reduce the complexity of applying an automated involutive MCMC kernel from $O(N + N')$ to $O(1)$ for many involutions, using additional optimizations that reduce the complexity of computing the density ratio and the complexity of computing the output of the involution to $O(1)$.
 
-If an address is present in the input model trace and is needed to form a complete output model trace but was not written to or copied to in by the function body, then it will be implicitly copied from the previous trace by the runtime implementation.
-This significantly reduces the amount of code that has to be written when only a small subset of the model trace is being modified during the application of the involution MCMC move (which is common in applications of reversible jump MCMC).
-As a simple example, if there are $N$ latent variables, and the move only updates 1 of them, then the involution needs to contain only $O(1)$ lines of code instead of $O(N)$ lines.
+Consider input traces $z$ and output traces $z'$, with sizes $N$ and $N'$ respectively, and an involution $f$ such that $z' = f(z)$.
+The approach in Algorithm~\ref{alg:auto-involutive-mcmc} involves running a program $\mathcal{F}$ that explicitly writes the value for each element of $f$, which requires $N'$ write operations.
+We now show how to specify the involution $f$ such that computing $z'$ from $z$ can take less than $N'$ operations for involutions that possess sparse structure.
+Recall that $K_{z}$ and $K_{z'}$ are the sets of keys in $z$ and $z'$, respectively, and that $z$ and $z'$ may both have values for certain keys, and $z$ may contains keys not present in $z'$, and vice-versa.
+Often, an involution does not modify the values of many keys in the trace---this is the case in the split-merge reversible jump move described earlier.
+Suppose that $A \subseteq K_{z} \cap K_{z'}$ is the set of keys $k$ in both $z$ and $z'$ for which $z'[k] = z[k]$.
+Let $\Delta := K_{z'} \setminus A$ be the set of keys in $z'$ that are either (i) not in $z$, or (ii) in $z$ but have their value changed.
+Then, the previous trace $z$ and a dictionary $\delta$ with $K_{\delta} = \Delta$ and $\delta[k] = z'[k]$ and the density function $p$ suffice to uniquely define the trace $z'$, provided the density satisfies the following condition:
+$p(x) > 0$ and $p(x') > 0$ and $x \ne x'$ implies there exists $k \in K_x \cap K_{x'}$ with $x[k] \ne x'[k]$.
+Let $x|_A$ denote the \emph{restriction} of a dictionary $x$ to only keys in $A$.
+Then, \textproc{naive-trace-update} (Algorithm~\ref{alg:naive-update}) computes the new trace $x'$ and difference in log-densities $\log p(x') - \log p(x)$ of a probabilistic program from a previous trace $x$ and a dictionary $\delta$, provided there exists $x' = \delta \oplus x|_A$ for some $A$ where $p(x') > 0$.
+\begin{algorithm}[h]
+\begin{algorithmic}
+\Require probabilistic program $\mathcal{P}$; previous trace $x$;\\
+dictionary $\delta$ such that there exists $x' = (\delta \oplus x|_{A})$ for some $A$ where $p(x') > 0$.
+\vspace{1mm}
+\Procedure{naive-trace-update}{$\mathcal{P}$, $x$, $\delta$}
+   \State $x' \gets \{\}$
+   \State $s' \gets 0$
+   \execute[$\mathcal{P}$], but with $\mathtt{"}k \sim \mathrm{distribution}\mathtt{"} \equiv$ (
+        \State 1. if $k \in K_{\delta}$ then $v \gets \delta[k]$ else $v \gets x[k]$
+        \State 2. set $x'[k] \gets v$
+        \State 3. set $s' \gets s' + \textproc{logpdf}(\mathrm{distribution}, v)$
+        \State 4. evaluate to $v$)
+    \END
+   \State $s \gets \textproc{score}(\mathcal{P}, x)$
+   \State \Return $(x', s' - s)$
+\EndProcedure
+\end{algorithmic}
+\caption{Naive Trace Update}
+\label{alg:naive-update}
+\end{algorithm}
+\textproc{naive-trace-update} is a naive implementation of a general \emph{trace-update} operation that is part of Gen's API.
+While the naive implementation requires $O(|K_x| + |K_{x'}|)$ operations, it is possible for more sophisticated implementations of \emph{trace-update} to run in $O(|K_{\delta}|)$ operations for certain probabilistic programs $\mathcal{P}$ by exploiting conditional independence structure program that leads to cancellations in the density ratio $p(x') / p(x)$.
+The details of these more efficient implementations are outside the scope of this paper, but are implemented as part of the Gen system.
 
-TODO: show an example
-
-
-While it is possible to compute the ratio of densities in Equation~(\ref{eq:density-ratio}) by separately computing the four densities of the four traces, this scales linearly in the total number of random choices in the traces, because every random choice in each trace needs to be visited to compute the products in Equation~(\ref{eq:density-product}).
-Often, the number of random choices in the auxiliary traces $y$ and $y'$ are constant size $O(1)$ whereas the number of random choices in the model traces $x$ and $x'$ is $O(N)$ where $N$ is the number of data points, or latent components
-(see Figure~\ref{fig:mixture} for an example, where at most two clusters are affected by each application of the MCMC kernel).
-In these cases, the ratio of model trace densities $p(x') / p(x)$ dominates the asymptotic running time of computing the density ratio of Equation~\ref{eq:density-ratio}.
-However, due to conditional independencies in the model, the densities $p(x')$ and $p(x)$ often share common factors that cancel, which affords an opportunity for $O(1)$ computation of the ratio.
-Gen's trace API includes an \emph{incremental update} operation~\citep{gen-paper}, which takes a previous trace $x$, and a partial trace $u$ containing the values of random choices that should be changed (or added if there is stochastic structure in the model), and returns a new trace $x'$.
-This allows for $O(1)$ computation of $p(x') / p(x)$ when the modeling language runtime system is able to detect and exploit the cancellation.
-
-If an address is present in the input model trace and is needed to form a complete output model trace but was not written to or copied to in by the function body, then it will be implicitly copied from the previous trace by the runtime implementation.
-This significantly reduces the amount of code that has to be written when only a small subset of the model trace is being modified during the application of the involution MCMC move (which is common in applications of reversible jump MCMC).
-As a simple example, if there are $N$ latent variables, and the move only updates 1 of them, then the involution needs to contain only $O(1)$ lines of code instead of $O(N)$ lines.
-
-TODO: show an example
+Given an implementation of \emph{trace-update} (that has the same input and output signature of \textproc{naive-trace-update}) we can optimize Algorithm~\ref{alg:auto-involutive-mcmc} by
+modifying the requirement for the involution program $\mathcal{F}$:
+Instead of explicitly specifying all of $z'$, it only needs to specify a subset of the trace $\delta$.
+Therefore, the involution program can run in $O(|K_{\delta}|)$ operations.
+We also remove the two calls to \textproc{score} on $x$ and $x'$, and replace them with a single call to \emph{trace-update} on $\mathcal{P}$ that takes in $x$, and $\delta$ and returns $x'$ and $\log p(x') - \log p(x)$.
+When $|K_{\delta}|$ and $|K_{y}|$ and $|K_{y}$ are all constant in the size $N$ of the model trace $x$, the resulting algorithm scales as $O(1)$ instead of $O(N + N')$.
 
 \section{A DYNAMIC CHECK FOR DETECTING BUGS}
 
@@ -1108,6 +1125,16 @@ The mixture kernel is composed from three Gen programs:
     \label{fig:structure-learning}
 \end{figure*}
 
+
+\section{DISCUSSION}
+
+- using probabilistic programming systems to develop new MCMC algorithms.
+
+- trace translators
+
+- work on compilers for inference programs that generate more specialized, high
+  performance implementations, from user specification of an inference
+algorithm.
 
 \subsubsection*{Acknowledgements}
 All acknowledgments go at the end of the paper, including thanks to reviewers who gave useful comments, to colleagues who contributed to the ideas, and to funding agencies and corporate sponsors that provided financial support.
