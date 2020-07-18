@@ -88,17 +88,17 @@ def get_which(addr):
     return (which, addr)
 
 # user-provided type information for reads and writes
-CONTINUOUS = "continuous"
-DISCRETE = "discrete"
+continuous = "continuous"
+discrete = "discrete"
 
 def check_type_label(type_label):
-    if type_label != CONTINUOUS and type_label != DISCRETE:
-        raise Exception("type label argument must be CONTINUOUS or DISCRETE")
+    if type_label != continuous and type_label != discrete:
+        raise Exception("type label argument must be continuous or discrete")
 
 def _read(state, addr, type_label):
     (which, addr) = get_which(addr)
     check_type_label(type_label)
-    if type_label == CONTINUOUS:
+    if type_label == continuous:
         if which == MODEL:
             val = torch.tensor(state.input_model_trace[addr], requires_grad=True)
         else:
@@ -114,7 +114,7 @@ def _read(state, addr, type_label):
 def _write(state, addr, val, type_label):
     (which, addr) = get_which(addr)
     check_type_label(type_label)
-    if type_label == CONTINUOUS:
+    if type_label == continuous:
         if which == MODEL:
             state.output_model_trace[addr] = val 
         else:
@@ -252,24 +252,24 @@ def cartesian_to_polar(x, y):
     return (theta, y)
 
 def f():
-    polar = read(model_in["polar"], DISCRETE)
+    polar = read(model_in["polar"], discrete)
     if polar:
-        r = read(model_in["r"], CONTINUOUS)
-        theta = read(model_in["theta"], CONTINUOUS)
+        r = read(model_in["r"], continuous)
+        theta = read(model_in["theta"], continuous)
         (x, y) = polar_to_cartesian(r, theta)
-        write(model_out["x"], x, CONTINUOUS)
-        write(model_out["y"], y, CONTINUOUS)
+        write(model_out["x"], x, continuous)
+        write(model_out["y"], y, continuous)
     else:
-        x = read(model_in["x"], CONTINUOUS)
-        y = read(model_in["y"], CONTINUOUS)
+        x = read(model_in["x"], continuous)
+        y = read(model_in["y"], continuous)
         (r, theta) = cartesian_to_polar(x, y)
-        write(model_out["r"], r, CONTINUOUS)
-        write(model_out["theta"], theta, CONTINUOUS)
-    write(model_out["polar"], not polar, DISCRETE)
+        write(model_out["r"], r, continuous)
+        write(model_out["theta"], theta, continuous)
+    write(model_out["polar"], not polar, discrete)
     copy(model_out["u"], (MODEL, "u"))
-    u = read(model_in["u"], CONTINUOUS)
-    v = read(model_in["v"], CONTINUOUS)
-    write(model_out["v"], u - v, CONTINUOUS)
+    u = read(model_in["u"], continuous)
+    v = read(model_in["v"], continuous)
+    write(model_out["v"], u - v, continuous)
 
 trace = {
         "polar" : True,
