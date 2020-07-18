@@ -183,18 +183,18 @@ end
    end
 end
 
-@bijection function split_merge_inv(_, _, _)
-    k = @read_discrete_from_model(:k)
-    split = (k == 1) ? true : @read_discrete_from_proposal(:split)
+@transform split_merge_inv (model_in, aux_in) to (model_out, aux_out) begin
+    k = @read(model_in[:k], :discrete)
+    split = (k == 1) ? true : @read(aux_in[:split], :discrete)
     if split
 
-        cluster_to_split = @read_discrete_from_proposal(:cluster_to_split)
-        u1 = @read_continuous_from_proposal(:u1)
-        u2 = @read_continuous_from_proposal(:u2)
-        u3 = @read_continuous_from_proposal(:u3)
-        weights = @read_continuous_from_model(:weights)
-        mu = @read_continuous_from_model((:mu, cluster_to_split))
-        var = @read_continuous_from_model((:var, cluster_to_split))
+        cluster_to_split = @read(aux_in[:cluster_to_split], :discrete)
+        u1 = @read(aux_in[:u1], :continuous)
+        u2 = @read(aux_in[:u2], :continuous)
+        u3 = @read(aux_in[:u3], :continuous)
+        weights = @read(model_in[:weights], :continuous)
+        mu = @read(model_in[(:mu, cluster_to_split)], :continuous)
+        var = @read(model_in[(:var, cluster_to_split)], :continuous)
 
         new_weights = split_weights(weights, cluster_to_split, u1, k)
         w1 = new_weights[cluster_to_split]
@@ -202,23 +202,23 @@ end
         (mu1, mu2) = split_means(mu, var, u2, w1, w2)
         (var1, var2) = split_vars(w1, w2, var, u2, u3)
 
-        @write_discrete_to_model(:k, k+1)
-        @copy_proposal_to_proposal(:cluster_to_split, :cluster_to_merge)
-        @write_discrete_to_proposal(:split, false)
-        @write_continuous_to_model(:weights, new_weights)
-        @write_continuous_to_model((:mu, cluster_to_split), mu1)
-        @write_continuous_to_model((:mu, k+1), mu2)
-        @write_continuous_to_model((:var, cluster_to_split), var1)
-        @write_continuous_to_model((:var, k+1), var2)
+        @write(model_out[:k], k+1, :discrete)
+        @copy(aux_in[:cluster_to_split], aux_out[:cluster_to_merge])
+        @write(aux_out[:split], false, :discrete)
+        @write(model_out[:weights], new_weights, :continuous)
+        @write(model_out[(:mu, cluster_to_split)], mu1, :continuous)
+        @write(model_out[(:mu, k+1)], mu2, :continuous)
+        @write(model_out[(:var, cluster_to_split)], var1, :continuous)
+        @write(model_out[(:var, k+1)], var2, :continuous)
 
     else
 
-        cluster_to_merge = @read_discrete_from_proposal(:cluster_to_merge)
-        mu1 = @read_continuous_from_model((:mu, cluster_to_merge))
-        mu2 = @read_continuous_from_model((:mu, k))
-        var1 = @read_continuous_from_model((:var, cluster_to_merge))
-        var2 = @read_continuous_from_model((:var, k))
-        weights = @read_continuous_from_model(:weights)
+        cluster_to_merge = @read(aux_in[:cluster_to_merge], :discrete)
+        mu1 = @read(model_in[(:mu, cluster_to_merge)], :continuous)
+        mu2 = @read(model_in[(:mu, k)], :continuous)
+        var1 = @read(model_in[(:var, cluster_to_merge)], :continuous)
+        var2 = @read(model_in[(:var, k)], :continuous)
+        weights = @read(model_in[:weights], :continuous)
         w1 = weights[cluster_to_merge]
         w2 = weights[k]
 
@@ -226,17 +226,17 @@ end
         w = new_weights[cluster_to_merge]
         (mu, var, u2, u3) = merge_mean_and_var(mu1, mu2, var1, var2, w1, w2, w)
     
-        @write_discrete_to_model(:k, k-1)
-        @copy_proposal_to_proposal(:cluster_to_merge, :cluster_to_split)
+        @write(model_out[:k], k-1, :discrete)
+        @copy(aux_in[:cluster_to_merge], aux_out[:cluster_to_split])
         if k > 2
-            @write_discrete_to_proposal(:split, true)
+            @write(aux_out[:split], true, :discrete)
         end
-        @write_continuous_to_model(:weights, new_weights)
-        @write_continuous_to_model((:mu, cluster_to_merge), mu)
-        @write_continuous_to_model((:var, cluster_to_merge), var)
-        @write_continuous_to_proposal(:u1, u1)
-        @write_continuous_to_proposal(:u2, u2)
-        @write_continuous_to_proposal(:u3, u3)
+        @write(model_out[:weights], new_weights, :continuous)
+        @write(model_out[(:mu, cluster_to_merge)], mu, :continuous)
+        @write(model_out[(:var, cluster_to_merge)], var, :continuous)
+        @write(aux_out[:u1], u1, :continuous)
+        @write(aux_out[:u2], u2, :continuous)
+        @write(aux_out[:u3], u3, :continuous)
     end
 end
 
