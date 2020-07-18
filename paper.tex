@@ -115,20 +115,20 @@
 
 \begin{abstract}
 Involutive MCMC is a unifying mathematical construction for MCMC kernels that generalizes many classic and state-of-the-art MCMC algorithms, from reversible jump MCMC to kernels based on deep neural networks.
-But like MCMC samplers more generally, implementing involutive MCMC kernels is often tedious and error-prone, especially when sampling on complex state spaces.
+But as with MCMC samplers more generally, implementing involutive MCMC kernels is often tedious and error-prone, especially when sampling on complex state spaces.
 This paper describes a technique for automating the implementation of involutive MCMC kernels given (i) a pair of probabilistic programs defining the target distribution and an auxiliary distribution respectively and (ii) a differentiable program that transforms the execution traces of these probabilistic programs.
 The technique, which is implemented as part of the Gen probabilistic programming system, also automatically detects user errors in the specification of involutive MCMC kernels and exploits sparsity in the kernels for improved efficiency.
 The paper shows example Gen code for a split-merge reversible jump move in an infinite Gaussian mixture model and a state-dependent mixture of proposals on a combinatorial space of covariance functions for a Gaussian process.
 \end{abstract}
 
 \section{INTRODUCTION}
-Markov chain Monte Carlo (MCMC) algorithms are powerful tools for approximate sampling from probability distributions and are central to modern Bayesian statistics, probabilistic machine learning, statistical physics, and numerous applications of probabilistic inference.
+Markov chain Monte Carlo (MCMC) algorithms are powerful tools for approximate sampling from probability distributions and are central to modern Bayesian statistics, probabilistic machine learning, statistical physics, and numerous application areas where probabilistic modeling and inference are used.
 But designing and deriving efficient MCMC algorithms is mathematically involved, and implementing MCMC kernels is tedious and notoriously error-prone.
-These challenges are especially pertinent when sampling from probability distributions on complex state spaces that combine symbolic, numeric, and structural uncertainty, such as those arising in computational biology~\citep{huelsenbeck2004bayesian}, robotics and scene understanding~\citep{geiger2011generative}, and models of human cognition~\citep{tenenbaum2011grow}.
+These challenges are especially pronounced when sampling from probability distributions on complex state spaces that combine symbolic, numeric, and structural uncertainty, such as those arising in computational biology~\citep{huelsenbeck2004bayesian}, robotics and scene understanding~\citep{geiger2011generative}, and models of human cognition~\citep{tenenbaum2011grow}.
 
 Involutive MCMC is a mathematical construction for MCMC kernels that gives a simplifying and unifying perspective on a number of previously disparate classes of kernels,
 including reversible jump MCMC~\citep{green1995reversible}, which is the dominant mathematical framework for MCMC on complex state spaces.
-Involutive MCMC constructs an MCMC kernel from three components: (i) the unnormalized target density, (ii) a sampler and density for an auxiliary probability distribution (iii) an involution\footnote{a bijection that is its own inverse ($f$ where $f(f(z)) = z$)} on an extended state space.
+Involutive MCMC constructs an MCMC kernel from three components: (i) the unnormalized target density, (ii) a sampler and density for an auxiliary probability distribution, and (iii) an involution\footnote{a bijection that is its own inverse ($f$ where $f(f(z)) = z$)} on an extended state space.
 While this construction is mathematically clarifying, correctly implementing involutive MCMC kernels on complex state spaces remains challenging due to tedious density and Jacobian computations and the need for careful reasoning about the state space.
 
 This paper formulates involutive MCMC on general state spaces and shows how to automate the implementation of an involutive MCMC kernel from three declarative programs that define the target probability distribution, auxiliary probability distribution, and the involution, respectively.
@@ -136,7 +136,7 @@ The probability distributions are defined as probabilistic programs, and the inv
 We use probabilistic programming techniques and automatic differentiation to automatically compute the acceptance probability.
 We also show how to automatically detect mathematical errors in the specification of an involutive MCMC kernel, and how to improve the efficiency by automatically exploiting the sparsity structure in the involution.
 We implemented the approach within the Gen probabilistic programming system\footnote{\url{https://www.gen.dev}}~\citep{cusumano2019gen}.
-The paper shows examples of involutive MCMC kernels implemented in Gen for (i) a split-merge reversible jump move in an infinite mixture model, and a (ii) state-dependent mixture of Metropolis-Hastings proposals on an infinite combinatorial space of covariance functions for a Gaussian process.
+The paper shows examples of involutive MCMC kernels implemented in Gen for (i) a split-merge reversible jump move in an infinite mixture model, and (ii) a state-dependent mixture of Metropolis-Hastings proposals on an infinite combinatorial space of covariance functions for a Gaussian process.
 We also provide a lightweight PyTorch implementation of the basic approach at
 {\small\url{https://github.com/probcomp/autoimcmc}}.
 
@@ -146,7 +146,7 @@ The contributions of this paper include:
 \item A mathematical formulation of state spaces consisting of arbitrary key-value stores (i.e. dictionaries) that formalizes the space of execution traces of Gen probabilistic programs, and a formulation of involutive MCMC on these spaces.
 \item A differentiable programming language for defining bijections between spaces of traces of probabilistic programs.
 \item An algorithm that automates the implementation of an involutive MCMC kernel given two probabilistic programs and a differentiable program encoding the involution, using automatic differentiation and tracing of probabilistic programs.
-\item An extension to the algorithm that exploits sparsity in the involution to reduce the computational complexity of an involutive MCMC kernel from $O(N^2)$ to $O(1)$ in common cases where $N$ is the dimensionality of the latent space.
+\item An extension to the algorithm that exploits sparsity in the involution to reduce the computational complexity of an involutive MCMC kernel from $O(N^2)$ to $O(1)$ in common cases, where $N$ is the dimensionality of the latent space.
 \item An algorithm that dynamically detects errors in the specification of an involutive MCMC kernel.
 \end{enumerate}
 
@@ -154,9 +154,9 @@ The contributions of this paper include:
 
 The involutive MCMC construction was previously implemented~\citep{gen-inv-mcmc} by the authors as part of the inference library of the Gen probabilistic programming system~\citep{cusumano2019gen}.
 The construction was motivated in part by a desire for a simple interface that automated the implementation of reversible jump MCMC samplers~\citep{green1995reversible}, state-dependent mixtures of proposals on complex state spaces, and data-driven neural proposals.
-Gen's involutive MCMC construction has since been used by a number of researchers to design and implement MCMC algorithms in diverse domains including computational biology~\citep{merrell2020inferring} and artificial intelligence~\citep{zhi2020online}.
+Gen's involutive MCMC construction has since been used by a number of researchers to design and implement MCMC algorithms in diverse domains, including computational biology~\citep{merrell2020inferring} and artificial intelligence~\citep{zhi2020online}.
 
-\citet{imcmc} independently identified the involutive MCMC construction as a unifying framework for MCMC algorithms, and showed how a number of classic and recent MCMC algorithms can be cast within this framework.
+\citet{imcmc} independently identified the involutive MCMC construction as a unifying framework for MCMC algorithms, and showed how more than a dozen classic and recent MCMC algorithms can be cast within this framework.
 \citet{imcmc} also identified design principles for developing new MCMC algorithms using the involutive MCMC construction, and showed that the framework aids in the derivation of novel efficient MCMC algorithms.
 
 The involutive MCMC construction encompasses many existing classes of MCMC kernels, some of which explicitly make use of bijective or involutive deterministic maps.
@@ -165,18 +165,18 @@ In particular, the reversible jump framework~\citep{green1995reversible,hastie20
 More recently,~\citet{spanbauer2020deep} defined a class of deep generative model based on differentiable involutions and trained these models to serve as efficient proposal distributions on continuous state spaces; the resulting algorithm is an instance of the construction presented in this paper.
 
 In recent decades, a number of probabilistic programming systems have provided automated implementations of probabilistic inference algorithms~\citep{gilks1994language,milch2007,pfeffer200714,goodman2012church,gehr2016psi,carpenter2017stan}.
-The majority of these systems have focused on the automation of one or more built-in inference algorithms, with customization limited tuning parameters of the algorithm.
-The programmable inference paradigm~\citep{mansinghka2018probabilistic} to probabilistic programming instead emphasizes user control over the inference algorithm and automation of the lower-level implementation.
+The majority of these systems have focused on the automation of one or more built-in inference algorithms, with customization limited to tuning a handful of parameters of the algorithm.
+The programmable inference paradigm~\citep{mansinghka2018probabilistic} in probabilistic programming instead emphasizes user control over the inference algorithm and automation of the lower-level implementation.
 In particular, the Gen probabilistic programming system~\citep{cusumano2019gen} offers a high degree of user programmability by exposing an API that supports high-level user implementations of inference algorithms, instead of a set of a built-in inference engine.
 One other probabilistic programming system besides Gen supports custom reversible jump samplers:
-\citet{roberts2019} presents a system embedded in Haskell that can automatically generate the implementation of certain reversible jump MCMC kernels from a high-level specification, but does not handle many kernels that can be handled by our technique, including the example in Figure~\ref{fig:structure-learning}.
+\citet{roberts2019} present a system embedded in Haskell that can automatically generate the implementation of certain reversible jump MCMC kernels from a high-level specification, and \citet{narayanan2020symbolic} also give a technique that can be used to automatically compute the Metropolis-Hastings acceptance probabilities in some settings; however, these approaches do not handle many kernels that can be handled by our technique, including the example in Figure~\ref{fig:structure-learning}.
 
 \section{INVOLUTIVE MCMC ON GENERAL STATE SPACES} % on traces ??
 
 Involutive MCMC is a general framework for constructing MCMC kernels that are stationary
 for a target probability distribution $p$. Informally, the algorithm works as follows: starting at some state $x$, we first sample
 an auxiliary variable $y \sim q_x$ from a state-dependent auxiliary distribution. We then apply an \textit{involution} $f$ to the pair $(x, y)$ to obtain $(x', y')$. 
-Finally, we computes an acceptance probability $\alpha$ and either accept $x'$ as the new state, or reject it and repeat the previous state $x$.
+Finally, we compute an acceptance probability $\alpha$ and either accept $x'$ as the new state, or reject it and repeat the previous state $x$.
 Different choices of $q$ and $f$ recover many algorithms from the literature~\citep{imcmc}.
 
 In this section, we present involutive MCMC for models $p$ and auxiliary kernels
@@ -244,7 +244,7 @@ can also consider distributions in which the set of keys is itself random, which
 selection problems and structure uncertainty more generally.
 
 This section describes probability distributions on dictionaries, and gives a constructive definition of the involutive MCMC acceptance probability in this setting in terms of a Jacobian.
-Section~\ref{sec:automating} will then show how probability distributions on dictionaries can be specified with probabilistic programs, and how probabilistic programming techniques can automatically compute probability densities spaces of dictionaries.
+Section~\ref{sec:automating} will then show how probability distributions on dictionaries can be specified with probabilistic programs, and how probabilistic programming techniques can automatically compute probability densities on spaces of dictionaries.
 
 \textbf{The space of finite dictionaries.}
 We fix a countably infinite set $\mathcal{K}$ of possible keys, such that each key $k$ is either called \emph{discrete} ($k \in \mathcal{I}$) or \emph{continuous} ($k \in \mathcal{J}$), where $\mathcal{K} = \mathcal{I} \cup \mathcal{J}$.\footnote{
@@ -256,13 +256,13 @@ a finite set of keys $K \subset \mathcal{K}$ at which it has values, and an assi
 
 \textbf{Relationship to representation of~\citet{green1995reversible}.}
 \citet{green1995reversible} uses a state space that is the countable union of `models', where for each model there is a vector of real-valued parameters.
-Dictionaries possesses substantially more structure:
-Instead of monolithic `models', dictionaries use a more elaborate discrete state that includes the set of keys and the assignment to the discrete keys.
-Also, continuous keys play the role of real-valued parameters, so it is possible to express that a given real-valued parameter is shared between models.
+Dictionaries possess substantially more structure:
+Instead of monolithic `models', dictionaries use a more elaborate discrete state that includes the set of keys and the assignment to the discrete keys. 
+Also, because continuous keys play the role of real-valued parameters, it is possible to express that a given real-valued parameter is shared between models.
 The additional structure of dictionaries enables the automation techniques in Section~\ref{sec:automating}.
 
 \textbf{A measure space of finite dictionaries.}
-We associate a measure $\mu_k$ on $V_k$ for each key---the counting measure for each discrete key and the Lebesgue-measure on $\mathbb{R}^{d_k}$ for each continuous key.
+We associate a measure $\mu_k$ on $V_k$ with each key $k$---the counting measure for each discrete key and the Lebesgue-measure on $\mathbb{R}^{d_k}$ for each continuous key.
 For each finite set of keys $K$, we make $V_K$ a measure space using the standard product $\sigma$-algebra $\Sigma_K = \otimes_{k \in A} \Sigma_k$ and the product measure $\mu_K = \times_{k \in A} \mu_k$.
 We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\bigcup_{K \subset \mathcal{K}, |K| < \infty} \{(K, \mathbf{x}) \mid \mathbf{x} \in B_K\} \mid B_K \in \Sigma_K \, \text{for each finite } K \subset \mathcal{K}\}$ to obtain a measurable space
 of dictionaries.
@@ -274,9 +274,9 @@ For example, the dictionary $(K, \mathbf{x})$ with $K = \{1, \mathtt{"foo"}\}$ a
 $\{1 \mapsto 0.123, \mathtt{"foo"} \mapsto 5\}$.
 
 \textbf{Probability distributions on finite dictionaries.} 
-When all keys are discrete, a probability distribution on dictionaries is defined by a $p$ is a probability mass function $p : \mathcal{D} \to [0, 1]$ that assigns a probability $p(m)$ to each dictionary $m \in \mathcal{P}$ such that $\sum_{x \in \mathcal{D}} p(m) = 1$.
+When $V_k$ is discrete for all keys $k$, a probability distribution on dictionaries is defined by a probability mass function $p : \mathcal{D} \to [0, 1]$ that assigns a probability $p(m)$ to each dictionary $m \in \mathcal{P}$ such that $\sum_{m \in \mathcal{D}} p(m) = 1$.
 More generally a probability distribution on dictionaries is defined by a probability density $p : \mathcal{D} \rightarrow [0, \infty)$ such that $\int p(m) \mu_\mathcal{D}(\text{d}m) = 1$. 
-The probability is distributed the finite sets of keys $K \subseteq \mathcal{K}$ where $|K| < \infty$:
+The probability is distributed among the finite sets of keys $K \subseteq \mathcal{K}$ where $|K| < \infty$:
 \begin{equation}
 1 = \int p(m) \mu_\mathcal{D}(\text{d}m) = \sum_{\substack{K \subseteq \mathcal{K}\\|K| < \infty}} \int p(m) \mu_{K}(dm)
 \end{equation}
@@ -300,9 +300,9 @@ p_{\mathrm{poisson}(3)}(d[\mathtt{k}]) \cdot\\
 \end{align*}
 %
 when $K_d = \{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq d[\texttt{k}]\} \cup \{\texttt{s}_i \mid 1 \leq i \leq d[\texttt{k}]\}$, and 0 otherwise. In this case, we have $V_\texttt{k} = \mathbb{N}$ with the counting measure for $\mu_\texttt{k}$, and for all other keys $k \in \mathcal{K}$, $V_k = \mathbb{R}$ with the Lebesgue measure for $\mu_k$.
-For each $k \in \{0, 1, \ldots\}$, the probability for key set
-$\{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$
-is $p_{\mathrm{poisson}(s)}(k)$ (via Equation~(\ref{eq:integral})).
+For each $j \in \{0, 1, \ldots\}$, the probability for key set
+$\{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq j\} \cup \{\texttt{s}_i \mid 1 \leq i \leq j\}$
+is $p_{\mathrm{poisson}(s)}(j)$ (via Equation~(\ref{eq:integral})).
 
 \textbf{Conditional distributions via disintegration.} Consider a probability density $p$ on the space $\mathcal{D}$ of dictionaries. 
 %For a set of keys $K \subset \mathcal{K}$, let $p(A) := \int 1[K_m = A] p(m) \mu_\mathcal{D}(\text{d}m)$, the probability under $p$ of a dictionary with exactly the key set $K$. 
@@ -335,19 +335,19 @@ Gen's involutive MCMC operator (shown in e) automatically computes the acceptanc
 Suppose that the model distribution and auxiliary distributions are probability distributions on dictionaries, with densities $p$ and $q_x$.
 Then, $X$ and $Y$ are both sets of dictionaries, and the joint space $Z$ is a set of pairs $(x, y)$ of dictionaries with keys $\mathcal{K}_P$ and $\mathcal{K}_Q$ respectively, so that $Z = X \times Y \subseteq \mathcal{D}_P \times \mathcal{D}_Q$ where $\mathcal{D}_P$ is the set of dictionaries on keys taken from $\mathcal{K}_P$ and similarly for $\mathcal{D}_Q$.
 % TODO: this is only needed for Algorithm 2, and it is relevant for the 
-To simplify the notation, and without loss of generality, we will assume that $\mathcal{K}_P$ and $\mathcal{K}_Q$ are disjoint\footnote{If $\mathcal{K}_P$ and $\mathcal{K}_Q$ are not disjoint then, they can be made so by adding a different prefix to the keys of each set.}, and we define $Z := \{ x \oplus y : p(x)q_x(y) > 0\} \subseteq \mathcal{D}$.
+To simplify the notation, and without loss of generality, we will assume that $\mathcal{K}_P$ and $\mathcal{K}_Q$ are disjoint\footnote{If $\mathcal{K}_P$ and $\mathcal{K}_Q$ are not disjoint then, they can be made so by adding a different prefix to the keys of each set.}, and we define $Z := \{ x \oplus y : p(x)q_x(y) > 0\} \subseteq \mathcal{D}$,
 where $\mathcal{D}$ is the set of dictionaries on keys from $\mathcal{K}_P \cup \mathcal{K}_Q$
 (recall $x \oplus y$ denotes the dictionary resulting from merging dictionaries $x$ and $y$ with disjoint keys).
 
-Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that across each $Z_e$ the sets of keys $K_x$ and $K_y$ and the values $x_k$ and $y_k$ for all discrete keys $k$ are both constant.
+Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that if $(K_1, \mathbf{x}_1)$ and $(K_2, \mathbf{x}_2)$ are two dictionaries in the same component $Z_e$, then $K_1 = K_2$ and they agree on all \textit{discrete} values: $x_{1k} = x_{2k}$ for all $k \in K_1 \cap \mathcal{I}$.
 Then each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys in the two dictionaries.
-Suppose there is an involution $g : E \to E$ between elements of the partition (a function with $g = g^{-1}$), and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ for each $e$ with $h_{e} = h_{g(e)}^{-1}$.
-Let $e(z) \in E$ denote the element of the partition for an alement $z \in Z$.
-Then, $f : Z \to Z$ given by $f(z) := h_{e(z)}(z)$ is an involution:
+Suppose there is an involution $g : E \to E$ between elements of the partition (a function with $g = g^{-1}$), and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ indexed by $e \in E$, with $h_{e} = h_{g(e)}^{-1}$.
+Let $e(z) \in E$ denote which element of the partition a dictionary $z \in Z$ belongs to.
+Then $f : Z \to Z$ given by $f(z) := h_{e(z)}(z)$ is an involution:
 \begin{equation*}
-f(f(z)) = h_{e(f(z))}(h_{e(z)}(z)) = h_{g(e(z))}(h_{e(z)}(z)) = z
+f(f(z)) = h_{e(f(z))}(h_{e(z)}(z)) = h_{g(e(z))}(h_{e(z)}(z)) = z.
 \end{equation*}
-Let $|J h_e|(z)$ denote the absolute value of the Jacobian (determinant) of $h_e$, evaluated at $z$.
+Let $|J h_e|(z)$ denote the absolute value of the determinant of the Jacobian of $h_e$, evaluated at $z$.
 Then, the acceptance probability in Algorithm~\ref{alg:involutive-mcmc} simplifies to:
 \begin{equation} \label{eq:acceptance-ratio-dictionaries}
 \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)} \cdot |J h_e|(z)
@@ -357,7 +357,7 @@ One example of a valid partition of $Z$ is given by equivalence classes of the f
 z_1 \sim z_2 \iff (K_{z_1} = K_{z_2}) \land (z_1[k] = z_2[k] \; \forall k \in K_{z_1} \cap \mathcal{I})
 \]
 (dictionaries are equivalent if they contain the same keys and they agree on the value of all discrete keys).
-Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
+See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 
 
 \section{AUTOMATING INVOLUTIVE MCMC WITH TRACES} \label{sec:automating}
@@ -529,16 +529,16 @@ However, typically, we cannot use a probabilistic program $\mathcal{P}$ to repre
 = \frac{\tilde{p}(x' | b) q_{x'}(y')}{\tilde{p}(x | b) q_x(y)}
 \end{equation}
 
-Thus, this ratio can be computed term-by-term using \textsc{score} on the probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$: (Algorithm~\ref{alg:auto-involutive-mcmc}): to compute $q_x(y')$, we run the algorithm directly on the program $\mathcal{Q}_x$, and to compute $p(x)$ and $p(x')$, we actually merge the dictionary $x$ with the observations $b$ and compute $\mathcal{L}(b)p(x) = \tilde{p}(x \oplus b)$ instead, by running the algorithm on $\mathcal{P}$ with trace $x \oplus b$. The density $q_x(y)$ can be computed while $y$ is being sampled, using \textsc{trace-and-score}.
+Thus, this ratio can be computed term-by-term using \textsc{score} on the probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ (Algorithm~\ref{alg:auto-involutive-mcmc}): to compute $q_x(y')$, we run the algorithm directly on the program $\mathcal{Q}_x$, and to compute $p(x)$ and $p(x')$, we actually merge the dictionary $x$ with the observations $b$ and compute $\mathcal{L}(b)p(x) = \tilde{p}(x \oplus b)$ instead, by running the algorithm on $\mathcal{P}$ with trace $x \oplus b$. The density $q_x(y)$ can be computed while $y$ is being sampled, using \textsc{trace-and-score}.
 
-Section~\ref{sec:sparsity} describes a more efficient approach that exploits sparsity in the involution and resulting cancellation in the ratio for improved efficiency, but requires a more sophisticated probabilistic programming runtime system.
+Section~\ref{sec:sparsity} describes a more efficient approach that exploits sparsity in the involution (and the resulting cancellations in the acceptance ratio) for improved efficiency, but requires a more sophisticated probabilistic programming runtime system.
 
 Figure~\ref{fig:mixture}b and Figure~\ref{fig:mixture}c show examples of probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ respectively, for a split-merge reversible jump move.
 
 \subsection{Differentiable Programming with Traces} \label{sec:differentiable-programming-traces}
 
 Section~\ref{sec:probabilistic-programming} showed that if the densities $p$ and $q$ are specified using probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$, then density ratio in the acceptance probability for involutive MCMC on dictionaries Equation~(\ref{eq:acceptance-ratio-dictionaries}) can be automated using probabilistic programming techniques.
-This section shows that if the involution $f$ is specified in using a differentiable program $\mathcal{F}$ that transforms the execution traces of probabilistic programs, then the Jacobian factor in Equation~(\ref{eq:acceptance-ratio-dictionaries}) can be automated using automatic differentiation.
+This section shows that if the involution $f$ is specified in using a differentiable program $\mathcal{F}$ that transforms the execution traces of probabilistic programs, then the Jacobian factor in Equation~(\ref{eq:acceptance-ratio-dictionaries}) can also be automated, using automatic differentiation.
 The procedure \textproc{auto-involutive-mcmc} in Algorithm~\ref{alg:auto-involutive-mcmc} combines these two ideas and automates involutive MCMC given the programs $\mathcal{P}$, $\mathcal{Q}$, and $\mathcal{F}$.
 
 %The previous section described how the probability densities ($p$ and $q$) required for involutive MCMC on spaces of dictionaries can be specified and automatically computed using probabilistic programs.
@@ -705,13 +705,11 @@ end
 \subsubsection{Computing the Jacobian with Automatic Differentiation}
 
 Recall that the involution $f$ must decompose into (i) an involution $g$ on elements $e \in E$ of a partition of the state space, and (ii) a pair of continuous differentiable bijections $h_{e}$ and $h_{g(e)} = h_{e}^{-1}$ between each pair of corresponding elements of the partition.
-Each function $h_e$ is a function from the values at continuous addresses in the input trace ($z[a]$ for $a \in A_z \cap \mathcal{J}$) to the values at continuous addresses in the output trace ($z'[a]$ for $a \in A_{z'} \cap \mathcal{J}$).
-We compute the Jacobian using automatic differentiation (AD);
-different approaches are possible.
-The Gen implementation uses forward-mode AD whereas our PyTorch implementation uses reverse-mode AD.
+Each function $h_e$ is a function from the values at continuous addresses in the input trace ($z[k]$ for $k \in K_z \cap \mathcal{J}$) to the values at continuous addresses in the output trace ($z'[k]$ for $k \in K_{z'} \cap \mathcal{J}$).
+We compute the Jacobian using automatic differentiation. (The Gen implementation uses forward-mode AD whereas our PyTorch implementation uses reverse-mode AD.)
 The procedure \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc} shows the implementation of the interpreter for the language that uses reverse-mode AD.
 The interpreter executes $\mathcal{F}$ using regular Julia or Python semantics, but intercepts calls to \texttt{@write}, \texttt{@read}, and \texttt{@copy} statements, and in addition to performing the desired operation, records the set of continuous addresses that are read, written, and copied.
-After $\mathcal{F}$ is finished executing, AD uses the recorded addresses to compute the Jacobian $|J h_e|(z)$; in the case of reverse-mode AD by iterating over output continuous addresses and backpropagating from each one to all of the input continous addresses, computing the Jacobian row-by-row.
+After $\mathcal{F}$ is finished executing, AD uses the recorded addresses to compute the Jacobian $|J h_e|(z)$; in the case of reverse-mode AD, this is accomplished by iterating over output continuous addresses and backpropagating from each one to all of the input continuous addresses, computing the Jacobian row-by-row.
 Note that the $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are omitted from the syntax in \textproc{run-involution} to simplify notation ($a \in \mathcal{I}$ indicates a discrete choice and otherwise a choice is continuous).
 
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORMANCE} \label{sec:sparsity}
@@ -720,15 +718,16 @@ Suppose $N$ and $N'$ are the total number of random choices in the input traces 
 Then, the number of operations requried in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N + N') + O(M^2)$ (where each call to \textproc{logpdf} and the computation of each entry in the Jacobian both count as one operation).
 The linear term represents the complexity of sampling $y'$ and computing the four log-densities used to compute the acceptance probability.
 The quadratic term represents the complexity of computing the Jacobian matrix and its determinant.
+
 It is possible to reduce the computational complexity of an automated involutive MCMC kernel by exploiting special structure in the involution $f$, in some cases to $O(1)$.
 This section describes how an automated involutive MCMC implementation can reduce the computational complexity of the Jacobian computation and the density ratio computation.
 These techniques are used in the Gen implementation of automated involutive MCMC, and one of the techniques is used in our minimal PyTorch implementation.
 
 \subsection{Sparsity-Aware Automatic Jacobian Computation}
 
-The naive implementation of Algorithm~\ref{alg:auto-involutive-mcmc} computes by the Jacobian by first computing the $M$-by-$M$ Jacobian matrix $J h_{e(z)}$ via automatic differentiation, and them computing the absolute value of its determinant.
+The naive implementation of Algorithm~\ref{alg:auto-involutive-mcmc} computes by the Jacobian by first computing the $M$-by-$M$ Jacobian matrix $J h_{e(z)}$ via automatic differentiation, and then computing the absolute value of its determinant.
 However, we observe that in many applications of involutive MCMC, the values at continuous choices in the input traces are directly copied into the output traces (either at the same, or different, keys).
-These copy operations result in columns in the Jacobian matrix that have a single $1$ entry with remaining entries are $0$.
+These copy operations result in columns in the Jacobian matrix that have a single $1$ entry with remaining entries equal to $0$.
 For example, for the function $(u, v, x, y) \mapsto (u, 2 u - v, y, x) = (u', v', x', y')$, the Jacobian is (with columns corresponding to $u'$, $v'$, $x'$, and $y'$ and rows corresponding to $u$, $v$, $x$, and $y$):
 \begin{equation}
 \left[
@@ -743,7 +742,7 @@ For example, for the function $(u, v, x, y) \mapsto (u, 2 u - v, y, x) = (u', v'
 u\\ v\\ x\\ y
 \end{array}
 \end{equation}
-Using the cofactor expansion of the determinant, we observe that for any (`copy') row or column in an $M$-by-$M$ Jacobian matrix with a single $1$ and all other entries $0$, that absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding row and column omitted (even if that would remove other nonzero entries from the matrix).
+Using the cofactor expansion of the determinant, we observe that for any (`copy') row or column in an $M$-by-$M$ Jacobian matrix with a single $1$ and all other entries $0$, the absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding row \textit{and} column omitted (even if that would remove other nonzero entries from the matrix).
 By applying this rule recursively, we can instead compute the determinant of a much smaller matrix; for the example above with $M=4$, the absolute value of the determinant simplifies to the absolute value of a single entry ($|-1|$).
 Indeed, if some input variable is copied to some output variable, then we can entirely avoid computing its row (and corresponding column) of the Jacobian, and the computational complexity reduces from $M^2$ to $(M-K)^2$ where $K$ is the number of input variables that were copied from some input variable.
 The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of input variables that were copied immediately available to the interpreter, which makes automating this optimization possible, as shown in \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc}.
@@ -1061,7 +1060,7 @@ Note that the subtrees here happen to be trees that themselves have a random num
 \begin{enumerate}
 \item The auxiliary probabilistic program samples from a distribution over different sets of random choices that will be proposed to
 (in this case, each set is a different subtree of the parse tree).
-\item The auxiliary probabilistic program them samples new values for those random choices (in this case, a new subtree).
+\item The auxiliary probabilistic program then samples new values for those random choices (in this case, a new subtree).
 \item The involution program swaps the previous values of those random choices with their new values, by swapping data between the model trace and the auxiliary trace.
 \item The involution program copies the choice of what subset of random choices to propose to from the input auxiliary trace to the output auxiliary trace.
 \end{enumerate}
