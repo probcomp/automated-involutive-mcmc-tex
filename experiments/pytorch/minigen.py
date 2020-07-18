@@ -64,6 +64,20 @@ InvolutionRunnerState = namedtuple("InvolutionRunnerState",
 MODEL = "model"
 AUX = "aux"
 
+# for syntactic sugar
+class ModelSugar:
+    def __getitem__(self, key):
+        return (MODEL, key)
+
+class AuxSugar:
+    def __getitem__(self, key):
+        return (AUX, key)
+
+model_in = ModelSugar()
+model_out = ModelSugar()
+aux_in = AuxSugar()
+aux_out = AuxSugar()
+
 def get_which(addr):
     exc = Exception("address argument must be (MODEL, *) or (AUX, *)")
     if len(addr) != 2:
@@ -238,24 +252,24 @@ def cartesian_to_polar(x, y):
     return (theta, y)
 
 def f():
-    polar = read((MODEL, "polar"), DISCRETE)
+    polar = read(model_in["polar"], DISCRETE)
     if polar:
-        r = read((MODEL, "r"), CONTINUOUS)
-        theta = read((MODEL, "theta"), CONTINUOUS)
+        r = read(model_in["r"], CONTINUOUS)
+        theta = read(model_in["theta"], CONTINUOUS)
         (x, y) = polar_to_cartesian(r, theta)
-        write((MODEL, "x"), x, CONTINUOUS)
-        write((MODEL, "y"), y, CONTINUOUS)
+        write(model_out["x"], x, CONTINUOUS)
+        write(model_out["y"], y, CONTINUOUS)
     else:
-        x = read((MODEL, "x"), CONTINUOUS)
-        y = read((MODEL, "y"), CONTINUOUS)
+        x = read(model_in["x"], CONTINUOUS)
+        y = read(model_in["y"], CONTINUOUS)
         (r, theta) = cartesian_to_polar(x, y)
-        write((MODEL, "r"), r, CONTINUOUS)
-        write((MODEL, "theta"), theta, CONTINUOUS)
-    write((MODEL, "polar"), not polar, DISCRETE)
-    copy((MODEL, "u"), (MODEL, "u"))
-    u = read((MODEL, "u"), CONTINUOUS)
-    v = read((MODEL, "v"), CONTINUOUS)
-    write((MODEL, "v"), u - v, CONTINUOUS)
+        write(model_out["r"], r, CONTINUOUS)
+        write(model_out["theta"], theta, CONTINUOUS)
+    write(model_out["polar"], not polar, DISCRETE)
+    copy(model_out["u"], (MODEL, "u"))
+    u = read(model_in["u"], CONTINUOUS)
+    v = read(model_in["v"], CONTINUOUS)
+    write(model_out["v"], u - v, CONTINUOUS)
 
 trace = {
         "polar" : True,
