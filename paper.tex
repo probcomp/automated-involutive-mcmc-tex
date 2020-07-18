@@ -163,14 +163,13 @@ The involutive MCMC construction encompasses many existing classes of MCMC kerne
 In particular, the reversible jump framework~\citep{green1995reversible,hastie2012model} employs a family of continuously differentiable bijections between the Euclidean parameter spaces of different models.
 \citet{tierney1998note} described a family of deterministic proposals based on a deterministic involution that is equivalent to involutive MCMC but without the auxiliary proposal distribution.
 More recently,~\citet{spanbauer2020deep} defined a class of deep generative model based on differentiable involutions and trained these models to serve as efficient proposal distributions on continuous state spaces; the resulting algorithm is an instance of the construction presented in this paper.
-%Gen~\citet{cusumano2019gen}
-%Gen's involution MCMC construct~\citet{gen-inv-mcmc}
-%Reversible jump MCMC~\citet{green1995reversible}
-%^Using probabilistic programs as proposals~\citet{cusumano2018using}
-%Reversible jump probabilistic programming~\citet{roberts2019reversible}
 
-
-
+In recent decades, a number of probabilistic programming systems have provided automated implementations of probabilistic inference algorithms~\citep{gilks1994language,milch2007,pfeffer200714,goodman2012church,gehr2016psi,carpenter2017stan}.
+The majority of these systems have focused on the automation of one or more built-in inference algorithms, with customization limited tuning parameters of the algorithm.
+The programmable inference paradigm~\citep{mansinghka2018probabilistic} to probabilistic programming instead emphasizes user control over the inference algorithm and automation of the lower-level implementation.
+In particular, the Gen probabilistic programming system~\citep{cusumano2019gen} offers a high degree of user programmability by exposing an API that supports high-level user implementations of inference algorithms, instead of a set of a built-in inference engine.
+One other probabilistic programming system besides Gen supports custom reversible jump samplers:
+\citet{roberts2019} presents a system embedded in Haskell that can automatically generate the implementation of certain reversible jump MCMC kernels from a high-level specification, but does not handle many kernels that can be handled by our technique, including the example in Figure~\ref{fig:structure-learning}.
 
 \section{INVOLUTIVE MCMC ON GENERAL STATE SPACES} % on traces ??
 
