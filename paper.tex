@@ -850,36 +850,36 @@ When applied to HMC, Gen's dynamic bug check involves:
 
 As another, simpler example of this type of error, consider the \texttt{split\_params} and \texttt{merge\_params} functions invoked in Figure~\ref{fig:mixture}, as part of a reversible-jump MCMC kernel for learning a mixture of Gaussians with an unknown number of components. Considering only the $\mu$ parameter, suppose the \textit{split} move samples an auxiliary variable $u_1$ and computes $\mu_1 = \mu + u_1, \mu_2 = \mu - u_1$ as the means of the two new clusters. If the \textit{merge} move joins two clusters and assigns $\mu = \sqrt{\mu_1 \mu_2}$, there is a mismatch: a split move cannot be reversed by a corresponding merge, because in general, $\sqrt{(\mu+u_1)(\mu-u_1)} \neq \mu$. This error could be fixed either by changing the split to compute $\mu_1 = \mu u_1, \mu_2 = \frac{\mu}{u_1}$, or by changing the merge to compute $\mu = \frac{\mu_1 + \mu_2}{2}$.
 
-As a final, rather different example in this class, suppose approximate inverses $F_\theta, G_\theta : \mathbb{R}^d \rightarrow \mathbb{R}^d$ are learned neural networks trained via a Cycle GAN objective~\citep{cyclegan} to translate between the latent spaces of two models in a Bayesian model selection problem. A user might implement the following involution:
+%As a final, rather different example in this class, suppose approximate inverses $F_\theta, G_\theta : \mathbb{R}^d \rightarrow \mathbb{R}^d$ are learned neural networks trained via a Cycle GAN objective~\citep{cyclegan} to translate between the latent spaces of two models in a Bayesian model selection problem. A user might implement the following involution:
+%
+%\begin{center}
+%\begin{tabular}{c}
+%{\begin{lstlisting}[basicstyle=\small\ttfamily]
+%@tracefn h from (tr1, tr2) to (tr3, tr4)
+   %which_model = @read(tr1, :model, :discrete)
+   %if which_model == 1
+      %z = @read(tr1, :z, :continuous)
+      %z_in_model_2 = F(z)
+      %@write(tr3, :z, z_in_model_2, :continuous)
+      %@write(tr3, :model, 2, :discrete)
+   %else
+      %z = @read(tr1, :z, :continuous)
+      %z_in_model_1 = G(z)
+      %@write(tr3, :z, z_in_model_1, :continuous)
+      %@write(tr3, :model, 1, :discrete)
+   %end
+%end
+%\end{lstlisting}}
+%\end{tabular}
+%\end{center}
 
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-@tracefn h from (tr1, tr2) to (tr3, tr4)
-   which_model = @read(tr1, :model, :discrete)
-   if which_model == 1
-      z = @read(tr1, :z, :continuous)
-      z_in_model_2 = F(z)
-      @write(tr3, :z, z_in_model_2, :continuous)
-      @write(tr3, :model, 2, :discrete)
-   else
-      z = @read(tr1, :z, :continuous)
-      z_in_model_1 = G(z)
-      @write(tr3, :z, z_in_model_1, :continuous)
-      @write(tr3, :model, 1, :discrete)
-   end
-end
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-
-However, even though $F_\theta$ and $G_\theta$ are trained with
-an objective that encourages $F_\theta(G_\theta(z)) \approx z$, 
-this relationship is not exact equality, so the involutive MCMC
-framework cannot be directly applied, and the involution check
-will fail. This error could be fixed by sampling a proposed value
-\textit{near} $F_\theta(z)$ or $G_\theta(z)$, rather than directly applying $F_\theta$
-and $G_\theta$ to $z$.
+%However, even though $F_\theta$ and $G_\theta$ are trained with
+%an objective that encourages $F_\theta(G_\theta(z)) \approx z$, 
+%this relationship is not exact equality, so the involutive MCMC
+%framework cannot be directly applied, and the involution check
+%will fail. This error could be fixed by sampling a proposed value
+%\textit{near} $F_\theta(z)$ or $G_\theta(z)$, rather than directly applying $F_\theta$
+%and $G_\theta$ to $z$.
 
 \textit{Discrete logic errors.} Another common class of errors is 
 for the discrete logic of an involution to be flawed. Consider the following incorrect 
