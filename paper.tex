@@ -807,7 +807,7 @@ Therefore, the involution program can run in $O(|K_{\delta}| + |K_{y}| + |K_{y'}
 We also remove the two calls to \textproc{score} on $x$ and $x'$, and replace them with a single call to \emph{trace-update} on $\mathcal{P}$ that takes in $x$, and $\delta$ and returns $x'$ and $\log p(x') - \log p(x)$.
 When $|K_{\delta}|$ and $|K_{y}|$ and $|K_{y}|$ are all constant in the size $N_1$ of the model trace $x$, the resulting algorithm scales as $O(1)$ instead of $O(N + N')$.
 
-\section{A DYNAMIC CHECK FOR DETECTING BUGS}
+\section{DYNAMICALLY DETECTING BUGS IN INVOLUTIONS}
 
 Due to the automation described in the previous section, users of Gen can implement involutive MCMC algorithms by writing probabilistic programs for $p$ and $q$ and a differentiable program for the involution $f$, avoiding the need to derive and implement the accept/reject formula by hand. 
 This eliminates certain classes of errors that could otherwise be difficult to root out in hand-coded implementations of MCMC algorithms. However, it is still of course possible to implement $p$, $q$, or $f$ incorrectly, introducing bugs that may invalidate the correctness proofs for the involutive MCMC algorithm.
@@ -818,7 +818,7 @@ Fortunately, the factorization of diverse algorithms into a common template, inv
 
 \begin{algorithm}[h]
 \begin{algorithmic}
-\Procedure{imcmc-dynamic-check}{$p$, $q$, $f$}
+\Procedure{involutive-mcmc-check}{$p$, $q$, $f$}
     \State $x \sim p(\cdot)$ \Comment{Sample state from prior}
     \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
     \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
@@ -831,7 +831,7 @@ Fortunately, the factorization of diverse algorithms into a common template, inv
 \label{alg:dynamic-check}
 \end{algorithm}
 
-To test the user's algorithm, Gen first samples a model trace $x$ from the model prior $p$, and auxiliary randomness $y$ from the kernel $q_x$. It then runs three tests:
+To test the user's algorithm, Gen first samples a model trace $x$ from the model prior $p$, and auxiliary trace $y$ from the $q_x$. It then runs three tests:
 
 \begin{enumerate}
 \item \textbf{Support check.} The \textit{support check} runs the involution $f$ on $(x, y)$ and checks that the resulting pair of traces, $(x', y')$, are within the set $Z$ of positive-density elements for $\pi$.
@@ -967,15 +967,16 @@ For each latent state $x = (h, \theta_h)$, there is a probability distribution $
 For each move type $m \in \mathcal{M}$ between $h_1$ and $h_2$ there is a pair of continuously differentiable bijections $g_{m, h_1 \to h_2} : \mathbb{R}^{d(m)} \to \mathbb{R}^{d(m)}$ and $g_{m, h_2 \to h_1} := g_{m, h_1 \to h_2}^{-1}$, and a pair of proposal densities $q_{m,h_1 \to h_2}(u_{h_1 \to h_2})$ and $q_{m,h_2 \to h_1}(u_{h_2 \to h_1})$ where $u_{h_1 \to h_2} \in \mathbb{R}^{d(m) - n(h_1)}$ and $u_{h_2 \to h_1} \in \mathbb{R}^{d(m) - n(h_2)}$.
 A proposal is made from state $x = (h, \theta_h)$ by (i) sampling a move type $m \sim q_{x}(\cdot)$, and (ii) sampling continuous variable $u \sim q_{m,h \to h'}(\cdot)$ for $(h, h')$ associated with $m$, and (iii) computing $(\theta_{h}', u') := g_{m,h \to h'}(\theta_h, u)$, and proposing new state $x' = (h', \theta_h')$.
 The move is accepted with probability:
-\begin{equation}
-{
+\begin{equation*}
+{\scriptstyle
 \min\left\{ 1,
 \frac{p(h')}{p(h)} \frac{p_{h'}(\theta_{h'})}{p_h(\theta_h)} \frac{L_{D,h'}(\theta_h')}{L_{D,h}(\theta_h)}
 \frac{q_{x'}(m)}{q_{x}(m)}
 \frac{q_{m,h' \to h}(u)}{q_{m,h \to h'}(u)}
+|J g_{m, h\to h'}|(\theta_h, u)
 \right\}
 }
-\end{equation}
+\end{equation*}
 
 To represent reversible jump MCMC using involutive MCMC implemented with probabilistic programs, we write a probabilistic program $\mathcal{P}$ that encodes the space of models $\mathcal{H}$, the prior distribution on models, $p(h)$, the per-model priors $p_h(\theta_h)$ and the per-model likelihoods $L_{D,h}(\theta_h)$.
 The set of all models $h$ corresponds to the set of all pairs $(K_\mathcal{P}, \mathbf{d}_\mathcal{P})$ where $K_\mathcal{P}$ represent possible trace structures (i.e. control-flow paths through $\mathcal{P}$) and $\mathbf{d}_\mathcal{P}$ are the set of assignments to discrete random choices made by $\mathcal{P}$.
@@ -998,16 +999,11 @@ The green section (2) specifies the continuous bijections that govern the transf
 
 \subsection{State-Dependent Mixture Proposal}
 
-State-dependent mixture proposal.
-Depending on the current state of the model, a different mixture distribution is used for the proposal.
-Implementing such a move requires computing the mixture probability under the forward move and under the reverse move, which may differ.
+Figure~\ref{fig:structure-learning} shows automated involutive MCMC being applied to fully Bayesian inference over the covariance function of a Gaussian process, where the prior on covariance functions (Figure~\ref{fig:structure-learning}a) is based on a probabilistic context-free grammar.
+The inference algorithm is based on an involutive MCMC kernel that uses a state-dependent mixture of proposals.
+A variant of this inference algorithm was previously studied in~\citep{schaechtle2016time,saad2019bayesian} based on a model of~\citet{grosse2012exploiting}.
 
-$q_x(m)$ -- the mixture distribution
-
-$q_m(x')$ -- the proposal we are mixing over
-
-The first part of the auxiliary probabilistic program $Q$ determines which proposal to apply by sampling from a mixture distribution.
-Here, the program picks a random node in the tree, by doing a stochastic walk of the tree that terminates at the chosen node.
+At each iteration of the MCMC algorithm, the auxiliary probabilistic program $\mathcal{Q}$ (Figure~\ref{fig:structure-learning}d) first picks a random node in the parse tree of the covariance function, by doing a stochastic walk of the existing parse tree that terminates at the chosen node.
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
@@ -1016,7 +1012,7 @@ path ~ walk_tree(prev_cov_function, ..)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-The first part of the involution copies the random choices corresponding to the mixture from the input auxiliary trace to the output auxiliary trace.
+The first part of the involution (Figure~\ref{fig:structure-learning}e) copies the random choices made during this walk from the input auxiliary trace to the output auxiliary trace.
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
@@ -1024,7 +1020,6 @@ The first part of the involution copies the random choices corresponding to the 
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-
 The code that walks the tree uses the following recursion, which results in a probability distribution that assigns exponentially lower probability to nodes that are deeper in the tree.
 \begin{center}
 \begin{tabular}{c}
@@ -1041,11 +1036,38 @@ end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-The resulting mixture distributions for two trees are:
+The resulting distributions on selected nodes for two example trees are shown below:
 \begin{center}
 \includegraphics[width=0.8\linewidth]{figures/biased-tree-distribution.pdf} % TODO improve quality
 \end{center}
-Because the mixture is specified using a probabilistic program, it is straightforward to modify the program to define a different mixture distribution.
+The other parts of the auxiliary probabilistic program and the involution program specifies a proposal distribution for the subtree of the parse tree that is rooted at the chosen node.
+In particular, the rest of the auxiliary probabilistic program $\mathcal{Q}$ proposes a new subtree by sampling from the same process used to recursively define the prior distribution:
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+new_subtree ~ cov_function_prior()
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+The involution program swaps the old subtree with the newly proposed subtree:
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+@copy(p_in, subtree_kddress, q_out, :new_subtree)
+@copy(q_in, :new_subtree, p_out, subtree_kddress)
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+Note that the subtrees here happen to be trees that themselves have a random number of random choices, but the same general construction for a mixture of proposals below can also be used for simpler Metropolis-Hastings kernels:
+\begin{enumerate}
+\item The auxiliary probabilistic program samples from a distribution over different sets of random choices that will be proposed to
+(in this case, each set is a different subtree of the parse tree).
+\item The auxiliary probabilistic program them samples new values for those random choices (in this case, a new subtree).
+\item The involution program swaps the previous values of those random choices with their new values, by swapping data between the model trace and the auxiliary trace.
+\item The involution program copies the choice of what subset of random choices to propose to from the input auxiliary trace to the output auxiliary trace.
+\end{enumerate}
+
+Because the mixture distribution is specified using a probabilistic program, it is straightforward to modify the program to define a different mixture distribution.
 The code below specifies a mixture distribution that is uniform over all nodes in the tree.
 \begin{center}
 \begin{tabular}{c}
@@ -1063,53 +1085,14 @@ end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-The resulting distributions are:
+The resulting distributions, for two input trees, are:
 \begin{center}
 \includegraphics[width=0.8\linewidth]{figures/unbiased-tree-distribution.pdf}
 \end{center}
-Note that in the first case, the ratio of mixture probabilities is either $1$, $0.5$, or $2$ depending on whether the previous and new subtrees are leaf or internal nodes.
-In the second case, the ratio of mixture probabilities is the ratio of sizes of the two trees.
-%Automating the computation of the mixture probabilities
-
-
-
-
-The rest of the kernel specifies what happens for each chosen node.
-The second part of the auxiliary probabilistic program $Q$ implements a common motif for Metropolis-Hastings algorithms, where the proposal samples new values for some random choices:
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-new_subtree ~ cov_function_prior()
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-and the involution swaps the old value with the newly proposed value:
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-@copy(p_in, subtree_kddress, q_out, :new_subtree)
-@copy(q_in, :new_subtree, p_out, subtree_kddress)
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-Here the values happen to be trees that themselves have a random number of random choices, but the same motif is also used in simpler applications of Metropolis-Hastings.
-
-
-Here, the proposal we are mixing over is easy to implement -- it involvs resampling a subtree from the prior, so the Jacobian is 1 and there is cancellation between the model and the proposal.
-
-But computing the mixture probabilities is complex, because the mixture is a mixture of either $n_1$ or $n_2$ elements, which depends on the size of the tree.
-
-Show the mixture probabilities in math notation?
-If both subtrees not leaf nodes, then the probabilities are the same.
-If both subtrees are leaf nodes, then the probabilities are different.
-If one subtree is a leaf node and the other is an internal node then the ratio is either $0.5$ or $2$ respectively.
-\begin{equation}
-q
-\end{equation}
-
-TODO: relate to `resimulation Metropolis-Hastings' in general-purpose probabilistic programs.
-
-Of course, it is straightforward to replace the prior with a custom data-driven proposal distribution on subtrees.
+Note that the mixture probabilities do not in general cancel, and must be accounted for in the acceptance probability calculation.
+For the original mixture distribution, the ratio of mixture probabilities is either $1$, $0.5$, or $2$ depending on whether the previous and new subtrees are leaf or internal nodes.
+For this alternative mixture distribution, the ratio of mixture probabilities is the ratio of sizes of the two trees.
+In both cases, our automated involutive MCMC algorithm automatically computes the acceptance probability.
 
 \begin{figure*}[ht]
     \centering
