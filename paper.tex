@@ -760,16 +760,18 @@ While a reasonable hand-coded implementation of this algorithm would likely perf
 % TODO show an performance table of moves per second with and without the sparsity reduction (?)
 \subsection{Incremental Computation of Output Traces and Density Ratios}
 
-It is possible to further reduce the complexity of applying an automated involutive MCMC kernel from $O(N + N')$ to $O(1)$ for many involutions, using additional optimizations that reduce the complexity of computing the density ratio and the complexity of computing the output of the involution to $O(1)$.
+It is possible to further reduce the the number of operations in automated involutive MCMC from $O(N + N')$ to $O(N_2 + N_2')$ where $N = N_1 + N_2$ and $N' = N_1' + N_2'$ and $N_1$ and $N_2$ are the sizes of the model trace and auxiliary trace respectively (and similarly for $N_1'$ and $N_2'$).
+In cases where $N_2$ and $N_2'$ have fixed size even as $N_1$ and $N_1'$ grow, this approach can result in $O(1)$ operations per kernel application.
+The efficiency gains are due to a combination of exploiting sparsity in the involution and conditional independencies in the model.
 
-Consider input traces $z$ and output traces $z'$, with sizes $N$ and $N'$ respectively, and an involution $f$ such that $z' = f(z)$.
-The approach in Algorithm~\ref{alg:auto-involutive-mcmc} involves running a program $\mathcal{F}$ that explicitly writes the value for each element of $f$, which requires $N'$ write operations.
-We now show how to specify the involution $f$ such that computing $z'$ from $z$ can take less than $N'$ operations for involutions that possess sparse structure.
-Recall that $K_{z}$ and $K_{z'}$ are the sets of keys in $z$ and $z'$, respectively, and that $z$ and $z'$ may both have values for certain keys, and $z$ may contains keys not present in $z'$, and vice-versa.
+Consider input traces $(x, y)$ and output traces $(x', y')$ where $x$ and $x'$ have sizes $N_1$ and $N_2$ respectively.
+The approach in Algorithm~\ref{alg:auto-involutive-mcmc} involves running a program $\mathcal{F}$ that explicitly writes the value for each element of $(x', y')$, which requires greater than $N_1'$ `write' or `copy' operations.
+We now show how to specify the involution $f$ such that computing $z'$ from $z$ can take fewer operations for involutions that possess sparse structure.
+Recall that $K_{x}$ and $K_{x'}$ are the sets of keys in $x$ and $x'$, respectively, and that $x$ and $x'$ may both have values for certain keys, and $x$ may contains keys not present in $x'$, and vice-versa.
 Often, an involution does not modify the values of many keys in the trace---this is the case in the split-merge reversible jump move described earlier.
-Suppose that $A \subseteq K_{z} \cap K_{z'}$ is the set of keys $k$ in both $z$ and $z'$ for which $z'[k] = z[k]$.
-Let $\Delta := K_{z'} \setminus A$ be the set of keys in $z'$ that are either (i) not in $z$, or (ii) in $z$ but have their value changed.
-Then, the previous trace $z$ and a dictionary $\delta$ with $K_{\delta} = \Delta$ and $\delta[k] = z'[k]$ and the density function $p$ suffice to uniquely define the trace $z'$, provided the density satisfies the following condition:
+Suppose that $A \subseteq K_{x} \cap K_{x'}$ is the set of keys $k$ in both $x$ and $x'$ for which $x'[k] = x[k]$.
+Let $\Delta := K_{x'} \setminus A$ be the set of keys in $x'$ that are either (i) not in $x$, or (ii) in $x$ but have their value changed.
+Then, the previous trace $x$ and a dictionary $\delta$ with $K_{\delta} = \Delta$ and $\delta[k] = x'[k]$ and the density function $p$ suffice to uniquely define the trace $x'$, provided the density satisfies the following condition:
 $p(x) > 0$ and $p(x') > 0$ and $x \ne x'$ implies there exists $k \in K_x \cap K_{x'}$ with $x[k] \ne x'[k]$.
 Let $x|_A$ denote the \emph{restriction} of a dictionary $x$ to only keys in $A$.
 Then, \textproc{naive-trace-update} (Algorithm~\ref{alg:naive-update}) computes the new trace $x'$ and difference in log-densities $\log p(x') - \log p(x)$ of a probabilistic program from a previous trace $x$ and a dictionary $\delta$, provided there exists $x' = \delta \oplus x|_A$ for some $A$ where $p(x') > 0$.
@@ -801,9 +803,9 @@ The details of these more efficient implementations are outside the scope of thi
 Given an implementation of \emph{trace-update} (that has the same input and output signature of \textproc{naive-trace-update}) we can optimize Algorithm~\ref{alg:auto-involutive-mcmc} by
 modifying the requirement for the involution program $\mathcal{F}$:
 Instead of explicitly specifying all of $z'$, it only needs to specify a subset of the trace $\delta$.
-Therefore, the involution program can run in $O(|K_{\delta}|)$ operations.
+Therefore, the involution program can run in $O(|K_{\delta}| + |K_{y}| + |K_{y'}|)$ operations.
 We also remove the two calls to \textproc{score} on $x$ and $x'$, and replace them with a single call to \emph{trace-update} on $\mathcal{P}$ that takes in $x$, and $\delta$ and returns $x'$ and $\log p(x') - \log p(x)$.
-When $|K_{\delta}|$ and $|K_{y}|$ and $|K_{y}$ are all constant in the size $N$ of the model trace $x$, the resulting algorithm scales as $O(1)$ instead of $O(N + N')$.
+When $|K_{\delta}|$ and $|K_{y}|$ and $|K_{y}|$ are all constant in the size $N_1$ of the model trace $x$, the resulting algorithm scales as $O(1)$ instead of $O(N + N')$.
 
 \section{A DYNAMIC CHECK FOR DETECTING BUGS}
 
