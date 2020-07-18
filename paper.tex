@@ -1016,7 +1016,7 @@ The first part of the involution (Figure~\ref{fig:structure-learning}e) copies t
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-@copy(q_in, :path, q_out, :path)
+@copy((aux, :path), (aux, :path))
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -1053,8 +1053,8 @@ The involution program swaps the old subtree with the newly proposed subtree:
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-@copy(p_in, subtree_kddress, q_out, :new_subtree)
-@copy(q_in, :new_subtree, p_out, subtree_kddress)
+@copy((model, subtree_address), (model, :new_subtree))
+@copy((aux, :new_subtree), (aux, subtree_address))
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -1089,7 +1089,8 @@ The resulting distributions, for two input trees, are:
 \begin{center}
 \includegraphics[width=0.8\linewidth]{figures/unbiased-tree-distribution.pdf}
 \end{center}
-Note that the mixture probabilities do not in general cancel, and must be accounted for in the acceptance probability calculation.
+Note that the probability of choosing a given subtree to propose to is itself changed when the subtree changes.
+Therefore, the mixture probabilities must be accounted for in the acceptance probability calculation.
 For the original mixture distribution, the ratio of mixture probabilities is either $1$, $0.5$, or $2$ depending on whether the previous and new subtrees are leaf or internal nodes.
 For this alternative mixture distribution, the ratio of mixture probabilities is the ratio of sizes of the two trees.
 In both cases, our automated involutive MCMC algorithm automatically computes the acceptance probability.
@@ -1113,13 +1114,19 @@ The mixture kernel is composed from three Gen programs:
 
 \section{DISCUSSION}
 
-- using probabilistic programming systems to develop new MCMC algorithms.
+Involutive MCMC is a unifying construction for MCMC algorithms that encompasses both classic approaches to constructing kernels like reversible jump MCMC~\citep{green1995reversible}, but also recently introduced classes of MCMC kernels based on neural networks~\citep{spanbauer2020deep}.
+Therefore, the approach to automating involutive MCMC kernels presented in this paper makes a number of classic MCMC techniques easier to use and broadens their accessibility, and may potentially aid in development of novel MCMC techniques as well.
+The implementation of our approach in the Gen probabilistic programming system has already been used by researchers in computational biology~\citep{merrell2020inferring} and artificial intelligence~\citep{zhi2020online} to prototype and develop new reversible-jump MCMC algorithms.
 
-- trace translators
+The technique for automating involutive MCMC presented in this paper can be generalized to the setting of sequential Monte Carlo samplers~\citep{del2006sequential}.
+Instead of one model probabilistic program, one auxiliary probabilistic program and one involution program, there are two model probabilistic programs, two auxiliary probabilistic programs, and a pair of bijective differentiable programs that transform traces of one model into traces of the other.
+This more general construct, which builds on earlier work on sequential Monte Carlo and probabilistic programs~\citep{cusumano2018incremental}, has already been implemented as part of the Gen probabilistic programming system.
 
-- work on compilers for inference programs that generate more specialized, high
-  performance implementations, from user specification of an inference
-algorithm.
+Improving the performance of automated involutive MCMC and of flexible probabilistic programming systems like Gen more generally is an important area for future work.
+The approach described in this paper is largely dynamic and is not performance-competitive with optimized hand-coded implementations in performance-oriented languages like C.
+While our approach is already valuable for use cases where the best performance is not necessary or the expertise or time needed for an optimized hand-coded implementation is not available,
+more research into compilers and automatic code generation of custom inference algorithms from high-level user specifications
+would broaden the applicability of systems like Gen.
 
 \subsubsection*{Acknowledgements}
 All acknowledgments go at the end of the paper, including thanks to reviewers who gave useful comments, to colleagues who contributed to the ideas, and to funding agencies and corporate sponsors that provided financial support.
