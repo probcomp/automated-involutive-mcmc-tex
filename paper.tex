@@ -146,7 +146,7 @@ The contributions of this paper include:
 \item A mathematical formulation of state spaces consisting of arbitrary key-value stores (i.e. dictionaries) that formalizes the space of execution traces of Gen probabilistic programs, and a formulation of involutive MCMC on these spaces.
 \item A differentiable programming language for defining bijections between spaces of traces of probabilistic programs.
 \item An algorithm that automates the implementation of an involutive MCMC kernel given two probabilistic programs and a differentiable program encoding the involution, using automatic differentiation and tracing of probabilistic programs.
-\item An extension to the algorithm that exploits sparsity in the involution to reduce the computational complexity of an involutive MCMC kernel from $O(N^3)$ to $O(1)$ in common cases, where $N$ is the dimensionality of the latent space.
+\item An extension to the algorithm that exploits sparsity in the involution to reduce the number of operations needed to apply an involutive MCMC kernel from $O(N^3)$ to $O(1)$ in some cases, where $N$ is the dimensionality of the latent space.
 \item An algorithm that dynamically detects errors in the specification of an involutive MCMC kernel.
 \end{enumerate}
 
@@ -167,7 +167,7 @@ More recently,~\citet{spanbauer2020deep} defined a class of deep generative mode
 In recent decades, a number of probabilistic programming systems have automated the implementations of probabilistic inference algorithms~\citep{gilks1994language,milch2007,pfeffer200714,goodman2012church,gehr2016psi,carpenter2017stan}.
 Most of these systems support generic built-in inference algorithms, with user-customization limited to tweaking algorithm parameters.
 Some systems allow for user-defined variational families or proposal distributions~\citep{ritchie2016deep,bingham2019pyro}.
-Programmable inference~\citep{mansinghka2018probabilistic} proposes that inference algorithms be specified by users in high-level programming languages.
+Programmable inference~\citep{mansinghka2018probabilistic} proposes that inference algorithms be programmed by users using new high-level inference abstractions.
 The Gen probabilistic programming system~\citep{cusumano2019gen} exposes an API that supports high-level user implementations of an open-ended set of inference algorithms, and abstracts away low-level implementation details of inference algorithms.
 
 One other probabilistic programming system besides Gen supports custom reversible jump samplers:
@@ -253,25 +253,25 @@ Section~\ref{sec:automating} will then show how probability distributions on dic
 We fix a countably infinite set $\mathcal{K}$ of possible keys, such that each key $k$ is either called \emph{discrete} ($k \in \mathcal{I}$) or \emph{continuous} ($k \in \mathcal{J}$), where $\mathcal{K} = \mathcal{I} \cup \mathcal{J}$.\footnote{
 It is possible to assign a general measure space to each key, but this is not necessary for our purposes.}
 Let $V_k$ denote the set of possible values for key $k$, where $V_k$ is a countable set for each discrete key, and where $V_k = \mathbb{R}^{d_k}$ for each continuous key for some $d_k$.
-Given a set of keys $K$, let $V_K = \times_{k \in A} V_k$ denote the set of \textit{assignments} of values to each key.
+Given a set of keys $K$, let $V_K = \times_{k \in K} V_k$ denote the set of \textit{assignments} of values to each key.
 Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{K \subset \mathcal{K}, |K| < \infty} \{(K, \mathbf{x}) \mid \mathbf{x} \in V_K\}$. That is, a dictionary specifies 
 a finite set of keys $K \subset \mathcal{K}$ at which it has values, and an assignment $\mathbf{x}$ of values $x_k$ for each.
 
 \textbf{Relationship to representation of~\citet{green1995reversible}.}
-\citet{green1995reversible} uses a state space that is the countable union of `models', where each model uses a vector of real-valued parameters.
-Dictionaries possess substantially more structure:
+\citet{green1995reversible} uses a state space that is the countable union of `models', where each model is typically a vector of real-valued parameters.
+Dictionaries have substantially more structure:
 Instead of monolithic `models', dictionaries use a more elaborate discrete state that includes the set of keys and the assignment to the discrete keys. 
 Also, because continuous keys play the role of real-valued parameters, it is possible to express that a given real-valued parameter is shared between models.
 The additional structure of dictionaries enables the automation techniques in Section~\ref{sec:automating}.
 
 \textbf{A measure space of finite dictionaries.}
 We associate a measure $\mu_k$ on $V_k$ with each key $k$---the counting measure for each discrete key and the Lebesgue-measure on $\mathbb{R}^{d_k}$ for each continuous key.
-For each finite set of keys $K$, we make $V_K$ a measure space using the standard product $\sigma$-algebra $\Sigma_K = \otimes_{k \in A} \Sigma_k$ and the product measure $\mu_K = \times_{k \in A} \mu_k$.
+For each finite set of keys $K$, we make $V_K$ a measure space using the standard product $\sigma$-algebra $\Sigma_K = \otimes_{k \in K} \Sigma_k$ and the product measure $\mu_K = \times_{k \in K} \mu_k$.
 We equip $\mathcal{D}$ with the $\sigma$-algebra $\Sigma_{\mathcal{D}} := \{\bigcup_{K \subset \mathcal{K}, |K| < \infty} \{(K, \mathbf{x}) \mid \mathbf{x} \in B_K\} \mid B_K \in \Sigma_K \, \text{for each finite } K \subset \mathcal{K}\}$ to obtain a measurable space
 of dictionaries.
-A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_K$: we set $\mu(B) := \sum_{A \in \mathcal{K}, |K| < \infty} \mu_K(\{\mathbf{x} \mid (K, \mathbf{x}) \in B\})$.
+A reference measure $\mu_\mathcal{D}$ on this space can be constructed using the product measures $\mu_K$: we set $\mu(B) := \sum_{K \in \mathcal{K}, |K| < \infty} \mu_K(\{\mathbf{x} \mid (K, \mathbf{x}) \in B\})$.
 
-\textbf{Notation for dictionaries.} Given a dictionary $d = (K, \mathbf{x})$, we write $K_d$ for $K$ and $d[k]$ for the value $x_k$ associated with a key $k \in K$.
+\textbf{Notation for dictionaries.} Given a dictionary $m = (K, \mathbf{x})$, we write $K_m$ for $K$ and $m[k]$ for the value $x_k$ associated with a key $k \in K$.
 We also denote specific dictionaries using notation $\{k_1 \mapsto v_1, k_2 \mapsto v_2, \ldots\}$.
 For example, the dictionary $(K, \mathbf{x})$ with $K = \{1, \mathtt{"foo"}\}$ and $x_1 = 0.123$ and $x_{\mathtt{"foo"}} = 5$ is denoted 
 $\{1 \mapsto 0.123, \mathtt{"foo"} \mapsto 5\}$.
@@ -279,15 +279,12 @@ $\{1 \mapsto 0.123, \mathtt{"foo"} \mapsto 5\}$.
 \textbf{Probability distributions on finite dictionaries.} 
 When $V_k$ is discrete for all keys $k$, a probability distribution on dictionaries is defined by a probability mass function $p : \mathcal{D} \to [0, 1]$ that assigns a probability $p(m)$ to each dictionary $m \in \mathcal{P}$ such that $\sum_{m \in \mathcal{D}} p(m) = 1$.
 More generally a probability distribution on dictionaries is defined by a probability density $p : \mathcal{D} \rightarrow [0, \infty)$ such that $\int p(m) \mu_\mathcal{D}(\text{d}m) = 1$. 
-The probability is distributed among the finite sets of keys $K \subseteq \mathcal{K}$ where $|K| < \infty$:
-\begin{equation}
-1 = \int p(m) \mu_\mathcal{D}(\text{d}m) = \sum_{\substack{K \subseteq \mathcal{K}\\|K| < \infty}} \int p(m) \mu_{K}(dm)
+The probability mass is distributed among the finite sets of keys $K \subseteq \mathcal{K}$:
+\begin{equation} \label{eq:integral}
+1 = \sum_{\substack{K \subseteq \mathcal{K}\\|K| < \infty}}
+\left( \sum_{\mathbf{x}_1} \left( \int_{\mathbb{R}^{d_K}} p((K, (\mathbf{x}_1, \mathbf{x}_2))) d\mathbf{x}_2 \right) \right)
 \end{equation}
-where the probability for each key set $K$ is:
-\begin{equation}\label{eq:integral}
-\int p(m) \mu_{K}(dm) = \sum_{\mathbf{x}_1} \int_{\mathbb{R}^{d}} p((K, (\mathbf{x}_1, \mathbf{x}_2))) d\mathbf{x}_2
-\end{equation}
-where $d: = \sum_{k \in A \cap \mathcal{J}} d_{k}$ and where $\mathbf{x}_1$ is an assignment to the discrete choices in $K$ and $\mathbf{x}_2$ is an assignment to the continuous choices.
+where $d_K : = \sum_{k \in K \cap \mathcal{J}} d_{k}$ is the total continuous dimension for keys $K$, and where $\mathbf{x}_1$ is an assignment to the discrete choices in $K$ and $\mathbf{x}_2$ is an assignment to the continuous choices.
 
 We now give an example to build intuition.
 Consider a generative model of univariate data points $y_1, \dots, y_n$ from a Gaussian mixture with an unknown number of components $k$, each with unknown mean $m_i$ and variance $s_i$. If we place a Gaussian prior on $m_i$, an inverse Gamma prior on $s_i$, and a Poisson prior on $k$, the resulting density on dictionaries $d$ is:
@@ -303,13 +300,14 @@ p_{\mathrm{poisson}(3)}(d[\mathtt{k}]) \cdot\\
 \end{align*}
 %
 when $K_d = \{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq d[\texttt{k}]\} \cup \{\texttt{s}_i \mid 1 \leq i \leq d[\texttt{k}]\}$, and 0 otherwise. In this case, we have $V_\texttt{k} = \mathbb{N}$ with the counting measure for $\mu_\texttt{k}$, and for all other keys $k \in \mathcal{K}$, $V_k = \mathbb{R}$ with the Lebesgue measure for $\mu_k$.
-For each $j \in \{0, 1, \ldots\}$, the probability for key set
+For each $j \in \{0, 1, \ldots\}$, the probability mass assigned to key set
 $\{\texttt{k}, \texttt{y}_\texttt{1}, \dots, \texttt{y}_\texttt{n}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq j\} \cup \{\texttt{s}_i \mid 1 \leq i \leq j\}$
 is $p_{\mathrm{poisson}(s)}(j)$ (via Equation~(\ref{eq:integral})).
 
 \textbf{Conditional distributions via disintegration.} Consider a probability density $p$ on the space $\mathcal{D}$ of dictionaries. 
 %For a set of keys $K \subset \mathcal{K}$, let $p(A) := \int 1[K_m = A] p(m) \mu_\mathcal{D}(\text{d}m)$, the probability under $p$ of a dictionary with exactly the key set $K$. 
-We say a key $k \in \mathcal{K}$ \textit{almost always appears} if $\int \mathbf{1}[k \in K_m] p(m) \mu_\mathcal{D}(\text{d}m) = 1$. Suppose $B$ is a set of keys that almost always appear for $p$, and that $b = (B, \mathbf{b})$ is a dictionary with keys $B$. Furthermore, let $(K_m, \mathbf{m}) \oplus (K_n, \mathbf{n}) := (K_m \cup K_n, \mathbf{m} \times \mathbf{n})$ be the \textit{merge} of two dictionaries $m$ and $n$ defined on disjoint key sets $K_m$ and $K_n$. Then we can define the conditional density $p(d \mid b) := \mathbf{1}[K_d \cap B = \emptyset] \frac{p(d \oplus b)}{\int_{\{m \mid K_m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)}$ when the denominator is finite. If the reference measure $\mu_k$ associated with each key $k \in B$ is discrete (e.g., the counting measure), then this definition corresponds to the ordinary notion of conditioning on an event (namely, the event that a sample from $p$ agrees with the dictionary $b$ on all keys in $B$). When this is not the case, it corresponds to a more general measure-theoretic notion called disintegration~\citep{chang1997conditioning}. 
+We say a key $k \in \mathcal{K}$ \textit{almost always appears} if $\int \mathbf{1}[k \in K_m] p(m) \mu_\mathcal{D}(\text{d}m) = 1$. Suppose $B$ is a set of keys that almost always appear for $p$, and that $b = (B, \mathbf{b})$ is a dictionary with keys $B$. Furthermore, let $(K_m, \mathbf{m}) \oplus (K_n, \mathbf{n}) := (K_m \cup K_n, (\mathbf{m}, \mathbf{n}))$ be the \textit{merge} of two dictionaries $m$ and $n$ defined on disjoint key sets $K_m$ and $K_n$. Then we can define the conditional density $p(d \mid b) := \mathbf{1}[K_d \cap B = \emptyset] \frac{p(d \oplus b)}{\int_{\{m \mid K_m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)}$ when the denominator is finite.
+If each each key $k \in B$ is discrete (e.g. $\mu_k$ is the counting measure), then this definition corresponds to the ordinary notion of conditioning on an event (namely, the event that a sample from $p$ agrees with the dictionary $b$ on all keys in $B$). When this is not the case, it corresponds to a more general measure-theoretic notion called disintegration~\citep{chang1997conditioning}. 
 
 Consider the infinite univariate mixture model, and the conditional density given observed data $(B, \mathbf{b}) := \{\mathtt{y}_1 \mapsto y_1, \ldots, \mathtt{y}_{\mathtt{n}} \mapsto y_{\mathtt{n}}\}$.
 The conditional density $p(d | b)$ is nonzero only if $K_d = \{\texttt{k}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$ for some $k$ ($d$ does not contain y-values), and the denominator in the definition of $p(d | b)$ simplifies to the familiar sum of marginal likelihoods over all $k$, where each marginal likelihood is a Riemann integral over $\mathbb{R}^{2k}$.
@@ -344,7 +342,7 @@ where $\mathcal{D}$ is the set of dictionaries on keys from $\mathcal{K}_P \cup 
 
 Suppose there is a countable partition of $Z$ into $\{Z_e : e \in E\}$ such that if $(K_1, \mathbf{x}_1)$ and $(K_2, \mathbf{x}_2)$ are two dictionaries in the same component $Z_e$, then $K_1 = K_2$ and they agree on all \textit{discrete} values: $x_{1k} = x_{2k}$ for all $k \in K_1 \cap \mathcal{I}$.
 Then each set $Z_e$ is isomorphic to a Euclidean space of assignments to the continuous keys in the two dictionaries.
-Suppose there is an involution $g : E \to E$ between elements of the partition (a function with $g = g^{-1}$), and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ indexed by $e \in E$, with $h_{e} = h_{g(e)}^{-1}$.
+Suppose there is an involution $g : E \to E$ between elements of the partition, and a family of continuously differentiable bijections $h_{e} : Z_e \to Z_{g(e)}$ indexed by $e \in E$, with $h_{e} = h_{g(e)}^{-1}$.
 Let $e(z) \in E$ denote which element of the partition a dictionary $z \in Z$ belongs to.
 Then $f : Z \to Z$ given by $f(z) := h_{e(z)}(z)$ is an involution:
 \begin{equation*}
@@ -468,7 +466,7 @@ But the technique is not limited to the Gen system---we also provide the impleme
 \subsubsection{A Probabilistic Programming Language}
 
 Our probabilistic programming language augments the syntax of Julia~\citep{bezanson2017julia}
-with a single new construct, the \texttt{\{a\} $\sim$ d} expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form \texttt{\{a\} $\sim$ d}, (i) evaluating the \textit{address expression} \texttt{a} to obtain an address $k \in \mathcal{K}$; (ii) evaluating the \textit{distribution expression} $d$ to obtain a distribution $d$ over the measurable space $V_k$; (iii) sampling a value $x_k \sim d$ and adding the mapping $\{k \mapsto x_k\}$ to a dictionary called the program trace; and (iv) returning the sampled value $x_k$ to the program, to continue execution. When execution terminates, the program trace has accumulated a mapping for each random choice encountered during the program's execution.
+with a single new construct, the `$\{\mathtt{address}\} \sim \mathtt{distribution}$' expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form `$\{\mathtt{address}\} \sim \mathtt{distribution}$', (i) evaluating the \textit{address expression} (`$\mathtt{address}$') to obtain an address $k \in \mathcal{K}$; (ii) evaluating the \textit{distribution expression} (`$\mathtt{distribution}$') to obtain a probability distribution over the measurable space $V_k$; (iii) sampling a value $x_k$ from this distribution and adding the mapping $\{k \mapsto x_k\}$ to a dictionary called the program trace; and (iv) returning the sampled value $x_k$ to the program, to continue execution. When execution terminates, the program trace has accumulated a mapping for each random choice encountered during the program's execution.
 
 For example, consider the probabilistic program below, which defines a Gaussian mixture model with an unknown number of components:
 \noindent
@@ -518,14 +516,17 @@ but recording the value of every encountered choice into a dictionary, which it 
 halts with probability 1. Otherwise, it could loop infinitely, and even if it terminates,
 the density will be incorrect.) 
 
-The density of an arbitrary dictionary $(K, \mathbf{x})$ under any probabilistic program's distribution on traces can be computed using \textsc{score}. The idea is to run the probabilistic program, and whenever a random choice \texttt{\{a\} $\sim$ d} is encountered, to look up the value $x_k$ in the dictionary, compute its density under the primitive distribution $d$, multiply this density into a running total, and return control to the probabilistic program as if the sampling instruction had executed and returned $x_k$. At the end, the running total can be returned as the trace's density. If at any point an address $k \not\in K$ is encountered, or if not all addresses in $K$ have been visited at the end of execution, the algorithm returns $0$ as the density.
+The density of an arbitrary dictionary $(K, \mathbf{x})$ under any probabilistic program's distribution on traces can be computed using \textsc{score}. The idea is to run the probabilistic program, and whenever a random choice `\texttt{\{address\} $\sim$ distribution}' is encountered, to look up the value $x_k$ in the dictionary, compute its density under the primitive distribution $d$, multiply this density into a running total, and return control to the probabilistic program as if the sampling instruction had executed and returned $x_k$. At the end, the running total can be returned as the trace's density. If at any point an address $k \not\in K$ is encountered, or if not all addresses in $K$ have been visited at the end of execution, the algorithm returns $0$ as the density.
 
 \subsubsection{Automatically Computing Density Ratios in Involutive MCMC}
 
-If the two probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ satisfy a simple technical requirement (described in Section~\ref{sec:technical-requirement}), we can interpret them as specifying the model density $p$ and auxiliary densities $q_x$ for use with involutive MCMC on dictionaries (Algorithm~\ref{alg:involutive-mcmc}). (In this case, the program $\mathcal{Q}$ 
-accepts a trace $x$ of $\mathcal{P}$ as input, and the distribution for $q_x$ is given by $\mathcal{Q}_x$.)
+We can use two probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ to specify the model density $p$ and auxiliary densities $q_x$ that appear in involutive MCMC
+(Algorithm~\ref{alg:involutive-mcmc}).\footnote{The programs must satisfy a mild technical requirement for our formalism to go through; see Section~\ref{sec:technical-requirement}}
+In this case, the program $\mathcal{Q}$ 
+accepts a trace $x$ of $\mathcal{P}$ as input, we denote a probabilistic program $\mathcal{Q}$
+applied to input $x$ by $\mathcal{Q}_x$.
 
-However, typically, we cannot use a probabilistic program $\mathcal{P}$ to represent the target distribution directly: probabilistic programs implement simulators for a distribution, but target densities are typically not tractable to simulate (hence the need for MCMC). Instead, we may wish to sample from a target $p$ that arises from conditioning a probabilistic program $\mathcal{P}$'s distribution over traces on observations of the values at some addresses. Let $\tilde{p}$ denote $\mathcal{P}$'s distribution over traces, and let $b = (B, \textbf{b})$ be a dictionary of observations, as described in Section~\ref{sec:dists-on-dicts}. Then, as shown in that section, the target distribution $p(x) = \tilde{p}(x \mid b) = \frac{\tilde{p}(x \oplus b)}{\mathcal{L}(b)}$, where $\mathcal{L}(b) = \int_{\{m \mid m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)$ is the marginal likelihood of $b$, and does not depend on $x$. Then $\tilde{p}(x \oplus b) = \mathcal{L}(b)p(x)$. If we use $\tilde{p}(x \oplus b)$ in place of $p(x)$ to compute the ratio of densities in Algorithm~\ref{alg:involutive-mcmc}, we will wind up with the same output, because $\mathcal{L}(b)$ will cancel in the numerator and denominator:
+Typically, we cannot use a probabilistic program $\mathcal{P}$ to represent the target distribution directly: probabilistic programs implement simulators for a distribution, but target densities are typically not tractable to simulate (hence the need for MCMC). Instead, we may wish to sample from a target $p$ that arises from conditioning a probabilistic program $\mathcal{P}$'s distribution over traces on observations of the values at some addresses. Let $\tilde{p}$ denote $\mathcal{P}$'s distribution over traces, and let $b = (B, \textbf{b})$ be a dictionary of observations, as described in Section~\ref{sec:dists-on-dicts}. Then, as shown in that section, the target distribution $p(x) = \tilde{p}(x \mid b) = \frac{\tilde{p}(x \oplus b)}{\mathcal{L}(b)}$, where $\mathcal{L}(b) = \int_{\{m \mid m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)$ is the marginal likelihood of $b$, and does not depend on $x$. Then $\tilde{p}(x \oplus b) = \mathcal{L}(b)p(x)$. If we use $\tilde{p}(x \oplus b)$ in place of $p(x)$ to compute the ratio of densities in Algorithm~\ref{alg:involutive-mcmc}, we will wind up with the same output, because $\mathcal{L}(b)$ will cancel in the numerator and denominator:
 \begin{equation}
 \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)}
 = \frac{\tilde{p}(x' \oplus b) q_{x'}(y')}{\tilde{p}(x \oplus b) q_x(y)}
