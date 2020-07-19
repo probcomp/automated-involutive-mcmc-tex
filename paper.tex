@@ -29,6 +29,10 @@
 \usepackage{graphicx}
 \usepackage[usenames,dvipsnames,svgnames]{xcolor}
 
+% for scaling down code listings
+\newsavebox{\mybox}
+
+
 % math and stuff
 \usepackage{amssymb}
 \usepackage{amsmath}
@@ -541,7 +545,7 @@ Figure~\ref{fig:mixture}b and Figure~\ref{fig:mixture}c show examples of probabi
 
 \subsection{Differentiable Programming with Traces} \label{sec:differentiable-programming-traces}
 
-Section~\ref{sec:probabilistic-programming} showed that if the densities $p$ and $q$ are specified using probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$, then density ratio in the acceptance probability for involutive MCMC on dictionaries Equation~(\ref{eq:acceptance-ratio-dictionaries}) can be automated using probabilistic programming techniques.
+Section~\ref{sec:probabilistic-programming} showed that if the densities $p$ and $q$ are specified using probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$, then the density ratio in the acceptance probability for involutive MCMC on dictionaries (Equation~(\ref{eq:acceptance-ratio-dictionaries})) can be automated using probabilistic programming techniques.
 This section shows that if the involution $f$ is specified in using a differentiable program $\mathcal{F}$ that transforms the execution traces of probabilistic programs, then the Jacobian factor in Equation~(\ref{eq:acceptance-ratio-dictionaries}) can also be automated, using automatic differentiation.
 The procedure \textproc{auto-involutive-mcmc} in Algorithm~\ref{alg:auto-involutive-mcmc} combines these two ideas and automates involutive MCMC given the programs $\mathcal{P}$, $\mathcal{Q}$, and $\mathcal{F}$.
 
@@ -567,7 +571,7 @@ To read a value $(x \oplus y)[a]$ at address $a$, we use the \texttt{@read} keyw
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-The first argument is the address $a$ and the second argument is either $\mathtt{discrete}$ or $\mathtt{continuous}$, and informs the interpreter whether the random choice at that address is drawn from a discrete or continuous distribution (this information will be used to support automatic differentiation).
+The first argument is the address $a$ and the second argument is either $\mathtt{:}\mathtt{discrete}$ or $\mathtt{:}\mathtt{continuous}$, and informs the interpreter whether the random choice at that address is drawn from a discrete or continuous distribution (this information will be used to support automatic differentiation).
 Recall that $x$ is the trace of the model probabilistic program, and $y$ is the trace of the auxiliary probabilistic program.
 Each address $a$ therefore needs to specify which of these traces to read from, and the address within that trace.
 The traces are given names in the function signature:
@@ -589,7 +593,7 @@ For example, to read the value of a continuous address $\mathtt{:}\mathtt{r}$ fr
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    val = @read(model_in[:r], continuous)
+    val = @read(model_in[:r], :continuous)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -599,15 +603,16 @@ For example to write a value $\mathtt{val}$ to $x'[\mathtt{:}\mathtt{r}]$:
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    @write(model_in[:r], val, continuous)
+    @write(model_in[:r], val, :continuous)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
 Note that the input traces $x, y$ are distinct from the output traces $x', y'$;
 input traces can only be read from, and output traces can only be written to.
 For example, it is not possible to write an output trace and then read the written value from it later.
+
 Often, we want to simply copy the value from some address in the input traces to some address in the output trace.
-While this is possible via a $\mathtt{@read}$ followed by a $\mathtt{@write}$, the language provides a special syntax for copies:
+While this is possible via a $\mathtt{@read}$ followed by a $\mathtt{@write}$, the language provides a special syntax:
 \noindent
 \begin{center}
 \begin{tabular}{c}
@@ -616,7 +621,6 @@ While this is possible via a $\mathtt{@read}$ followed by a $\mathtt{@write}$, t
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-Like above, the two addresses here are both pairs of the trace and the address within that trace.
 For example, to copy the value from address $\mathtt{:}\mathtt{u}$ in $x$ to address $\mathtt{:}\mathtt{v}$ in $x'$, we use:
 \noindent
 \begin{center}
@@ -627,7 +631,7 @@ For example, to copy the value from address $\mathtt{:}\mathtt{u}$ in $x$ to add
 \end{tabular}
 \end{center}
 Of course, it is also possible to copy from $x$ to $y'$, from $y$ to $x'$ and from $y$ to $y'$.
-As we will see in Section~\ref{sec:sparsity}, it is preferable to copy when possible instead of reading and then writing, as this can improve the efficiency of automatic differentiation.
+As we will see in Section~\ref{sec:sparsity}, it is preferable to use $\mathtt{@copy}$ when possible instead of reading and then writing, as this can improve the efficiency of automatic differentiation.
 
 
 
@@ -675,25 +679,23 @@ Note that the involution negates the value of this address, to indicate that the
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-@tracefn f
-   polar = @read(model_in[:polar], discrete)
-   if polar
-      r = @read(model_in[:r]), continuous)
-      theta = @read(model_in[:theta], continuous)
-      x = r * sin(theta)
-      y = r * cos(theta)
-      @write(model_out[:x], x, continuous)
-      @write(model_out[:y], y, continuous)
-   else
-      x = @read(model_in[:x], continuous)
-      y = @read(model_in[:y], continuous)
-      r = (x^2 + y^2)
-      theta = atan(y, x)
-      @write(model_out[:r], r, continuous)
-      @write(model_out[:theta], theta, continuous)
-   end
-   @write(model_out[:polar], !polar, discrete)
+polar = @read(model_in[:polar], :discrete)
+if polar
+   r = @read(model_in[:r]), :continuous)
+   theta = @read(model_in[:theta], :continuous)
+   x = r * sin(theta)
+   y = r * cos(theta)
+   @write(model_out[:x], x, :continuous)
+   @write(model_out[:y], y, :continuous)
+else
+   x = @read(model_in[:x], :continuous)
+   y = @read(model_in[:y], :continuous)
+   r = (x^2 + y^2)
+   theta = atan(y, x)
+   @write(model_out[:r], r, :continuous)
+   @write(model_out[:theta], theta, :continuous)
 end
+@write(model_out[:polar], !polar, :discrete)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -736,7 +738,7 @@ The $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are also omitted from t
 
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORMANCE} \label{sec:sparsity}
 
-Suppose $N$ and $N'$ are the total number of random choices in the input traces $x \oplus y$ and output traces $x' \oplus y'$ respectively, and $M$ is the number of continuous random choices (which is the same in the input traces and output traces).
+Suppose $N$ and $N'$ are the total number of random choices in the input traces $x, y$ and output traces $x', y'$ respectively, and $M$ is the number of continuous random choices (which must be the same in the input traces and output traces).
 Then, the number of operations used in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N + N') + O(M^3)$.
 The linear term is due to sampling $y'$ and computing the four log-densities required for the acceptance probability.
 The cubic term is due to computing the Jacobian determinant, which is also required for the acceptance probability (Equation~\ref{eq:acceptance-ratio-dictionaries}).
@@ -765,13 +767,13 @@ For example, for the function $(u, v, x, y) \mapsto (u, 2 u - v, y, x) = (u', v'
 u\\ v\\ x\\ y
 \end{array}
 \end{equation}
-Using the cofactor expansion of the determinant, we observe that for any (`copy') column in an $M$-by-$M$ Jacobian matrix (a column with a single $1$ and all other entries $0$), the absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding row \textit{and} column omitted (even if that would remove other nonzero entries from the matrix).
+Using the cofactor expansion of the determinant, we observe that for any `copy' column in an $M$-by-$M$ Jacobian matrix (a column with a single $1$ and all other entries $0$), the absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding column \textit{and} row omitted (even if that would remove other nonzero entries from the matrix).
 By applying this rule recursively, we can instead compute the determinant of a much smaller matrix; for the example above with $M=4$, the absolute value of the determinant simplifies to the absolute value of a single entry ($|-1|$).
 Indeed, if some input key is copied to some output key, then we can entirely avoid computing its row (and corresponding column) of the Jacobian.
 Therefore, the number of operations (which is dominated by the determinant) reduces from $M^3$ to $(M-|C|)^3$ where $|C|$ is the number of input keys that were copied to some output input key.
 The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of input keys that were copied explicitly available to the interpreter, which makes automating this optimization straightforward, as shown in \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc}.
 
-Many involutive MCMC kernels update only a constant number of keys that does not depend on the sizes $N$ and $N'$ of the input and output traces or the total number of continous keys $M$; the other keys are copied over unchanged.
+Many involutive MCMC kernels modify only a constant number of keys that does not depend on the sizes $N$ and $N'$ of the input and output traces or the total number of continous keys $M$; the other keys are copied over unchanged.
 For example, consider the Jacobian for a split-merge reversible jump move~\citet{richardson1997bayesian}, which is implemented in Figure~\ref{fig:mixture}:
 \includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
 Black squares indicate nonzero entries.
@@ -822,21 +824,24 @@ dictionary $\delta$ such that there exists $x' = (\delta \oplus x|_{A})$ for som
 \label{alg:naive-update}
 \end{algorithm}
 
-\textproc{naive-trace-update} is a naive implementation of a general \emph{trace-update} operation that is part of Gen's API.
-While the naive implementation requires $O(N_1 + N_1')$ operations, it is possible for more sophisticated implementations of \emph{trace-update} to run in approximately $O(|K_{\delta}|)$ operations for certain probabilistic programs $\mathcal{P}$ by exploiting conditional independence structure program that leads to cancellations in the density ratio $\tilde{p}(x' \oplus) / \tilde{p}(x \oplus b)$.
+\textproc{naive-trace-update} is a naive implementation of a general \emph{trace-update} operation that is part of Gen's API~\citep{cusumano2019gen}.
+While the naive implementation requires $O(N_1 + N_1')$ operations, it is possible for more sophisticated implementations of \emph{trace-update} to run in approximately $O(|K_{\delta}|)$ operations for certain probabilistic programs $\mathcal{P}$ by exploiting conditional independence structure program that leads to cancellations in the density ratio $\tilde{p}(x' \oplus b) / \tilde{p}(x \oplus b)$.
 The details of these more efficient implementations are outside the scope of this paper, but are implemented as part of the Gen system.
+% TODO be more precise:
 (As a simple example, consider a density $p$ that factors into a product of independent densities, one for each random choice; and an involution that only modifies one of these choices).
 
 Given an implementation of \emph{trace-update} (that has the same input and output signature of \textproc{naive-trace-update}) we can optimize Algorithm~\ref{alg:auto-involutive-mcmc} by
 modifying the requirement for the involution program $\mathcal{F}$:
 Instead of explicitly specifying a value for all keys in $x'$, it can specify $x'$ by only explicitly specifying values in $\delta$.
 Therefore, the involution program can run in $O(|K_{\delta}| + N_2 + N_2')$ operations.
-We replace the separate calls to \textproc{score} for the log-densities $\log p(x)$ and $\log p(x')$ and replace them with a single call to \emph{trace-update} on $\mathcal{P}$ that takes in $x$, and $\delta$ and returns $x'$ and $\log p(x') - \log p(x)$.
-When $|K_{\delta}|$ and $N_2$ and $N_2'$ are all constant in the size $N_1$ of the model trace $x$, the resulting algorithm uses a number of operations that is constant in $O(N_1 + N_1')$.
+We replace the separate calls to \textproc{score} for the log-densities $\log \tilde{p}(x \oplus b)$ and $\log \tilde{p}(x' \oplus b)$ and replace them with a single call to \emph{trace-update} on $\mathcal{P}$ that takes in $x$ and $\delta$ and returns $x'$ and $\log (\tilde{p}(x' \oplus b) / \tilde{p}(x \oplus b))$.
+When $|K_{\delta}|$ and $N_2$ and $N_2'$ are all constant in the size $N_1$ of the model trace $x$, the resulting algorithm uses a number of operations that does not grow with $N_1 + N_1'$.
+% TODO need to differentiate between number of data and latent dimension here!
+% it is only constant in the latent dimension, not in the data.. (except in unusual cases)
 
 \section{DYNAMICALLY DETECTING BUGS IN INVOLUTIONS}
 
-Due to the automation described in the previous section, users of Gen can implement involutive MCMC algorithms by writing probabilistic programs for $p$ and $q$ and a differentiable program for the involution $f$, avoiding the need to derive and implement the accept/reject formula by hand. 
+The automated technique described in the previous sections allows users to implement involutive MCMC algorithms by writing probabilistic programs for $p$ and $q$ and a differentiable program for the involution $f$, avoiding the need to derive and implement the accept/reject formula by hand. 
 This eliminates certain classes of errors that could otherwise be difficult to root out in hand-coded implementations of MCMC algorithms. However, it is still of course possible to implement $p$, $q$, or $f$ incorrectly, introducing bugs that may invalidate the correctness proofs for the involutive MCMC algorithm.
 
 
@@ -874,26 +879,26 @@ Fortunately, the factorization of diverse algorithms into a common template, inv
 \label{alg:dynamic-check}
 \end{algorithm}
 
-To test the user's algorithm, Gen first samples a model trace $x$ and simulated observations $b$ from the model prior $p$, and auxiliary trace $y$ from the $q_x$. It then runs three tests:
+The check first randomly samples a model trace $x$ and simulated observations $b$ from the model prior $p$, and auxiliary trace $y$ from the $q_x$. It then runs three tests on this simulated test case:
 
 \begin{enumerate}
-\item \textbf{Support check.} The \textit{support check} runs the involution $f$ on $(x, y)$ and checks that the resulting pair of traces, $(x', y')$, are within the set $Z$ of positive-density elements for $\pi$.
+\item \textbf{Support check.} The \textit{support check} runs the involution $\mathcal{F}$ on $(x, y)$ and checks that the resulting pair of traces, $(x', y')$, are within the set $Z$ of positive-density elements for $\pi$.
 
-\item \textbf{Dimension check.} The \textit{dimension check} runs the involution $f$ on $(x, y)$ and records the sets of addresses $R$ and $W$ at which $f$ performs continuous reads and writes, respectively. It then checks that the sizes of these sets match.
-This check is run when computing the determinant of the Jacobian in \textproc{run-involution}.
+\item \textbf{Dimension check.} The \textit{dimension check} runs the involution $\mathcal{F}$ on $(x, y)$ and records the sets of addresses $R$ and $W$ at which $\mathcal{F}$ performs continuous reads and writes, respectively, and checks that the sizes of these sets match.
+(This check is part of computing the determinant of the Jacobian in \textproc{run-involution}).
 
-\item \textbf{Involution check.} The \textit{involution check} runs $f \circ f$ on $(x, y)$ and checks that the result is equal to $(x, y)$. If $f$ is an involution on $Z$, then this check will always succeed; if there is a set $\tilde{Z}$ of positive $\pi$-measure on which $f(f(z)) \neq z$ (i.e., $f$ is not an involution), then this check has positive probability of failing.
+\item \textbf{Involution check.} The \textit{involution check} runs $\mathcal{F}$ twice to compute $f(f(x, y))$ and checks that the result is equal to $(x, y)$. If $f$ is an involution on $Z$, then this check will always succeed; if there is a set $\tilde{Z}$ of positive $\pi$-measure on which $f(f(z)) \neq z$ (i.e., $f$ is not an involution), then this check has positive probability of failing.
 \end{enumerate}
 
 These checks each catch qualitatively different bugs in user programs. We now give several examples.
 
 \textit{Incorrectly transformed continuous variables.} Many bugs in the design or implementation of deterministic transformations of continuous variables are naturally detected by the involution check. Consider, for example, the Hamiltonian Monte Carlo algorithm~\citep{hmc}, which, as \citet{imcmc} observe, is an instance of the involutive MCMC framework. 
 %$x$ is the model state, $y$ is the momentum, and the involution $f$ first runs a leapfrog integrator to obtain a new state $x'$ and final momentum $-y'$, then negates the final momentum and returns $(x', y')$. 
-When applied to HMC, Gen's dynamic bug check involves:
+When applied to HMC, the dynamic bug check involves:
 %Gen's dynamic checks will uncover mathematical errors in the implementation of the leapfrog integrator, and will also detect a failure to perform the final negation of the momentum. In particular, the dynamic check involves 
 (a) sampling a model state $x$ from the prior; (b) sampling a momentum $y$; (c) running the leapfrog integrator forward to get a new state $x'$ and new momentum $-y'$, (d) running the leapfrog integrator backward from state $x'$ with momentum $y'$, and (e) checking that this results in the state-momentum pair $x, -y$. If the momentum is not properly negated, or if the leapfrog integrator is incorrectly implemented, this check can fail.
 
-As another, simpler example of this type of error, consider the \texttt{split\_params} and \texttt{merge\_params} functions invoked in Figure~\ref{fig:mixture}, as part of a reversible-jump MCMC kernel for learning a mixture of Gaussians with an unknown number of components. Considering only the $\mu$ parameter, suppose the \textit{split} move samples an auxiliary variable $u_1$ and computes $\mu_1 = \mu + u_1, \mu_2 = \mu - u_1$ as the means of the two new clusters. If the \textit{merge} move joins two clusters and assigns $\mu = \sqrt{\mu_1 \mu_2}$, there is a mismatch: a split move cannot be reversed by a corresponding merge, because in general, $\sqrt{(\mu+u_1)(\mu-u_1)} \neq \mu$. This error could be fixed either by changing the split to compute $\mu_1 = \mu u_1, \mu_2 = \frac{\mu}{u_1}$, or by changing the merge to compute $\mu = \frac{\mu_1 + \mu_2}{2}$.
+As another, simpler example of this type of error, consider the \texttt{split\_params} and \texttt{merge\_params} functions invoked in Figure~\ref{fig:mixture}, as part of a reversible-jump MCMC kernel for inferring a mixture of Gaussians with an unknown number of components. Considering only the $\mu$ parameter, suppose the \textit{split} move samples an auxiliary variable $u_1$ and computes $\mu_1 = \mu + u_1, \mu_2 = \mu - u_1$ as the means of the two new clusters. If the \textit{merge} move joins two clusters and assigns $\mu = \sqrt{\mu_1 \mu_2}$, there is a mismatch: a split move cannot be reversed by a corresponding merge, because in general, $\sqrt{(\mu+u_1)(\mu-u_1)} \neq \mu$. This error could be fixed either by changing the split to compute $\mu_1 = \mu u_1, \mu_2 = \frac{\mu}{u_1}$, or by changing the merge to compute $\mu = \frac{\mu_1 + \mu_2}{2}$.
 
 %As a final, rather different example in this class, suppose approximate inverses $F_\theta, G_\theta : \mathbb{R}^d \rightarrow \mathbb{R}^d$ are learned neural networks trained via a Cycle GAN objective~\citep{cyclegan} to translate between the latent spaces of two models in a Bayesian model selection problem. A user might implement the following involution:
 %
@@ -979,11 +984,11 @@ end
 The flaw in this implementation is that although the death move can 
 delete any of the $k$ mixture components, the birth move can only add
 a new component to the \textit{end} (index $k+1$), so the move is not
-reversible. Gen's involution check will discover that the deletion of a
+reversible. The involution check will discover that the deletion of a
 component with index $i < k$ is not reversed by a corresponding birth move,
 and will thus raise an error.
 
-\textit{Other miscellaneous errors.} When implementing distributions as probabilistic programs, it is also possible for users to make more mundane errors, such as spelling the name of a random choice inconsistently, or characterizing random choices using the wrong \texttt{type} tags (\texttt{:continuous} and \texttt{:discrete}). Such errors can be difficult to detect statically, because the addresses at which a probabilistic program makes random choices, and the distributions of those choices, may change from sample to sample. (Previous work has explored static analyses based on types~\citep{popltraces} and abstract interpretation~\citep{verified_svi}, but these each work on limited subsets of the programs that Gen's full modeling language permits, and it is often precisely these more complex programs that require the flexibility of the involutive MCMC framework in the first place.) Gen's dynamic support and dimension checks can help to detect bugs like these. For example, if the involution $f$ writes to a misspelled address, the support check will determine that the resulting trace's density is 0.
+\textit{Other miscellaneous errors.} When implementing distributions as probabilistic programs, it is also possible for users to make more mundane errors, such as spelling the name of a random choice inconsistently, or characterizing random choices using the wrong \texttt{type} tags (\texttt{:continuous} and \texttt{:discrete}). Such errors can be difficult to detect statically, because the addresses at which a probabilistic program makes random choices, and the distributions of those choices, may change from sample to sample. (Previous work has explored static analyses based on types~\citep{popltraces} and abstract interpretation~\citep{verified_svi}, but these each work on limited subsets of the programs that Gen's full modeling language permits, and it is often precisely these more complex programs that require the flexibility of the involutive MCMC framework in the first place). Our dynamic support and dimension checks can help to detect bugs like these. For example, if the involution $f$ writes to a misspelled address, the support check will determine that the resulting trace's density is 0.
 
 % TODO show an example of the type of bug it can detect (an edge case?)
 
@@ -1097,22 +1102,25 @@ new_subtree ~ cov_function_prior()
 The involution program swaps the old subtree with the newly proposed subtree:
 \begin{center}
 \begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
+\begin{lrbox}{\mybox}%
+\begin{lstlisting}[basicstyle=\small\ttfamily]
 @copy(model_in[subtree_address], aux_out[:new_subtree])
 @copy(aux_in[:new_subtree], model_out[subtree_address])
-\end{lstlisting}}
+\end{lstlisting}
+\end{lrbox}%
+\scalebox{0.9}{\usebox{\mybox}}
 \end{tabular}
 \end{center}
-Note that the subtrees here happen to be trees that themselves have a random number of random choices, but the same general construction for a mixture of proposals below can also be used for simpler Metropolis-Hastings kernels:
+This is an instance of a more general pattern for implementing state-dependent mixture proposals:
 \begin{enumerate}
-\item The auxiliary probabilistic program samples from a distribution over different sets of random choices that will be proposed to
+\item The auxiliary probabilistic program $\mathcal{Q}$ samples from a distribution over different sets of random choices that will be proposed to
 (in this case, each set is a different subtree of the parse tree).
-\item The auxiliary probabilistic program then samples new values for those random choices (in this case, a new subtree).
-\item The involution program swaps the previous values of those random choices with their new values, by swapping data between the model trace and the auxiliary trace.
-\item The involution program copies the choice of what subset of random choices to propose to from the input auxiliary trace to the output auxiliary trace.
+\item The auxiliary probabilistic program $\mathcal{Q}$ then samples new values for those random choices (in this case, a new subtree).
+\item The involution program $\mathcal{F}$ swaps the previous values of those random choices with their new values, by swapping data between the model trace and the auxiliary trace.
+\item The involution program $\mathcal{F}$ copies the random choices that determined what subset of random choices to propose to from the input auxiliary trace to the output auxiliary trace.
 \end{enumerate}
 
-Because the mixture distribution is specified using a probabilistic program, it is straightforward to modify the program to define a different mixture distribution.
+Note that because the mixture distribution is specified using a probabilistic program, it is straightforward to modify the program $\mathcal{Q}$ to define a different mixture distribution.
 The code below specifies a mixture distribution that is uniform over all nodes in the tree.
 \begin{center}
 \begin{tabular}{c}
@@ -1135,9 +1143,9 @@ The resulting distributions, for two input trees, are:
 \includegraphics[width=0.8\linewidth]{figures/unbiased-tree-distribution.pdf}
 \end{center}
 Note that the probability of choosing a given subtree to propose to is itself changed when the subtree changes.
-Therefore, the mixture probabilities must be accounted for in the acceptance probability calculation.
+Therefore, the mixture probabilities do not in general cancel in the the acceptance probability calculation, and must be accounted for.
 For the original mixture distribution, the ratio of mixture probabilities is either $1$, $0.5$, or $2$ depending on whether the previous and new subtrees are leaf or internal nodes.
-For this alternative mixture distribution, the ratio of mixture probabilities is the ratio of sizes of the two trees.
+For this alternative mixture distribution, the ratio of mixture probabilities is the ratio of sizes of the two trees (e.g. $9/5$ or $5/9$ for the trees above).
 In both cases, our automated involutive MCMC algorithm automatically computes the acceptance probability.
 
 \begin{figure*}[ht]
