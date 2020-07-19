@@ -91,21 +91,21 @@
 % or abstract blocks).  Otherwise, the text will force the float to
 % the next column.  -- TDRL.
 \@float{copyrightbox}[b]
-\begin{center}
-\setlength{\unitlength}{1pc}
-\begin{picture}(20,2.5)
-% Create a line separating the main text from the note block.
-% 4.818pc==0.8in.
-\put(0,3.5){\line(1,0){4.818}}
-% Insert the text string itself.  Note that the string has to be
-% enclosed in a parbox -- the \put call needs a box object to
-% position.  Without the parbox, the text gets splattered across the
-% bottom of the page semi-randomly.  The 19.75pc distance seems to be
-% the width of the column, though I can't find an appropriate distance
-% variable to substitute here.  -- TDRL.
-\put(0,0){\parbox[b]{19.75pc}{\small \Notice@String}}
-\end{picture}
-\end{center}
+%\begin{center}
+%\setlength{\unitlength}{1pc}
+%\begin{picture}(20,2.5)
+%% Create a line separating the main text from the note block.
+%% 4.818pc==0.8in.
+%\put(0,3.5){\line(1,0){4.818}}
+%% Insert the text string itself.  Note that the string has to be
+%% enclosed in a parbox -- the \put call needs a box object to
+%% position.  Without the parbox, the text gets splattered across the
+%% bottom of the page semi-randomly.  The 19.75pc distance seems to be
+%% the width of the column, though I can't find an appropriate distance
+%% variable to substitute here.  -- TDRL.
+%\put(0,0){\parbox[b]{19.75pc}{\small \Notice@String}}
+%\end{picture}
+%\end{center}
 \end@float}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -148,7 +148,7 @@
 
    \ifnum\statePaper=0
     {
-     \gdef\@runningtitle{Manuscript under review by AISTATS \@conferenceyear}
+     \gdef\@runningtitle{}%Manuscript under review by AISTATS \@conferenceyear}
     }
    \fi
 
@@ -215,7 +215,7 @@
 
    \ifnum\statePaper=0
     {
-     \gdef\@runningauthor{Manuscript under review by AISTATS \@conferenceyear}
+     \gdef\@runningauthor{}%Manuscript under review by AISTATS \@conferenceyear}
     }
    \fi
 
