@@ -367,15 +367,15 @@ See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 
 \begin{algorithm*}[h]
 \begin{algorithmic}
-\Require probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$; differentiable program $\mathcal{F}$; initial state $x$
+\Require probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$; differentiable program $\mathcal{F}$; initial state $x$; observations $b$
 \vspace{1mm}
 \Procedure{auto-involutive-mcmc}{$\mathcal{P}$, $\mathcal{Q}$, $\mathcal{F}$, $x$}
     \State $(y, \log q_x(y)) \gets \textproc{trace-and-score}(\mathcal{Q}_x)$ \Comment{Sample $y \sim q_x(\cdot)$; compute log-density via probabilistic program}
     \State $(x' \oplus y', \log D) \gets \textproc{run-involution}(\mathcal{F}, x \oplus y)$ \Comment{{\small Compute $(x' \oplus y') = f(x \oplus y)$ and log(Radon-Nikodym derivative)}}
-    \State $\log p(x) \gets \textproc{score}(\mathcal{P}, x)$ \Comment{Compute log-density via probabilistic program}
-    \State $\log p(x') \gets \textproc{score}(\mathcal{P}, x')$ \Comment{Compute log-density via probabilistic program}
+    \State $\log \tilde{p}(x \oplus b) \gets \textproc{score}(\mathcal{P}, x \oplus b)$ \Comment{Compute log-density via probabilistic program}
+    \State $\log \tilde{p}(x' \oplus b) \gets \textproc{score}(\mathcal{P}, x' \oplus b)$ \Comment{Compute log-density via probabilistic program}
     \State $\log q_{x'}(y') \gets \textproc{score}(\mathcal{Q}_{x'}, y')$ \Comment{Compute log-density via probabilistic program}
-    \State $\alpha \gets \min\{1, \exp(\log p(x') - \log p(x) + \log q_{x'}(y') - \log q_x(y) + \log D)\}$ \Comment{Compute acceptance probability}
+    \State $\alpha \gets \min\{1, \exp(\log \tilde{p}(x' \oplus b) - \log \tilde{p}(x \oplus b) + \log q_{x'}(y') - \log q_x(y) + \log D)\}$ \Comment{Acceptance probability}
     \State \textbf{with probability} \,$\alpha$ \,\Return $x'$ \algorithmicelse \, \Return $x$  \algorithmicend
 \EndProcedure\\
 \vspace{1mm}
@@ -426,7 +426,7 @@ See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
     \LineComment{Use automatic differentiation of $\mathcal{F}$ to compute Jacobian, skipping copied addresses}
     \For{$i$ in $1$ to $|W|$}
         \State $k_i \gets W_i$ \Comment{Pick $i$th key in $W$; the order does not matter}
-        \State $J[i,:] \gets \nabla_{\mathbf{z}_{R \setminus C}} \left( h_{e(z)}[a_i] \right)$ \Comment{{\small Gradient of $z'[k_i] = h_{e(z)}[k_i]$ w.r.t. non-copied continuous inputs ($z_k$ for $k \in R \setminus C$)}}
+        \State $J[:,i] \gets \nabla_{\mathbf{z}_{R \setminus C}} \left( h_{e(z)}[a_i] \right)$ \Comment{{\small Gradient of $z'[k_i] = h_{e(z)}[k_i]$ w.r.t. non-copied continuous inputs ($z_k$ for $k \in R \setminus C$)}}
     \EndFor
     \State \Return $(z', \log(|\det(J)|))$
 \EndProcedure
@@ -719,6 +719,9 @@ end
 \end{tabular}
 \end{center}
 
+Note that in general there are observations $b$ that induce the target density $p(x)$ via $p(x) \propto \tilde{p}(x \oplus b)$ as described in Section~\ref{sec:dists-on-dicts}, and the involution $f$ in general depends on $b$.
+The involution program $\mathcal{F}$ can read the values of the $b$, which are stored alongside the unobserved random choices in the input model trace.
+
 \subsubsection{Computing the Jacobian with Automatic Differentiation}
 
 Recall that the involution $f$ must decompose into (i) an involution $g$ on elements $e \in E$ of a partition of the state space, and (ii) a pair of continuous differentiable bijections $h_{e}$ and $h_{g(e)} = h_{e}^{-1}$ between each pair of corresponding elements of the partition.
@@ -726,8 +729,9 @@ Each function $h_e$ is a function from the values at continuous addresses in the
 We compute the Jacobian using automatic differentiation. (The Gen implementation uses forward-mode AD whereas our PyTorch implementation uses reverse-mode AD.)
 The procedure \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc} shows the implementation of the interpreter for the language that uses reverse-mode AD.
 The interpreter executes $\mathcal{F}$ using regular Julia or Python semantics, but intercepts calls to \texttt{@write}, \texttt{@read}, and \texttt{@copy} statements, and in addition to performing the desired operation, records the set of continuous addresses that are read, written, and copied.
-After $\mathcal{F}$ is finished executing, AD uses the recorded addresses to compute the Jacobian $|J h_e|(z)$; in the case of reverse-mode AD, this is accomplished by iterating over output continuous addresses and backpropagating from each one to all of the input continuous addresses, computing the Jacobian row-by-row.
-Note that the $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are omitted from the syntax in \textproc{run-involution} to simplify notation ($a \in \mathcal{I}$ indicates a discrete choice and otherwise a choice is continuous).
+After $\mathcal{F}$ is finished executing, AD uses the recorded addresses to compute the Jacobian $|J h_e|(z)$; in the case of reverse-mode AD, this is accomplished by iterating over output continuous addresses and backpropagating from each one to all of the input continuous addresses, computing the Jacobian column-by-column.
+Keys with an $n$-dimensional Lebesgue measure as their reference measure, corresponding to vector-valued random choices, are unpacked into $n$ separate columns in the Jacobian; this detail is elided in Algorithm~\ref{alg:auto-involutive-mcmc}.
+The $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are also omitted from the syntax in \textproc{run-involution} to simplify notation ($a \in \mathcal{I}$ indicates a discrete choice and otherwise a choice is continuous).
 
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORMANCE} \label{sec:sparsity}
 
@@ -784,31 +788,32 @@ Suppose that $N_1 + N_1' \gg N_2 + N_2'$, which occurs when the size of the mode
 Algorithm~\ref{alg:auto-involutive-mcmc} runs $\mathcal{F}$, which explicitly writes the value for each element of $(x', y')$, requiring $N' = N_1' + N_2' \approx N_1'$ `write' or `copy' operations.
 The algorithm also uses approximately $N_1 + N_1'$ operations to evaluate the log-densities, because it accumulates the log-density of each random choice in $x$, and $x'$.
 
-We now show how to modify the program $\mathcal{F}$ and its interpreter, so that both computing $z' = (x', y')$ from $z = (x, y)$, and computing the log density ratio $\log(p(x') / p(x))$, can take $O(1)$ operations (that is, constant in $N_1 + N_1'$) when the involution $f$ has sparse structure and the model density $p$ has conditional independencies.
+We now show how to modify the program $\mathcal{F}$ and its interpreter, so that both computing $z' = (x', y')$ from $z = (x, y)$, and computing the log density ratio $\log(\tilde{p}(x' \oplus b) / \tilde{p}(x \oplus b))$, can take $O(1)$ operations (that is, constant in $N_1 + N_1'$) when the involution $f$ has sparse structure and the model density $p$ has conditional independencies.
 
 Note that $x$ and $x'$ may both have values for certain keys, and $x$ may contains keys not present in $x'$, and vice-versa.
 Often, an involution does not modify the values of many keys in the trace---this is the case in the split-merge reversible jump move described earlier.
 Suppose that $A \subseteq K_{x} \cap K_{x'}$ is the set of keys $k$ in both $x$ and $x'$ for which $x'[k] = x[k]$.
 Let $\Delta := K_{x'} \setminus A$ be the set of keys in $x'$ that are either (i) not in $x$, or (ii) in $x$ but have their value changed.
-Then, the previous trace $x$ and a dictionary $\delta$ with $K_{\delta} = \Delta$ and $\delta[k] = x'[k]$ and the density function $p$ suffice to uniquely define the trace $x'$, provided the density satisfies the following condition, which is satisfied by densities represented as probabilistic programs:
+Then, the previous trace $x$ and a dictionary $\delta$ with $K_{\delta} = \Delta$ and $\delta[k] = x'[k]$ and the density function $p$ suffice to uniquely define the trace $x'$, provided the density satisfies the following condition, which is satisfied by densities as probabilistic programs:
 $p(x) > 0$ and $p(x') > 0$ and $x \ne x'$ implies there exists $k \in K_x \cap K_{x'}$ with $x[k] \ne x'[k]$.
 Let $x|_A$ denote the \emph{restriction} of a dictionary $x$ to only keys in $A$.
-Then, \textproc{naive-trace-update} (Algorithm~\ref{alg:naive-update}) computes the new trace $x'$ and log densities ratio $\log (p(x') / p(x))$ of a probabilistic program from a previous trace $x$ and a dictionary $\delta$, provided there exists $x' = \delta \oplus x|_A$ for some $A$ where $p(x') > 0$.
+Then, \textproc{naive-trace-update} (Algorithm~\ref{alg:naive-update}) computes the new trace $x'$ and log-densities ratio $\log (p(x') / p(x))$ of a probabilistic program from a previous trace $x$ and a dictionary $\delta$ (and observations $b$), provided there exists $x' = \delta \oplus x|_A$ for some $A$ where $p(x') > 0$.
 \begin{algorithm}[h]
 \begin{algorithmic}
-\Require probabilistic program $\mathcal{P}$; previous trace $x$;\\
+\Require probabilistic program $\mathcal{P}$; previous trace $x$; observations $b$;\\
 dictionary $\delta$ such that there exists $x' = (\delta \oplus x|_{A})$ for some $A$ where $p(x') > 0$.
 \vspace{1mm}
-\Procedure{naive-trace-update}{$\mathcal{P}$, $x$, $\delta$}
+\Procedure{naive-trace-update}{$\mathcal{P}$, $x$, $b$, $\delta$}
+   \State {\bf assert} $K_{x} \cap K_{b} = \varnothing$
    \State $x' \gets \{\}$
    \State $s' \gets 0$
    \execute[$\mathcal{P}$], but with $\mathtt{"}k \sim \mathrm{distribution}\mathtt{"} \equiv$ (
-        \State 1. if $k \in K_{\delta}$ then $v \gets \delta[k]$ else $v \gets x[k]$
-        \State 2. set $x'[k] \gets v$
+        \State 1. if $k \in K_{\delta}$ then $v \gets \delta[k]$ else $v \gets (x \oplus b)[k]$
+        \State 2. if $k \not \in K_{b}$ then set $x'[k] \gets v$
         \State 3. set $s' \gets s' + \textproc{logpdf}(\mathrm{distribution}, v)$
         \State 4. evaluate to $v$)
     \END
-   \State $s \gets \textproc{score}(\mathcal{P}, x)$
+   \State $s \gets \textproc{score}(\mathcal{P}, x \oplus b)$
    \State \Return $(x', s' - s)$
 \EndProcedure
 \end{algorithmic}
@@ -817,7 +822,7 @@ dictionary $\delta$ such that there exists $x' = (\delta \oplus x|_{A})$ for som
 \end{algorithm}
 
 \textproc{naive-trace-update} is a naive implementation of a general \emph{trace-update} operation that is part of Gen's API.
-While the naive implementation requires $O(N_1 + N_1')$ operations, it is possible for more sophisticated implementations of \emph{trace-update} to run in approximately $O(|K_{\delta}|)$ operations for certain probabilistic programs $\mathcal{P}$ by exploiting conditional independence structure program that leads to cancellations in the density ratio $p(x') / p(x)$.
+While the naive implementation requires $O(N_1 + N_1')$ operations, it is possible for more sophisticated implementations of \emph{trace-update} to run in approximately $O(|K_{\delta}|)$ operations for certain probabilistic programs $\mathcal{P}$ by exploiting conditional independence structure program that leads to cancellations in the density ratio $\tilde{p}(x' \oplus) / \tilde{p}(x \oplus b)$.
 The details of these more efficient implementations are outside the scope of this paper, but are implemented as part of the Gen system.
 (As a simple example, consider a density $p$ that factors into a product of independent densities, one for each random choice; and an involution that only modifies one of these choices).
 
@@ -839,27 +844,44 @@ Fortunately, the factorization of diverse algorithms into a common template, inv
 
 \begin{algorithm}[h]
 \begin{algorithmic}
-\Procedure{involutive-mcmc-check}{$p$, $q$, $f$}
-    \State $x \sim p(\cdot)$ \Comment{Sample state from prior}
-    \State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
-    \State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
-    \State {\bf assert} $p(x')q_{x'}(y') > 0$ \Comment{Support check}
-    \State {\bf assert} $f(x', y') = (x, y)$ \Comment{Involution check}
-    \State {\bf assert} $|\text{Rd}^{\textit{cont}}_{f,x,y}| = |\text{Wr}^{\textit{cont}}_{f,x,y}|$ \Comment{Dimension check}
+\Procedure{involutive-mcmc-check}{$\mathcal{P}$, $\mathcal{Q}$, $\mathcal{F}$}
+    \LineComment{Generate a randomized test case}
+    \State $(x \oplus b) \sim \textproc{trace-and-score}(\mathcal{P})$ % TODO not conditioned on data?
+    \State $y \sim \textproc{trace-and-score}(\mathcal{Q}_x)$
+    %\State $x \sim p(\cdot)$ \Comment{Sample state from prior}
+    %\State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
+
+    \LineComment{Run involution and perform dimension check}
+    \State $x' \oplus y' \gets \textproc{run-involution}(\mathcal{F}, x \oplus y)$
+
+    \LineComment{Support check}
+    \State $\log p(x') \gets \textproc{score}(\mathcal{P}, x')$
+    \State $\log q_{x'}(y') \gets \textproc{score}(\mathcal{Q}_{x'}, y')$
+    \State {\bf assert} $(\log p(x') > -\infty) \land (\log q_{x'}(y') > -\infty)$
+
+    \LineComment{Involution check}
+    \State $\tilde{x} \oplus \tilde{y} \gets \textproc{run-involution}(\mathcal{F}, x' \oplus y')$
+    \State ${\bf assert} (\tilde{x} = x) \land (\tilde{y} = y)$
+    %\State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
+    %\State {\bf assert} $f(x', y') = (x, y)$ \Comment{Involution check}
+    %\State {\bf assert} $p(x')q_{x'}(y') > 0$ \Comment{Support check}
+    %\State {\bf assert} $f(x', y') = (x, y)$ \Comment{Involution check}
+    %\State {\bf assert} $|R| = |W|$ \Comment{Dimension check}
 \EndProcedure
 \end{algorithmic}
 \caption{Dynamic Check for Bugs}
 \label{alg:dynamic-check}
 \end{algorithm}
 
-To test the user's algorithm, Gen first samples a model trace $x$ from the model prior $p$, and auxiliary trace $y$ from the $q_x$. It then runs three tests:
+To test the user's algorithm, Gen first samples a model trace $x$ and simulated observations $b$ from the model prior $p$, and auxiliary trace $y$ from the $q_x$. It then runs three tests:
 
 \begin{enumerate}
 \item \textbf{Support check.} The \textit{support check} runs the involution $f$ on $(x, y)$ and checks that the resulting pair of traces, $(x', y')$, are within the set $Z$ of positive-density elements for $\pi$.
 
-\item \textbf{Involution check.} The \textit{involution check} runs $f \circ f$ on $(x, y)$ and checks that the result is equal to $(x, y)$. If $f$ is an involution on $Z$, then this check will always succeed; if there is a set $\tilde{Z}$ of positive $\pi$-measure on which $f(f(z)) \neq z$ (i.e., $f$ is not an involution), then this check has positive probability of failing.
+\item \textbf{Dimension check.} The \textit{dimension check} runs the involution $f$ on $(x, y)$ and records the sets of addresses $R$ and $W$ at which $f$ performs continuous reads and writes, respectively. It then checks that the sizes of these sets match.
+This check is run when computing the determinant of the Jacobian in \textproc{run-involution}.
 
-\item \textbf{Dimension check.} The \textit{dimension check} runs the involution $f$ on $(x, y)$ and records the sets of addresses $\text{Rd}_{f,x,y}^{\textit{cont}}$ and $\text{Wr}_{f,x,y}^{\textit{cont}}$ at which $f$ performs continuous reads and writes, respectively. It then checks that the sizes of these sets match. (Addresses with an $n$-dimensional Lebesgue measure as their reference measure, corresponding to vector-valued random choices, are unpacked into $n$ separate addresses for the purposes of this check.)
+\item \textbf{Involution check.} The \textit{involution check} runs $f \circ f$ on $(x, y)$ and checks that the result is equal to $(x, y)$. If $f$ is an involution on $Z$, then this check will always succeed; if there is a set $\tilde{Z}$ of positive $\pi$-measure on which $f(f(z)) \neq z$ (i.e., $f$ is not an involution), then this check has positive probability of failing.
 \end{enumerate}
 
 These checks each catch qualitatively different bugs in user programs. We now give several examples.
