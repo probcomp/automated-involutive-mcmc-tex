@@ -1010,34 +1010,34 @@ Each move type $m \in \mathcal{M}$ is associated with an unordered pair of model
 For each latent state $x = (h, \theta_h)$, there is a probability distribution $q_{x}(m)$ on move types such that $q_{x}(m) > 0$ implies that $h$ is one of the models for move type $m$.
 For each move type $m \in \mathcal{M}$ between $h_1$ and $h_2$ there is a pair of continuously differentiable bijections $g_{m, h_1 \to h_2} : \mathbb{R}^{d(m)} \to \mathbb{R}^{d(m)}$ and $g_{m, h_2 \to h_1} := g_{m, h_1 \to h_2}^{-1}$, and a pair of proposal densities $q_{m,h_1 \to h_2}(u_{h_1 \to h_2})$ and $q_{m,h_2 \to h_1}(u_{h_2 \to h_1})$ where $u_{h_1 \to h_2} \in \mathbb{R}^{d(m) - n(h_1)}$ and $u_{h_2 \to h_1} \in \mathbb{R}^{d(m) - n(h_2)}$.
 A proposal is made from state $x = (h, \theta_h)$ by (i) sampling a move type $m \sim q_{x}(\cdot)$, and (ii) sampling continuous variable $u \sim q_{m,h \to h'}(\cdot)$ for $(h, h')$ associated with $m$, and (iii) computing $(\theta_{h}', u') := g_{m,h \to h'}(\theta_h, u)$, and proposing new state $x' = (h', \theta_h')$.
-The move is accepted with probability:
-\begin{equation*}
-{\scriptstyle
-\min\left\{ 1,
-\frac{p(h')}{p(h)} \frac{p_{h'}(\theta_{h'})}{p_h(\theta_h)} \frac{L_{D,h'}(\theta_h')}{L_{D,h}(\theta_h)}
-\frac{q_{x'}(m)}{q_{x}(m)}
-\frac{q_{m,h' \to h}(u)}{q_{m,h \to h'}(u)}
-|J g_{m, h\to h'}|(\theta_h, u)
-\right\}
-}
-\end{equation*}
+%The move is accepted with probability:
+%\begin{equation*}
+%{
+%\min\left\{ 1,
+%\frac{p(h')}{p(h)} \frac{p_{h'}(\theta_{h'})}{p_h(\theta_h)} \frac{L_{D,h'}(\theta_h')}{L_{D,h}(\theta_h)}
+%\frac{q_{x'}(m)}{q_{x}(m)}
+%\frac{q_{m,h' \to h}(u)}{q_{m,h \to h'}(u)}
+%|J g_{m, h\to h'}|(\theta_h, u)
+%\right\}
+%}
+%\end{equation*}
 
-To represent reversible jump MCMC involutive MCMC implemented with probabilistic programs, we write a probabilistic program $\mathcal{P}$ that encodes the space of models $\mathcal{H}$, the prior distribution on models, $p(h)$, the per-model priors $p_h(\theta_h)$ and the per-model likelihoods $L_{D,h}(\theta_h)$.
-The set of all models $h$ corresponds to the set of all pairs $(K_\mathcal{P}, \mathbf{d}_\mathcal{P})$ where $K_\mathcal{P}$ represent possible trace structures (i.e. control-flow paths through $\mathcal{P}$) and $\mathbf{d}_\mathcal{P}$ are the set of assignments to discrete random choices made by $\mathcal{P}$.
-The per-model continuous parameters $\theta$ correspond to continuous random choices $\mathbf{c}_\mathcal{P}$.
+To encode reversible jump MCMC in our framework, we write a probabilistic program $\mathcal{P}$ that encodes the space of models $\mathcal{H}$, the prior distribution on models, $p(h)$, the per-model priors $p_h(\theta_h)$ and the per-model likelihoods $L_{D,h}(\theta_h)$.
+The set of all models $h$ is encoded in the set of all pairs $(K_\mathcal{P}, \mathbf{d}_\mathcal{P})$ where $K_\mathcal{P}$ represent possible trace structures (i.e. control-flow paths through $\mathcal{P}$) and $\mathbf{d}_\mathcal{P}$ are the set of assignments to discrete random choices made by $\mathcal{P}$.
+The per-model continuous parameters $\theta$ are encoded via continuous random choices $\mathbf{c}_\mathcal{P}$.
 % TODO explain the likelihood
-An auxiliary probabilistic program $\mathcal{Q}$ encodes both the probability distribution on moves types using discrete random choices and possibly stochastic control flow ($(K_\mathcal{Q}, \mathbf{d}_\mathcal{Q})$), and the per-move-type probability densities on $u$ using continuous random choices $\mathbf{c}_\mathcal{Q}$.
+The auxiliary probabilistic program $\mathcal{Q}$ encodes both the probability distribution on moves types using discrete random choices and possibly stochastic control flow ($(K_\mathcal{Q}, \mathbf{d}_\mathcal{Q})$), and the per-move-type probability densities on $u$ using continuous random choices $\mathbf{c}_\mathcal{Q}$.
 The involution $f$ factors into an (i) involution $f_1$ on pairs $i = ((K_\mathcal{P}, \mathbf{d}_\mathcal{P}), (H_\mathcal{Q}, \mathbf{d}_\mathcal{Q}))$ that defines the association between move types $\mathcal{M}$ and the model pairs ($h_1, h_2$); and (ii) a family of bijections $f_{1,i}$ on the space of pairs $(\mathbf{c}_\mathcal{P}, \mathbf{c}_\mathcal{Q})$ of continuous random choices for both programs for fixed values of the discrete random choices and fixed trace structure.
 
 Figure~\ref{fig:mixture} shows a split-merge reversible jump kernel for an infinite Gaussian mixture model~\citep{richardson1997bayesian} implemented using the probabilistic and differentiable programming languages described in this paper.
-Figure~\ref{fig:mixture}(b) shows the infinite Gaussian mixture model, specified as a probabilistic program $\mathcal{P}$.
+Figure~\ref{fig:mixture}b shows the infinite Gaussian mixture model, specified as a probabilistic program $\mathcal{P}$.
 The program takes the number of data points as input, then samples the number of clusters from a Poisson distribution, then samples cluster parameters and mixture proportions, and finally samples the data points from the resulting finite mixture.
-Figure~\ref{fig:mixture}(c) shows the auxiliary probabilistic program $\mathcal{Q}$ for the split-merge kernel.
+Figure~\ref{fig:mixture}c shows the auxiliary probabilistic program $\mathcal{Q}$ for the split-merge kernel.
 This program takes a trace of the model program as input, and randomly decides whether to split a cluster and increase the number of clusters by one or merge two clusters and decrease the number of clusters by one.
 Then, the program randomly picks which cluster to split, or which clusters to merge.
 This kernel always merges the last cluster with a random other cluster; for ergodicity the move can be composed with a simple move (that has acceptance probability $1$) that swaps a random cluster with the last cluster.
 If a split is chosen, then the program also samples the three degrees of freedom necessary to generate the new parameters for the clusters in an invertible manner.
-Figure~\ref{fig:mixture}(d) shows a differentiable program specifying the involution for the split-merge kernel, and Figure~\ref{fig:mixture}(f) shows graphically how this involution acts on pairs of traces.
+Figure~\ref{fig:mixture}d shows a differentiable program specifying the involution for the split-merge kernel, and Figure~\ref{fig:mixture}f shows graphically how this involution acts on pairs of traces.
 The yellow section (1) defines an involution $f_1$ on the discrete random choices that specifies that (i) the \texttt{split} choice should be flipped (so that split moves are always mapped to merge moves and vice versa) and that (ii) the number of clusters should be increased by one for a split move and decreased by one for a merge move, and (iii) which merged cluster corresponds to which split clusters.
 The green section (2) specifies the continuous bijections that govern the transformation of continuous random choices during split moves and the purple section (3) specifies the inverses of these bijections, which govern the transformation of continuous choices during merge moves.
 
@@ -1243,36 +1243,39 @@ Expanding the left-hand side:
 \begin{align}
 \int_K \left| (Jf_{2,i})(\mathbf{x})\right| \mu(dz)
 = \sum_{i \in I} \int_{K_i} \left| (Jf_{2,i})(\mathbf{x})\right| \mu_{n_i}(d \mathbf{x}) % TODO how to justify this? it seems obvious
-= \sum_{i \in I} \mu_{n_i}(f_{2,i}(K_i)) % Borgachev Theorem 4.7.1 
+= \sum_{i \in I} \mu_{n_i}(f_{2,i}(K_i)) % Bogachev Theorem 4.7.1 
 \end{align}
-where the final step uses Borgachev Theorem 3.7.1 with $g := 1$, and $F := f_{2,i}$.
+where the final step uses Bogachev Theorem 3.7.1 with $g := 1$, and $F := f_{2,i}$.
 
 \subsection{Proof of detailed balance for involution} \label{sec:involution-detailed-balance}
+The involutive MCMC kernel is composed of two parts:
+An extension of the state space, and an involution on the extended state space.
+First, we show detailed balance for the deterministic involution move applied to the extended state space.
 
-\begin{lemma}
-Given $\sigma$-finite measures $(X_P, \Sigma_P, \mu_P)$ and $(X_Q, \Sigma_Q, \mu_Q)$,
-if $X \in \Sigma_P \otimes \Sigma_Q$ then $\Sigma = \{A \in \Sigma_P \otimes \Sigma_Q : K \subseteq X\}$ is a $\sigma$-algebra on $X$, and $\mu : \Sigma \to [0, \infty)$ given by $\mu(A) := (\mu_P \times \mu_Q)(A)$ is $\sigma$-finite measure on measurable space $(X, \Sigma)$.
-\end{lemma}
-\begin{proof}
-TODO: write out the detailed steps, proving each property of a $\sigma$-algebra%$ TODO
-\end{proof}
-
-\begin{lemma}
-$\pi : X \to [0, \infty)$ is a probability density with respect to $\mu$ and the measure induced by $\pi$ and the measure $\mu$ are mutually absolutely continuous 
-\end{lemma}
-\begin{proof}
-% TODO need to show that pi is measurable by the product measure?
-\begin{equation}
-\int_X \pi(x) \mu(dx) = \int_{X_P \times X_Q} \pi(x) (\mu_P \times \mu_Q)(dx) = \int_{X_P} p(t) \left( \int_{X_Q} q_t(u) \mu_Q(du) \right) \mu_P(dt) = 1
-\end{equation}
-
-%(note that $\mu$ is $\sigma$-finite since $\mu_P \times \mu_Q$ is $\sigma$-finite. % TODO: prove this 
-%Suppose that $\pi$ is a probability density with respect to $\mu$. % TODO is this guaranteed?
-\end{proof}
+%\begin{lemma}
+%Given $\sigma$-finite measures $(X_P, \Sigma_P, \mu_P)$ and $(X_Q, \Sigma_Q, \mu_Q)$,
+%if $X \in \Sigma_P \otimes \Sigma_Q$ then $\Sigma = \{A \in \Sigma_P \otimes \Sigma_Q : K \subseteq X\}$ is a $\sigma$-algebra on $X$, and $\mu : \Sigma \to [0, \infty)$ given by $\mu(A) := (\mu_P \times \mu_Q)(A)$ is $\sigma$-finite measure on measurable space $(X, \Sigma)$.
+%\end{lemma}
+%\begin{proof}
+%TODO: write out the detailed steps, proving each property of a $\sigma$-algebra%$ TODO
+%\end{proof}
+%
+%\begin{lemma}
+%$\pi : X \to [0, \infty)$ is a probability density with respect to $\mu$ and the measure induced by $\pi$ and the measure $\mu$ are mutually absolutely continuous 
+%\end{lemma}
+%\begin{proof}
+%% TODO need to show that pi is measurable by the product measure?
+%\begin{equation}
+%\int_X \pi(x) \mu(dx) = \int_{X_P \times X_Q} \pi(x) (\mu_P \times \mu_Q)(dx) = \int_{X_P} p(t) \left( \int_{X_Q} q_t(u) \mu_Q(du) \right) \mu_P(dt) = 1
+%\end{equation}
+%
+%%(note that $\mu$ is $\sigma$-finite since $\mu_P \times \mu_Q$ is $\sigma$-finite. % TODO: prove this 
+%%Suppose that $\pi$ is a probability density with respect to $\mu$. % TODO is this guaranteed?
+%\end{proof}
 
 
 \citet{tierney1998note} gives a class of MCMC kernels based on involutions that satisfy detailed balance.
-We reproduce the result in our notation:
+We now reproduce the result in our notation:
 \begin{lemma}[Detailed balance for involution move~\citep{tierney1998note}] \label{lemma:tierney-involution}
 Let $(Z, \Sigma, \pi)$ denote a measure space.
 Suppose $f$ is a one-to-one function from $Z$ onto $Z$ such that $f^{-1} = f$.
@@ -1406,7 +1409,7 @@ Stationarity of the end-to-end kernel with respect to the measure induced by $p$
 Expanding:
 \begin{align*}
     \int_X k_x(A) p(x) \mu_P(dx) &= \int_X \left( \int_U k'_{x,u}(A \times U) q_x(u) \mu_Q(du) \right) p(x) \mu_P(dx)\\
-    &= \int_{X \times U} k'_{x,u}(A \times U) q_x(u) p(x) (\mu_P \times \mu_Q)(dz) \;\; [\mbox{ Tonelli's theorem }]\\ % TODO check
+    &= \int_{X \times U} k'_{x,u}(A \times U) q_x(u) p(x) (\mu_P \times \mu_Q)(dz)\\% \;\; [\mbox{ Tonelli's theorem }]\\ % TODO check
     &= \int_{Z} k'_{x,u}(\{(x', u') \in Z : x' \in A\}) \pi(z) \mu(dz)\\ % TODO justify
     &= \int_{\{(x, u) \in Z : x \in A\}} \pi(z) \mu(dz)\;\;\; [\mbox{ Stationarity of $k'$ with respect to $\pi$}]\\
     &= \int_{\{(x, u) \in Z : x \in A\}} q_x(u) p(x) \mu(dz)\\
@@ -1484,20 +1487,22 @@ Expanding:
 % (which implies that the same sets of random choices are made?)
 % that will allow us to 
 
-\subsection{A requirement on Densities for Involutive MCMC with Probabilistic Programs} \label{sec:technical-requirement}
-TODO: consider cutting this or moving to appendix -- it is a complicated technical requirement on programs
+\subsection{A Sufficient Condition for Involutive MCMC with Dictionaries} \label{sec:technical-requirement}
+%TODO: consider cutting this or moving to appendix -- it is a complicated technical requirement on programs
 
 % TODO cut this??
-To define the model and auxiliary densities used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
-The model reference measure $(X, \Sigma_P, \mu_P)$ and density that were required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure and density $p$ on traces as defined above (so that $X := T$).
-To define the auxiliary densities, we use a second probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
-The set of possible inputs to $Q$ is $\{x \in T : p(x) > 0\}$, and for each such $x$ the probabilistic program $Q$ defines a density $q_x : T \to [0, \infty)$ with respect to the reference measure on traces.\footnote{
-Note that we the same measure space $(T, \Sigma, \mu)$ on traces for both the model and auxiliary probabilistic program.
-If both programs sample some random choice at the same address $k$ and require different measure spaces $(V_k, \Sigma_k, \mu_k)$ for the address, this can be handled formally by making the addresses sampled by the two programs disjoint by prepending either the prefix `p.' or `q.' to addresses.
-This is only required for book-keeping in the formalism, and these prefixes do not need to be actually added to the addresses used in the programs.}
+%To define the model and auxiliary densities used in involutive MCMC in Section~\ref{sec:involutive-mcmc} using probabilistic programs, we write one probabilistic program ($P$) to define the model's probability distribution, and another probabilistic program ($Q$) to define the set of auxiliary distributions.
+%The model reference measure $(X, \Sigma_P, \mu_P)$ and density that were required in Section~\ref{sec:involutive-mcmc} are set to the probabilistic program's reference measure and density $p$ on traces as defined above (so that $X := T$).
+%To define the auxiliary densities, we use a second probabilistic program $Q$ that is parametrized by (i.e. takes as input) traces of the model program $P$.
+%The set of possible inputs to $Q$ is $\{x \in T : p(x) > 0\}$, and for each such $x$ the probabilistic program $Q$ defines a density $q_x : T \to [0, \infty)$ with respect to the reference measure on traces.\footnote{
+%Note that we the same measure space $(T, \Sigma, \mu)$ on traces for both the model and auxiliary probabilistic program.
+%If both programs sample some random choice at the same address $k$ and require different measure spaces $(V_k, \Sigma_k, \mu_k)$ for the address, this can be handled formally by making the addresses sampled by the two programs disjoint by prepending either the prefix `p.' or `q.' to addresses.
+%This is only required for book-keeping in the formalism, and these prefixes do not need to be actually added to the addresses used in the programs.}
 
-The involutive MCMC framework of Section~\ref{sec:involutive-mcmc} requires that $Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu_P \times \mu_Q$-measurable.
-We now give a sufficient condition for this to hold.
+Our formulation of involutive MCMC requires the following technical condition to hold:
+$Z := \{(x, y) \in X \times Y : \pi(x, y) > 0\}$ is $\mu_P \times \mu_Q$-measurable.
+We now give a sufficient condition for this to hold, when $X$ and $Y$ are spaces of dictionaries.
+%$\pi(x, y) := p(x) q_x(y)$ is defined via probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$.
 Let $D \subseteq \mathcal{K}$ denote the subset of addresses that are discrete (i.e. where $V_k$ is a countable set and $\mu_k$ is the counting measure).
 For $\mathbf{x} \in \times_{k \in A} V_k$ let $\mathbf{x} = (\mathbf{d}, \mathbf{c})$ where $\mathbf{d} \in \times_{k \in A \cap D} V_k$ and $\mathbf{c} = \times_{k \in A \setminus D} V_k$, so that $\mathbf{d}$ is the discrete part of $\mathbf{x}$ and $\mathbf{c}$ is the non-discrete part.
  %TODO make this a proposition
@@ -1515,10 +1520,11 @@ The measure of $Z$ is
 $(\mu \times \mu)(Z) = \sum_{(K_1,K_2,\mathbf{d}_1,\mathbf{d}_2) \in E} \prod_{k \in (K_1 \setminus D) \cup (K_2 \setminus D)} \mu_k(V_k)$.
 % TODO double check me.,
 \end{proof}
-
-Intuitively, this requirement means that for both the model probabilistic program $P$ and the auxiliary probabilistic program $Q$, the support of a random choice that is not discrete cannot depend on the value of another non-discrete random choice.
-Additionally, the support of non-discrete random choices in $Q$ cannot depend on the value of non-discrete random choices in the input $x$, which is a trace of $P$.
-This requirement defines a notion \emph{well-behavedness} for a probabilistic program ($P$) and an additional notion of well-behavedness for a pair of probabilistic programs that are sequenced one after the other ($P$ and $Q$).
+When $p$ and $q$ are defined via probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ respectively, 
+this requirement means that for both the model probabilistic program $\mathcal{P}$ and the auxiliary probabilistic program $\mathcal{Q}$, the support of a random choice that is not discrete cannot depend on the value of another non-discrete random choice.
+Additionally, the support of non-discrete random choices in $\mathcal{Q}$ cannot depend on the value of non-discrete random choices in the input $x$, which is a trace of $\mathcal{P}$.
+This requirement defines a notion \emph{well-behavedness} for a probabilistic program ($\mathcal{P}$) and an additional notion of well-behavedness for a pair of probabilistic programs that are sequenced one after the other ($\mathcal{P}$ and $\mathcal{Q}$).
+%It is possible to satisfy this requirement via a `disciplined' approach to probabilistic modeling, where the support of a random choice at a given address is fixed.
 % TODO: prove that if Q satisfeies the criterion, then the composition P circ Q satisfies the single-program criterion..
 
 
