@@ -160,16 +160,19 @@ Gen's involutive MCMC construction has since been used by a number of researcher
 \citet{imcmc} also identified design principles for developing new MCMC algorithms using the involutive MCMC construction, and showed that the framework aids in the derivation of novel efficient MCMC algorithms.
 
 The involutive MCMC construction encompasses many existing classes of MCMC kernels, some of which explicitly make use of bijective or involutive deterministic maps.
-In particular, the reversible jump framework~\citep{green1995reversible,hastie2012model} employs a family of continuously differentiable bijections between the Euclidean parameter spaces of different models.
-\citet{tierney1998note} described a family of deterministic proposals based on a deterministic involution that is equivalent to involutive MCMC but without the auxiliary proposal distribution.
+In particular, the reversible jump framework~\citep{green1995reversible,hastie2012model} employs a family of continuously differentiable bijections between the parameter spaces of different models.
+\citet{tierney1998note} described a family of deterministic proposals based on a deterministic involution that is equivalent to involutive MCMC but without the auxiliary probability distribution.
 More recently,~\citet{spanbauer2020deep} defined a class of deep generative model based on differentiable involutions and trained these models to serve as efficient proposal distributions on continuous state spaces; the resulting algorithm is an instance of the construction presented in this paper.
 
-In recent decades, a number of probabilistic programming systems have provided automated implementations of probabilistic inference algorithms~\citep{gilks1994language,milch2007,pfeffer200714,goodman2012church,gehr2016psi,carpenter2017stan}.
-The majority of these systems have focused on the automation of one or more built-in inference algorithms, with customization limited to tuning a handful of parameters of the algorithm.
-The programmable inference paradigm~\citep{mansinghka2018probabilistic} in probabilistic programming instead emphasizes user control over the inference algorithm and automation of the lower-level implementation.
-In particular, the Gen probabilistic programming system~\citep{cusumano2019gen} offers a high degree of user programmability by exposing an API that supports high-level user implementations of inference algorithms, instead of a set of a built-in inference engine.
+In recent decades, a number of probabilistic programming systems have automated the implementations of probabilistic inference algorithms~\citep{gilks1994language,milch2007,pfeffer200714,goodman2012church,gehr2016psi,carpenter2017stan}.
+Most of these systems support generic built-in inference algorithms, with user-customization limited to tweaking algorithm parameters.
+Some systems allow for user-defined variational families or proposal distributions~\citep{ritchie2016deep,bingham2019pyro}.
+Programmable inference~\citep{mansinghka2018probabilistic} proposes that inference algorithms be specified by users in high-level programming languages.
+The Gen probabilistic programming system~\citep{cusumano2019gen} exposes an API that supports high-level user implementations of an open-ended set of inference algorithms, and abstracts away low-level implementation details of inference algorithms.
+
 One other probabilistic programming system besides Gen supports custom reversible jump samplers:
-\citet{roberts2019} present a system embedded in Haskell that can automatically generate the implementation of certain reversible jump MCMC kernels from a high-level specification, and \citet{narayanan2020symbolic} also give a technique that can be used to automatically compute the Metropolis-Hastings acceptance probabilities in some settings; however, these approaches do not handle many kernels that can be handled by our technique, including the example in Figure~\ref{fig:structure-learning}.
+\citet{roberts2019} present a system embedded in Haskell that automatically generates the implementation of some reversible jump MCMC kernels from a high-level specification.
+\citet{narayanan2020symbolic} give a technique that automatically computes Metropolis-Hastings acceptance probabilities in some settings; however, these approaches do not handle many kernels that can be handled by our technique, including the example in Figure~\ref{fig:structure-learning}.
 
 \section{INVOLUTIVE MCMC ON GENERAL STATE SPACES} % on traces ??
 
@@ -255,7 +258,7 @@ Then the set of all finite dictionaries is $\mathcal{D} := \bigcup_{K \subset \m
 a finite set of keys $K \subset \mathcal{K}$ at which it has values, and an assignment $\mathbf{x}$ of values $x_k$ for each.
 
 \textbf{Relationship to representation of~\citet{green1995reversible}.}
-\citet{green1995reversible} uses a state space that is the countable union of `models', where for each model there is a vector of real-valued parameters.
+\citet{green1995reversible} uses a state space that is the countable union of `models', where each model uses a vector of real-valued parameters.
 Dictionaries possess substantially more structure:
 Instead of monolithic `models', dictionaries use a more elaborate discrete state that includes the set of keys and the assignment to the discrete keys. 
 Also, because continuous keys play the role of real-valued parameters, it is possible to express that a given real-valued parameter is shared between models.
@@ -729,18 +732,19 @@ Note that the $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are omitted f
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORMANCE} \label{sec:sparsity}
 
 Suppose $N$ and $N'$ are the total number of random choices in the input traces $x \oplus y$ and output traces $x' \oplus y'$ respectively, and $M$ is the number of continuous random choices (which is the same in the input traces and output traces).
-Then, the number of operations used in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N + N') + O(M^3)$ (where each call to \textproc{logpdf} and the computation of each entry in the Jacobian both count as one operation).
-The linear term represents the complexity of sampling $y'$ and computing the four log-densities used to compute the acceptance probability.
-The cubic term represents the complexity of computing the Jacobian matrix and its determinant.
+Then, the number of operations used in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N + N') + O(M^3)$.
+The linear term is due to sampling $y'$ and computing the four log-densities required for the acceptance probability.
+The cubic term is due to computing the Jacobian determinant, which is also required for the acceptance probability (Equation~\ref{eq:acceptance-ratio-dictionaries}).
 
-It is possible to reduce the computational complexity of an automated involutive MCMC kernel by exploiting special structure in the involution $f$, in some cases to $O(1)$.
-This section describes how an automated involutive MCMC implementation can reduce the computational complexity of the Jacobian computation and the density ratio computation.
-These techniques are used in the Gen implementation of automated involutive MCMC, and one of the techniques is used in our minimal PyTorch implementation.
+It is possible to reduce the number of operations performed in an automated involutive MCMC kernel by exploiting special structure in the involution $f$.
+In some cases, this structure can lead to $O(1)$ operations per kernel application (i.e. constant in $N$, $N'$, and $M$).
+This section describes techniques for exploiting involution structure within an automated involutive MCMC implementation.
+These techniques are used in the Gen implementation, and one of the techniques is used in our minimal PyTorch implementation.
 
 \subsection{Sparsity-Aware Automatic Jacobian Computation}
 
 The naive implementation of Algorithm~\ref{alg:auto-involutive-mcmc} computes by the Jacobian by first computing the $M$-by-$M$ Jacobian matrix $J h_{e(z)}$ via automatic differentiation, and then computing the absolute value of its determinant.
-However, we observe that in many applications of involutive MCMC, the values at continuous choices in the input traces are directly copied into the output traces (either at the same, or different, keys).
+However, we observe that in many applications of involutive MCMC, the values at continuous choices in the input traces are directly copied into the output traces (either at the same key or a different key).
 These copy operations result in columns in the Jacobian matrix that have a single $1$ entry with remaining entries equal to $0$.
 For example, for the function $(u, v, x, y) \mapsto (u, 2 u - v, y, x) = (u', v', x', y')$, the Jacobian is (with columns corresponding to $u'$, $v'$, $x'$, and $y'$ and rows corresponding to $u$, $v$, $x$, and $y$):
 \begin{equation}
@@ -756,37 +760,40 @@ For example, for the function $(u, v, x, y) \mapsto (u, 2 u - v, y, x) = (u', v'
 u\\ v\\ x\\ y
 \end{array}
 \end{equation}
-Using the cofactor expansion of the determinant, we observe that for any (`copy') row or column in an $M$-by-$M$ Jacobian matrix with a single $1$ and all other entries $0$, the absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding row \textit{and} column omitted (even if that would remove other nonzero entries from the matrix).
+Using the cofactor expansion of the determinant, we observe that for any (`copy') column in an $M$-by-$M$ Jacobian matrix (a column with a single $1$ and all other entries $0$), the absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding row \textit{and} column omitted (even if that would remove other nonzero entries from the matrix).
 By applying this rule recursively, we can instead compute the determinant of a much smaller matrix; for the example above with $M=4$, the absolute value of the determinant simplifies to the absolute value of a single entry ($|-1|$).
-Indeed, if some input variable is copied to some output variable, then we can entirely avoid computing its row (and corresponding column) of the Jacobian, and the computational complexity reduces from $M^3$ to $(M-K)^3$ where $K$ is the number of input variables that were copied from some input variable.
-The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of input variables that were copied immediately available to the interpreter, which makes automating this optimization possible, as shown in \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc}.
+Indeed, if some input key is copied to some output key, then we can entirely avoid computing its row (and corresponding column) of the Jacobian.
+Tsome herefore, the number of operations (which is dominated by the determinant) reduces from $M^3$ to $(M-|C|)^3$ where $|C|$ is the number of input keys that were copied to some output input key.
+The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of input keys that were copied explicitly available to the interpreter, which makes automating this optimization straightforward, as shown in \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc}.
 
-Many involutive MCMC kernels update only a constant number of variables that does not depend on the sizes $N$ and $N'$ of the input and output traces or the total number of continous keys $M$; the other variables are copied over unchanged.
+Many involutive MCMC kernels update only a constant number of keys that does not depend on the sizes $N$ and $N'$ of the input and output traces or the total number of continous keys $M$; the other keys are copied over unchanged.
 For example, consider the Jacobian for a split-merge reversible jump move~\citet{richardson1997bayesian}, which is implemented in Figure~\ref{fig:mixture}:
 \includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
 Black squares indicate nonzero entries.
 In this case, the size $N$ of the trace grows linearly both in the number of clusters and the number of data points, but the Jacobian determinant can be calculated from only the $6$-by-$6$ submatrix of the Jacobian that involves the parameters of the one cluster being split (or the two clusters being merged).
-Therefore, the computation complexity of the acceptance ratio computation reduces from $O(N + N') + O(M^3)$ to $O(N + N')$.
+Therefore, the acceptance ratio computation reduces from $O(N + N') + O(M^3)$ to $O(N + N')$.
 While a reasonable hand-coded implementation of this algorithm would likely perform this sort of optimization as well, Algorithm~\ref{alg:auto-involutive-mcmc} automates it.
 
 % TODO show an performance table of moves per second with and without the sparsity reduction (?)
 \subsection{Incremental Computation of Output Traces and Density Ratios}
 
-It is possible to further reduce the the number of operations in automated involutive MCMC from $O(N + N')$ to $O(N_2 + N_2')$ where $N = N_1 + N_2$ and $N' = N_1' + N_2'$ and $N_1$ and $N_2$ are the sizes of the model trace and auxiliary trace respectively (and similarly for $N_1'$ and $N_2'$).
-In cases where $N_2$ and $N_2'$ have fixed size even as $N_1$ and $N_1'$ grow, this approach can result in $O(1)$ operations per kernel application.
-The efficiency gains are due to a combination of exploiting sparsity in the involution and conditional independencies in the model.
+Consider input traces $(x, y)$ and output traces $(x', y')$ with $f(x, y) = (x', y')$ for involution $f$ encoded by program $\mathcal{F}$.
+Let $N_1 := |K_{x}|$, $N_2 := |K_{y}|$, $N_1' := |K_{x'}|$ and $N_2' := |K_{y'}|$, and
+$N := N_1 + N_2$ and $N' := N_1' + N_2'$.
+Suppose that $N_1 + N_1' \gg N_2 + N_2'$, which occurs when the size of the model traces grows in the size of a data set, but the size of the auxiliary trace is constant.
+Algorithm~\ref{alg:auto-involutive-mcmc} runs $\mathcal{F}$, which explicitly writes the value for each element of $(x', y')$, requiring $N' = N_1' + N_2' \approx N_1'$ `write' or `copy' operations.
+The algorithm also uses approximately $N_1 + N_1'$ operations to evaluate the log-densities, because it accumulates the log-density of each random choice in $x$, and $x'$.
 
-Consider input traces $(x, y)$ and output traces $(x', y')$ where $x$ and $x'$ have sizes $N_1$ and $N_2$ respectively.
-The approach in Algorithm~\ref{alg:auto-involutive-mcmc} involves running a program $\mathcal{F}$ that explicitly writes the value for each element of $(x', y')$, which requires greater than $N_1'$ `write' or `copy' operations.
-We now show how to specify the involution $f$ such that computing $z'$ from $z$ can take fewer operations for involutions that possess sparse structure.
-Recall that $K_{x}$ and $K_{x'}$ are the sets of keys in $x$ and $x'$, respectively, and that $x$ and $x'$ may both have values for certain keys, and $x$ may contains keys not present in $x'$, and vice-versa.
+We now show how to modify the program $\mathcal{F}$ and its interpreter, so that both computing $z' = (x', y')$ from $z = (x, y)$, and computing the log density ratio $\log(p(x') / p(x))$, can take $O(1)$ operations (that is, constant in $N_1 + N_1'$) whn the involution $f$ has sparse structure and the model density $p$ has conditional independencies.
+
+Note that $x$ and $x'$ may both have values for certain keys, and $x$ may contains keys not present in $x'$, and vice-versa.
 Often, an involution does not modify the values of many keys in the trace---this is the case in the split-merge reversible jump move described earlier.
 Suppose that $A \subseteq K_{x} \cap K_{x'}$ is the set of keys $k$ in both $x$ and $x'$ for which $x'[k] = x[k]$.
 Let $\Delta := K_{x'} \setminus A$ be the set of keys in $x'$ that are either (i) not in $x$, or (ii) in $x$ but have their value changed.
-Then, the previous trace $x$ and a dictionary $\delta$ with $K_{\delta} = \Delta$ and $\delta[k] = x'[k]$ and the density function $p$ suffice to uniquely define the trace $x'$, provided the density satisfies the following condition:
+Then, the previous trace $x$ and a dictionary $\delta$ with $K_{\delta} = \Delta$ and $\delta[k] = x'[k]$ and the density function $p$ suffice to uniquely define the trace $x'$, provided the density satisfies the following condition, which is satisfied by densities represented as probabilistic programs:
 $p(x) > 0$ and $p(x') > 0$ and $x \ne x'$ implies there exists $k \in K_x \cap K_{x'}$ with $x[k] \ne x'[k]$.
 Let $x|_A$ denote the \emph{restriction} of a dictionary $x$ to only keys in $A$.
-Then, \textproc{naive-trace-update} (Algorithm~\ref{alg:naive-update}) computes the new trace $x'$ and difference in log-densities $\log p(x') - \log p(x)$ of a probabilistic program from a previous trace $x$ and a dictionary $\delta$, provided there exists $x' = \delta \oplus x|_A$ for some $A$ where $p(x') > 0$.
+Then, \textproc{naive-trace-update} (Algorithm~\ref{alg:naive-update}) computes the new trace $x'$ and log densities ratio $\log (p(x') / p(x))$ of a probabilistic program from a previous trace $x$ and a dictionary $\delta$, provided there exists $x' = \delta \oplus x|_A$ for some $A$ where $p(x') > 0$.
 \begin{algorithm}[h]
 \begin{algorithmic}
 \Require probabilistic program $\mathcal{P}$; previous trace $x$;\\
@@ -808,6 +815,7 @@ dictionary $\delta$ such that there exists $x' = (\delta \oplus x|_{A})$ for som
 \caption{Naive Trace Update}
 \label{alg:naive-update}
 \end{algorithm}
+
 \textproc{naive-trace-update} is a naive implementation of a general \emph{trace-update} operation that is part of Gen's API.
 While the naive implementation requires $O(|K_x| + |K_{x'}|)$ operations, it is possible for more sophisticated implementations of \emph{trace-update} to run in $O(|K_{\delta}|)$ operations for certain probabilistic programs $\mathcal{P}$ by exploiting conditional independence structure program that leads to cancellations in the density ratio $p(x') / p(x)$.
 The details of these more efficient implementations are outside the scope of this paper, but are implemented as part of the Gen system.
@@ -991,7 +999,7 @@ The move is accepted with probability:
 }
 \end{equation*}
 
-To represent reversible jump MCMC using involutive MCMC implemented with probabilistic programs, we write a probabilistic program $\mathcal{P}$ that encodes the space of models $\mathcal{H}$, the prior distribution on models, $p(h)$, the per-model priors $p_h(\theta_h)$ and the per-model likelihoods $L_{D,h}(\theta_h)$.
+To represent reversible jump MCMC involutive MCMC implemented with probabilistic programs, we write a probabilistic program $\mathcal{P}$ that encodes the space of models $\mathcal{H}$, the prior distribution on models, $p(h)$, the per-model priors $p_h(\theta_h)$ and the per-model likelihoods $L_{D,h}(\theta_h)$.
 The set of all models $h$ corresponds to the set of all pairs $(K_\mathcal{P}, \mathbf{d}_\mathcal{P})$ where $K_\mathcal{P}$ represent possible trace structures (i.e. control-flow paths through $\mathcal{P}$) and $\mathbf{d}_\mathcal{P}$ are the set of assignments to discrete random choices made by $\mathcal{P}$.
 The per-model continuous parameters $\theta$ correspond to continuous random choices $\mathbf{c}_\mathcal{P}$.
 % TODO explain the likelihood
@@ -1127,7 +1135,7 @@ The mixture kernel is composed from three Gen programs:
 
 \section{DISCUSSION}
 
-Involutive MCMC is a unifying construction for MCMC algorithms that encompasses both classic approaches to constructing kernels like reversible jump MCMC~\citep{green1995reversible}, but also recently introduced classes of MCMC kernels based on neural networks~\citep{spanbauer2020deep}.
+Involutive MCMC is a unifying construction~\citep{imcmc} for MCMC algorithms that encompasses both classic approaches to constructing kernels like reversible jump MCMC~\citep{green1995reversible}, but also recently introduced classes of MCMC kernels based on neural networks~\citep{spanbauer2020deep}.
 Therefore, the approach to automating involutive MCMC kernels presented in this paper makes a number of classic MCMC techniques easier to use and broadens their accessibility, and may potentially aid in development of novel MCMC techniques as well.
 The implementation of our approach in the Gen probabilistic programming system has already been used by researchers in computational biology~\citep{merrell2020inferring} and artificial intelligence~\citep{zhi2020online} to prototype and develop new reversible-jump MCMC algorithms.
 
@@ -1141,8 +1149,7 @@ While our approach is already valuable for use cases where the best performance 
 more research into compilers and automatic code generation of custom inference algorithms from high-level user specifications
 would broaden the applicability of systems like Gen.
 
-\subsubsection*{Acknowledgements}
-All acknowledgments go at the end of the paper, including thanks to reviewers who gave useful comments, to colleagues who contributed to the ideas, and to funding agencies and corporate sponsors that provided financial support.
+%\subsubsection*{Acknowledgements}
 
 \bibliography{references} 
 
