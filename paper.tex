@@ -146,7 +146,7 @@ The contributions of this paper include:
 \item A mathematical formulation of state spaces consisting of arbitrary key-value stores (i.e. dictionaries) that formalizes the space of execution traces of Gen probabilistic programs, and a formulation of involutive MCMC on these spaces.
 \item A differentiable programming language for defining bijections between spaces of traces of probabilistic programs.
 \item An algorithm that automates the implementation of an involutive MCMC kernel given two probabilistic programs and a differentiable program encoding the involution, using automatic differentiation and tracing of probabilistic programs.
-\item An extension to the algorithm that exploits sparsity in the involution to reduce the computational complexity of an involutive MCMC kernel from $O(N^2)$ to $O(1)$ in common cases, where $N$ is the dimensionality of the latent space.
+\item An extension to the algorithm that exploits sparsity in the involution to reduce the computational complexity of an involutive MCMC kernel from $O(N^3)$ to $O(1)$ in common cases, where $N$ is the dimensionality of the latent space.
 \item An algorithm that dynamically detects errors in the specification of an involutive MCMC kernel.
 \end{enumerate}
 
@@ -729,9 +729,9 @@ Note that the $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are omitted f
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORMANCE} \label{sec:sparsity}
 
 Suppose $N$ and $N'$ are the total number of random choices in the input traces $x \oplus y$ and output traces $x' \oplus y'$ respectively, and $M$ is the number of continuous random choices (which is the same in the input traces and output traces).
-Then, the number of operations requried in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N + N') + O(M^2)$ (where each call to \textproc{logpdf} and the computation of each entry in the Jacobian both count as one operation).
+Then, the number of operations used in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N + N') + O(M^3)$ (where each call to \textproc{logpdf} and the computation of each entry in the Jacobian both count as one operation).
 The linear term represents the complexity of sampling $y'$ and computing the four log-densities used to compute the acceptance probability.
-The quadratic term represents the complexity of computing the Jacobian matrix and its determinant.
+The cubic term represents the complexity of computing the Jacobian matrix and its determinant.
 
 It is possible to reduce the computational complexity of an automated involutive MCMC kernel by exploiting special structure in the involution $f$, in some cases to $O(1)$.
 This section describes how an automated involutive MCMC implementation can reduce the computational complexity of the Jacobian computation and the density ratio computation.
@@ -758,7 +758,7 @@ u\\ v\\ x\\ y
 \end{equation}
 Using the cofactor expansion of the determinant, we observe that for any (`copy') row or column in an $M$-by-$M$ Jacobian matrix with a single $1$ and all other entries $0$, the absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding row \textit{and} column omitted (even if that would remove other nonzero entries from the matrix).
 By applying this rule recursively, we can instead compute the determinant of a much smaller matrix; for the example above with $M=4$, the absolute value of the determinant simplifies to the absolute value of a single entry ($|-1|$).
-Indeed, if some input variable is copied to some output variable, then we can entirely avoid computing its row (and corresponding column) of the Jacobian, and the computational complexity reduces from $M^2$ to $(M-K)^2$ where $K$ is the number of input variables that were copied from some input variable.
+Indeed, if some input variable is copied to some output variable, then we can entirely avoid computing its row (and corresponding column) of the Jacobian, and the computational complexity reduces from $M^3$ to $(M-K)^3$ where $K$ is the number of input variables that were copied from some input variable.
 The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of input variables that were copied immediately available to the interpreter, which makes automating this optimization possible, as shown in \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc}.
 
 Many involutive MCMC kernels update only a constant number of variables that does not depend on the sizes $N$ and $N'$ of the input and output traces or the total number of continous keys $M$; the other variables are copied over unchanged.
@@ -766,7 +766,7 @@ For example, consider the Jacobian for a split-merge reversible jump move~\citet
 \includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
 Black squares indicate nonzero entries.
 In this case, the size $N$ of the trace grows linearly both in the number of clusters and the number of data points, but the Jacobian determinant can be calculated from only the $6$-by-$6$ submatrix of the Jacobian that involves the parameters of the one cluster being split (or the two clusters being merged).
-Therefore, the computation complexity of the acceptance ratio computation reduces from $O(N + N') + O(M^2)$ to $O(N + N')$.
+Therefore, the computation complexity of the acceptance ratio computation reduces from $O(N + N') + O(M^3)$ to $O(N + N')$.
 While a reasonable hand-coded implementation of this algorithm would likely perform this sort of optimization as well, Algorithm~\ref{alg:auto-involutive-mcmc} automates it.
 
 % TODO show an performance table of moves per second with and without the sparsity reduction (?)
