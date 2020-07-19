@@ -365,19 +365,29 @@ z_1 \sim z_2 \iff (K_{z_1} = K_{z_2}) \land (z_1[k] = z_2[k] \; \forall k \in K_
 See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 
 
-\section{AUTOMATING INVOLUTIVE MCMC WITH TRACES} \label{sec:automating}
-
-\begin{algorithm*}[h]
+\begin{algorithm*}[h!]
 \begin{algorithmic}
 \Require probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$; differentiable program $\mathcal{F}$; initial state $x$; observations $b$
 \vspace{1mm}
 \Procedure{auto-involutive-mcmc}{$\mathcal{P}$, $\mathcal{Q}$, $\mathcal{F}$, $x$}
-    \State $(y, \log q_x(y)) \gets \textproc{trace-and-score}(\mathcal{Q}_x)$ \Comment{Sample $y \sim q_x(\cdot)$; compute log-density via probabilistic program}
-    \State $(x' \oplus y', \log D) \gets \textproc{run-involution}(\mathcal{F}, x \oplus y)$ \Comment{{\small Compute $(x' \oplus y') = f(x \oplus y)$ and log(Radon-Nikodym derivative)}}
-    \State $\log \tilde{p}(x \oplus b) \gets \textproc{score}(\mathcal{P}, x \oplus b)$ \Comment{Compute log-density via probabilistic program}
-    \State $\log \tilde{p}(x' \oplus b) \gets \textproc{score}(\mathcal{P}, x' \oplus b)$ \Comment{Compute log-density via probabilistic program}
-    \State $\log q_{x'}(y') \gets \textproc{score}(\mathcal{Q}_{x'}, y')$ \Comment{Compute log-density via probabilistic program}
-    \State $\alpha \gets \min\{1, \exp(\log \tilde{p}(x' \oplus b) - \log \tilde{p}(x \oplus b) + \log q_{x'}(y') - \log q_x(y) + \log D)\}$ \Comment{Acceptance probability}
+    \State\vspace{-2mm}
+    \LineComment{Sample $y \sim q_x(\cdot)$ and compute log-density via probabilistic program $\mathcal{Q}$}
+    \State $(y, \log q_x(y)) \gets \textproc{trace-and-score}(\mathcal{Q}_x)$
+    \State\vspace{-2mm}
+    \LineComment{{\small Compute $(x' \oplus y') = f(x \oplus y)$ and log(Radon-Nikodym derivative) via differentiable program $\mathcal{F}$}}
+    \State $(x' \oplus y', \log D) \gets \textproc{run-involution}(\mathcal{F}, x \oplus y)$
+    \State\vspace{-2mm}
+    \LineComment{Compute log-density via probabilistic program $\mathcal{P}$}
+    \State $\log \tilde{p}(x \oplus b) \gets \textproc{score}(\mathcal{P}, x \oplus b)$
+    \State\vspace{-2mm}
+    \LineComment{Compute log-density via probabilistic program $\mathcal{P}$}
+    \State $\log \tilde{p}(x' \oplus b) \gets \textproc{score}(\mathcal{P}, x' \oplus b)$ 
+    \State\vspace{-2mm}
+    \LineComment{Compute log-density via probabilistic program $\mathcal{Q}$}
+    \State $\log q_{x'}(y') \gets \textproc{score}(\mathcal{Q}_{x'}, y')$ 
+    \State\vspace{-2mm}
+    \LineComment{Compute acceptance probability and accept or reject}
+    \State $\alpha \gets \min\{1, \exp(\log \tilde{p}(x' \oplus b) - \log \tilde{p}(x \oplus b) + \log q_{x'}(y') - \log q_x(y) + \log D)\}$ 
     \State \textbf{with probability} \,$\alpha$ \,\Return $x'$ \algorithmicelse \, \Return $x$  \algorithmicend
 \EndProcedure\\
 \vspace{1mm}
@@ -436,6 +446,8 @@ See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 \caption{Automated Involutive MCMC}
 \label{alg:auto-involutive-mcmc}
 \end{algorithm*}
+
+\section{AUTOMATING INVOLUTIVE MCMC WITH TRACES} \label{sec:automating}
 
 Involutive MCMC is a general framework that can be used to develop diverse MCMC algorithms
 for models over arbitrary state spaces. We wish to \textit{automate} the implementation
@@ -578,12 +590,15 @@ The traces are given names in the function signature:
 \noindent
 \begin{center}
 \begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\footnotesize\ttfamily]
+\begin{lrbox}{\mybox}%
+\begin{lstlisting}[basicstyle=\small\ttfamily]
 @transform f (model_in, aux_in) to (model_out, aux_out)
 begin
 ..
 end
-\end{lstlisting}}
+\end{lstlisting}
+\end{lrbox}%
+\scalebox{0.94}{\usebox{\mybox}}
 \end{tabular}
 \end{center}
 Here, the traces $x$, $y$, $x'$ and $y'$ are given names $\mathtt{model\_in}$, $\mathtt{aux\_in}$, $\mathtt{model\_out}$, and $\mathtt{aux\_out}$, respectively.
