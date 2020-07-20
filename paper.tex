@@ -901,17 +901,14 @@ dictionary $\delta$ such that there exists $x' = (\delta \oplus x|_{A})$ for som
 \textproc{naive-trace-update} is a naive implementation of a general \emph{trace-update} operation that is part of Gen's API~\citep{cusumano2019gen}.
 While the naive implementation requires $O(N_1 + N_1')$ operations, it is possible for more sophisticated implementations of \emph{trace-update} to run in approximately $O(|K_{\delta}|)$ operations for certain probabilistic programs $\mathcal{P}$ by exploiting conditional independence structure program that leads to cancellations in the density ratio $\tilde{p}(x' \oplus b) / \tilde{p}(x \oplus b)$.
 The details of these more efficient implementations are outside the scope of this paper, but are implemented as part of the Gen system.
-% TODO be more precise:
-(As a simple example, consider a density $p$ that factors into a product of independent densities, one for each random choice; and an involution that only modifies one of these choices).
 
 Given an implementation of \emph{trace-update} (that has the same input and output signature of \textproc{naive-trace-update}) we can optimize Algorithm~\ref{alg:auto-involutive-mcmc} by
 modifying the requirement for the involution program $\mathcal{F}$:
 Instead of explicitly specifying a value for all keys in $x'$, it can specify $x'$ by only explicitly specifying values in $\delta$.
+(The other values in $x'$ are \emph{implicit copies} via \emph{trace-update}---they could be explicitly copied within $\mathcal{F}$, but this would result in uncessary code and possibly unecessary computation.)
 Therefore, the involution program can run in $O(|K_{\delta}| + N_2 + N_2')$ operations.
 We replace the separate calls to \textproc{score} for the log-densities $\log \tilde{p}(x \oplus b)$ and $\log \tilde{p}(x' \oplus b)$ and replace them with a single call to \emph{trace-update} on $\mathcal{P}$ that takes in $x$ and $\delta$ and returns $x'$ and $\log (\tilde{p}(x' \oplus b) / \tilde{p}(x \oplus b))$.
 When $|K_{\delta}|$ and $N_2$ and $N_2'$ are all constant in the size $N_1$ of the latent part of model trace ($x$), the resulting algorithm uses a number of operations that does not grow with $N_1 + N_1'$.
-% TODO need to differentiate between number of data and latent dimension here!
-% it is only constant in the latent dimension, not in the data.. (except in unusual cases)
 
 \section{DYNAMICALLY DETECTING BUGS IN INVOLUTIONS}
 
@@ -1121,7 +1118,7 @@ Figure~\ref{fig:mixture}d shows a differentiable program specifying the involuti
 The yellow section (1) defines an involution $f_1$ on the discrete random choices that specifies that (i) the \texttt{split} choice should be flipped (so that split moves are always mapped to merge moves and vice versa) and that (ii) the number of clusters should be increased by one for a split move and decreased by one for a merge move, and (iii) which merged cluster corresponds to which split clusters.
 The green section (2) specifies the continuous bijections that govern the transformation of continuous random choices during split moves and the purple section (3) specifies the inverses of these bijections, which govern the transformation of continuous choices during merge moves.
 
-\subsection{State-Dependent Mixture Proposal}
+\subsection{State-Dependent Mixture Proposals}
 
 Figure~\ref{fig:structure-learning} shows automated involutive MCMC being applied to fully Bayesian inference over the covariance function of a Gaussian process, where the prior on covariance functions (Figure~\ref{fig:structure-learning}a) is based on a probabilistic context-free grammar.
 The inference algorithm is based on an involutive MCMC kernel that uses a state-dependent mixture of proposals.
