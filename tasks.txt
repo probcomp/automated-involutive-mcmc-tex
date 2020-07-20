@@ -1,9 +1,66 @@
-Section 4
-[ ] add code figures and examples to Section 4
-[ ] improve text for Section 4
+[X] replace sparse jacobian figure to remove observations
 
-Section 5
-?
+[in progress, but postpone until after submit] implement the 1 vs 2 cluster model in pytorch
 
-Section 6
-?
+[X] update the example of 4.2 to be based on 1 vs 2 cluster model (and to include observations in the trace)
+
+[X] add an explanation at the end of 4.1.1 that the involution can read from the observations (and we denote it by F_b),
+    because they are part of the model trace, but that it is not responsible for writing them out again.
+
+[X] update section 5 to clarify that the observations are not part of N, N' etc. ("number of keys in the latent part of trace")
+
+[X] handle observations in the pytorch implementation (automatically copy them? separate them from x, y)
+
+[ ] add a note explaining that we keep observations in the trace so a single language can be used for both and Q
+
+[ ] consider moving the measure theoretic version Algorithm 1 stuff to the appendix? -- it is not the main contribution
+
+
+
+
+
+
+-------------
+
+[ ] fix how observations are handled
+[ ] move the general measure-theoretic version to the appendix?
+
+section 4 is the first place where we need to introduce \tilde{p}(x \oplus b)
+
+Algorithm 2
+- call x and b 'dictionaries'?
+
+may need to modify run-involution?
+
+decision: should the involution operate on the state space that includes the observations or not?
+
+the involution f operates just on the latent space
+
+use the word 'generative model' -- our technique relies on there being observations?
+could we make our technique work without observations in the trace?
+score would need to return the prior (ok) times the likelihood...
+how would we implemet this using probabilistic proramming?
+could we introduce 'score' statements into the probabilistic program? i.e. so they are not random choices?
+yes.
+
+above equation (3)
+be explicit that we do not use 'factor' statements in our probabilistic programs
+(but we could?)
+
+can we just ignore the observations completely? implying that they are copied over
+(but also mentioning that we can read from them..)
+
+yes, note that the pytorch implementation does not copy them over..
+
+[ ] add observations to the polar coordinate example 
+
+[ ] move figures early in the paper
+
+fix the Jacobian figure -- remove the observed data from the Jacobian
+
+in 5.2, clarify that all the Ns do not include the observed random choices / size of data set
+this is all about how the algorithm scales as a function of latent part of the trace
+
+the pytorch involution implementation should automatically copy the observations over
+(and the polar coordinate example should include an observed random choice as well...)
+we should show the posterior for two different data sets -- one 'ring-shaped' and one not?
