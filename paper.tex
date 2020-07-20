@@ -178,6 +178,37 @@ One other probabilistic programming system besides Gen supports custom reversibl
 \citet{roberts2019} present a system embedded in Haskell that automatically generates the implementation of some reversible jump MCMC kernels from a high-level specification.
 \citet{narayanan2020symbolic} give a technique that automatically computes Metropolis-Hastings acceptance probabilities in some settings; however, these approaches do not handle many kernels that can be handled by our technique, including the example in Figure~\ref{fig:structure-learning}.
 
+\begin{figure*}[ht!]
+    \centering
+    \includegraphics[width=0.93\textwidth]{figures/mixture.pdf}
+    \caption{
+Example of reversible jump MCMC~\citep{green1995reversible} implemented using involutive MCMC in Gen.
+The example implements a `split-merge move' in a infinite Gaussian mixture model~\citep{richardson1997bayesian} using three Gen programs:
+(1) a probabilistic program $\mathtt{p}$ encoding the generative model (shown in b),
+(2) a probabilistic program $\mathtt{q}$ encoding an auxiliary probability distribution (shown in c),
+and (3) a differentiable program $\mathtt{f}$ that encodes an involution on the space of pairs of traces of $\mathtt{p}$ and $\mathtt{q}$ (shown in d).
+Gen's involutive MCMC operator (shown in e) automatically computes the acceptance probability.
+}
+    \label{fig:mixture}
+\end{figure*}
+
+\begin{figure*}[ht!]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/structure-learning.pdf}
+    \caption{
+A mixture kernel implemented using involutive MCMC in Gen, applied to infer the covariance function of a Gaussian process.
+The prior on covariance functions is based on a probabilistic context-free grammar.
+Each component kernel in the mixture replaces a subtree of the covariance function parse tree with a new subtree.
+The mixture kernel chooses a random subtree to replace via a random walk on the parse tree.
+The mixture kernel is composed from three Gen programs:
+(1) a probabilistic program $\mathtt{p}$ encoding the generative model (shown in a),
+(2) a probabilistic program $\mathtt{q}$ encoding an auxiliary probability distribution (shown in b), and
+(3) a differentiable program $\mathtt{f}$ that encodes an involution (shown in d).
+}
+    \label{fig:structure-learning}
+\end{figure*}
+
+\clearpage
 \section{INVOLUTIVE MCMC ON GENERAL STATE SPACES} % on traces ??
 
 Involutive MCMC is a general framework for constructing MCMC kernels that are stationary
@@ -315,20 +346,6 @@ If each each key $k \in B$ is discrete (e.g. $\mu_k$ is the counting measure), t
 
 Consider the infinite univariate mixture model, and the conditional density given observed data $(B, \mathbf{b}) := \{\mathtt{y}_1 \mapsto y_1, \ldots, \mathtt{y}_{\mathtt{n}} \mapsto y_{\mathtt{n}}\}$.
 The conditional density $p(d | b)$ is nonzero only if $K_d = \{\texttt{k}\} \cup \{\texttt{m}_i \mid 1 \leq i \leq k\} \cup \{\texttt{s}_i \mid 1 \leq i \leq k\}$ for some $k$ ($d$ does not contain y-values), and the denominator in the definition of $p(d | b)$ simplifies to the familiar sum of marginal likelihoods over all $k$, where each marginal likelihood is a Riemann integral over $\mathbb{R}^{2k}$.
-
-\begin{figure*}[h!]
-    \centering
-    \includegraphics[width=0.93\textwidth]{figures/mixture.pdf}
-    \caption{
-Example of reversible jump MCMC~\citep{green1995reversible} implemented using involutive MCMC in Gen.
-The example implements a `split-merge move' in a infinite Gaussian mixture model~\citep{richardson1997bayesian} using three Gen programs:
-(1) a probabilistic program $\mathtt{p}$ encoding the generative model (shown in b),
-(2) a probabilistic program $\mathtt{q}$ encoding an auxiliary probability distribution (shown in c),
-and (3) a differentiable program $\mathtt{f}$ that encodes an involution on the space of pairs of traces of $\mathtt{p}$ and $\mathtt{q}$ (shown in d).
-Gen's involutive MCMC operator (shown in e) automatically computes the acceptance probability.
-}
-    \label{fig:mixture}
-\end{figure*}
 
 \subsection{Involutive MCMC with Dictionaries}
 
@@ -1205,21 +1222,6 @@ For the original mixture distribution, the ratio of mixture probabilities is eit
 For this alternative mixture distribution, the ratio of mixture probabilities is the ratio of sizes of the two trees (e.g. $9/5$ or $5/9$ for the trees above).
 In both cases, our automated involutive MCMC algorithm automatically computes the acceptance probability.
 
-\begin{figure*}[ht]
-    \centering
-    \includegraphics[width=0.95\textwidth]{figures/structure-learning.pdf}
-    \caption{
-A mixture kernel implemented using involutive MCMC in Gen, applied to infer the covariance function of a Gaussian process.
-The prior on covariance functions is based on a probabilistic context-free grammar.
-Each component kernel in the mixture replaces a subtree of the covariance function parse tree with a new subtree.
-The mixture kernel chooses a random subtree to replace via a random walk on the parse tree.
-The mixture kernel is composed from three Gen programs:
-(1) a probabilistic program $\mathtt{p}$ encoding the generative model (shown in a),
-(2) a probabilistic program $\mathtt{q}$ encoding an auxiliary probability distribution (shown in b), and
-(3) a differentiable program $\mathtt{f}$ that encodes an involution (shown in d).
-}
-    \label{fig:structure-learning}
-\end{figure*}
 
 
 \section{DISCUSSION}
