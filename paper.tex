@@ -369,13 +369,13 @@ See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 \begin{algorithmic}
 \Require probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$; differentiable program $\mathcal{F}$; initial state $x$; observations $b$
 \vspace{1mm}
-\Procedure{auto-involutive-mcmc}{$\mathcal{P}$, $\mathcal{Q}$, $\mathcal{F}$, $x$}
+\Procedure{auto-involutive-mcmc}{$\mathcal{P}$, $\mathcal{Q}$, $\mathcal{F}$, $x$, $b$}
     \State\vspace{-2mm}
     \LineComment{Sample $y \sim q_x(\cdot)$ and compute log-density via probabilistic program $\mathcal{Q}$}
     \State $(y, \log q_x(y)) \gets \textproc{trace-and-score}(\mathcal{Q}_x)$
     \State\vspace{-2mm}
-    \LineComment{{\small Compute $(x' \oplus y') = f(x \oplus y)$ and log(Radon-Nikodym derivative) via differentiable program $\mathcal{F}$}}
-    \State $(x' \oplus y', \log D) \gets \textproc{run-involution}(\mathcal{F}, x \oplus y)$
+    \LineComment{{\small Compute $(x' \oplus y') = f(x \oplus y)$ and log(Radon-Nikodym derivative) via differentiable program $\mathcal{F}_b$}}
+    \State $(x' \oplus y', \log D) \gets \textproc{run-involution}(\mathcal{F}_b, x \oplus y)$
     \State\vspace{-2mm}
     \LineComment{Compute log-density via probabilistic program $\mathcal{P}$}
     \State $\log \tilde{p}(x \oplus b) \gets \textproc{score}(\mathcal{P}, x \oplus b)$
@@ -420,7 +420,7 @@ See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 \EndProcedure
 \end{minipage}\\
 \vspace{1mm}
-\Procedure{run-involution}{$\mathcal{F}$, $z$}
+\Procedure{run-involution}{$\mathcal{F}_b$, $z$}
 % TODO would be much simpler to describe if we didn't have to separate out x and y..
     \LineComment{Run the involution, and keep track of copied, read, and written continuous keys}
     \State $z' \gets \{\}$ \Comment{Initialize empty output dictionary}
@@ -668,77 +668,116 @@ As we will see in Section~\ref{sec:sparsity}, it is preferable to use $\mathtt{@
 %\end{center}
 %The mathematical behavior of the function is defined simply by writing Julia code that implements it.
 \paragraph{Constructing an Involution}
-The following code reads the values of parameters from the model in polar coordinates and writes out their values in cartesian coordinates:
+Consider the following generative model, which posits that a vector of univariate data is either generated from a single normal distribution or a mixture of two normal distributions.
+The model is expressed as a probabilistic program:
 \noindent
 \begin{center}
 \begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-r = @read(model_in[:r], :continuous)
-theta = @read(model_in[:theta], :continuous)
-x = r * sin(theta)
-y = r * cos(theta)
-@write((model_out[:x], x, :continuous)
-@write((model_out[:y], y, :continuous)
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-
-This code snippet defines a bijection from one coordinate system to another.
-However, it does not define an involution, because applying the function the first time produces a trace containing cartesian coordinates, and applying the function a second time to the resulting trace would fail, because the function reads in polar coordinates from its input trace.
-How can we make the function an involution?
-First, the function will need the ability to go from cartesian coordinates to polar coordinates, so the code for the inverse of the forward transformation must appear in the function somewhere.
-Also, to be an involution, the input and output traces must contain some information indicating whether they are using polar or cartesian coordinates, so the involution code knows which of the two transformations to read from, and which addresses to read from and write to.
-Below is a minimal example of the involution, that uses a Boolean address polar.
-Note that the involution negates the value of this address, to indicate that the coordinate system is switching with each application.
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-polar = @read(model_in[:polar], :discrete)
-if polar
-   r = @read(model_in[:r]), :continuous)
-   theta = @read(model_in[:theta], :continuous)
-   x = r * sin(theta)
-   y = r * cos(theta)
-   @write(model_out[:x], x, :continuous)
-   @write(model_out[:y], y, :continuous)
-else
-   x = @read(model_in[:x], :continuous)
-   y = @read(model_in[:y], :continuous)
-   r = (x^2 + y^2)
-   theta = atan(y, x)
-   @write(model_out[:r], r, :continuous)
-   @write(model_out[:theta], theta, :continuous)
-end
-@write(model_out[:polar], !polar, :discrete)
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-In order to apply this function in the context of involutive MCMC, we require probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ that define space of input and output traces for the involution.
-The involution only reads and writes to model addresses, so $\mathcal{Q}$ can be an empty program:
-\noindent
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
+\begin{lrbox}{\mybox}%
+\begin{lstlisting}[basicstyle=\small\ttfamily]
 @gen function p()
-    polar ~ bernoulli(0.5)
-    if polar
-        r ~ gamma(1, 1)
-        theta ~ uniform(-pi, pi)
-    else
-        x ~ normal(0, 1)
-        y ~ normal(0, 1)
+  k ~ uniform_discrete(1, 2)
+  means = [{(:mu, j)} ~ normal(0, 10) for j in 1:k]
+  weights = ones(k)/k
+  vars = ones(k)
+  for i in 1:100
+    {(:x, i)} ~ mixture_of_normals(weights, means, vars)
+  end
+end
+\end{lstlisting}
+\end{lrbox}%
+\scalebox{0.90}{\usebox{\mybox}}
+\end{tabular}
+\end{center}
+This is a simplified version of the unfinite Gaussian mixture model in Figure~\ref{fig:mixture}b.
+Each key of the form $(\mathtt{:}\mathtt{x}, i)$ will be observed (in the dictionary $b$), and the latent part of the trace (the dictionary $x$) contains the other keys $\mathtt{:}\mathtt{k}$ and $(\mathtt{:}\mathtt{mu}, 1)$ and (only if $\mathtt{k} = 2$) $(\mathtt{:}\mathtt{mu}, 2)$.
+
+We will now walk through how to express a simple `split-merge' move~\citep{richardson1997bayesian} using our differentiable programming language.
+Suppose we want to construct an involutive MCMC kernel that changes $\mathtt{k}$ from $2$ to $1$ or vice-versa.
+The discrete part of the involution is straightforward:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+\begin{lrbox}{\mybox}%
+\begin{lstlisting}[basicstyle=\small\ttfamily]
+k = @read(model_in["k"], discrete)
+if k == 1
+    @write(model_out["k"], 2, discrete)
+else
+    @write(model_out["k"], 1, discrete)
+end
+\end{lstlisting}
+\end{lrbox}%
+\scalebox{1.0}{\usebox{\mybox}}
+\end{tabular}
+\end{center}
+Writing the involution code for the continuous choices is more complex.
+There is no one-to-one correspondence between the space of dictionaries with keys $\{\mathtt{:}\mathtt{k}, (\mathtt{:}\mathtt{mu}, 1)\}$ and the space of dictionaries $x$ with keys $\{\mathtt{:}\mathtt{k}, (\mathtt{:}\mathtt{mu}, 1), (\mathtt{:}\mathtt{mu}, 2)\}$.
+Therefore, we need to extend the state space using the auxiliary distribution, defined with the following probabilistic program:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+\begin{lrbox}{\mybox}%
+\begin{lstlisting}[basicstyle=\small\ttfamily]
+@gen function q(model_trace)
+    if model_trace["k"] == 1
+        # we are doing a split, sample extra DoF
+        u ~ beta(2, 2)
     end
 end
-
-@gen function q(x)
-end
-\end{lstlisting}}
+\end{lstlisting}
+\end{lrbox}%
+\scalebox{1.00}{\usebox{\mybox}}
 \end{tabular}
 \end{center}
+Our involution is on the space of combined dictionaries $x \oplus y$ where $y$ are traces of $\mathtt{q}$.
+Note that for each $(x \oplus y)$ where $x[\mathtt{k}] = 1$, $y$ has a key $\mathtt{u}$, and for each $(x \oplus y)$ where $x[\mathtt{k}] = 2$, $y$ is empty.
+We extend the involution using a pair of bijections between $(\mu_1, \mu_2)$ and $(\mu_1, u)$:
+\[
+\mu_1, \mu_2 \mapsto ((\mu_1 + \mu_2) / 2, \mu_2 - (\mu_1 + \mu_2)/2)
+\]
+\[
+\mu_1, u \mapsto (\mu_1 - u, \mu_1 + u)
+\]
+The value of $x[\mathtt{k}]$ determines which of these functions is executed.
+The full involution program $\mathcal{F}$ is then:
+\noindent
+\begin{center}
+\begin{tabular}{c}
+\begin{lrbox}{\mybox}%
+\begin{lstlisting}[basicstyle=\small\ttfamily]
+@transform f (model_in,aux_in) to (model_out,aux_out)
+begin
+    k = @read(model_in["k"], discrete)
+    if k == 1
+        @write(model_out["k"], 2, discrete)
+        mu = @read(model_in[("mu", 1)], continuous)
+        u = @read(aux_in["u"], continuous)
+        mu1 = mu - u; mu2 = mu + u
+        @write(model_out[("mu", 1)], mu1, continuous)
+        @write(model_out[("mu", 2)], mu2, continuous)
+    else
+        @write(model_out["k"], 1, discrete)
+        mu1 = @read(model_in[("mu", 1)], continuous)
+        mu2 = @read(model_in[("mu", 2)], continuous)
+        mu = (mu2 + mu1) / 2
+        u = mu2 - mu
+        @write(model_out[("mu", 1)], mu, continuous)
+        @write(aux_out["u"], u, continuous)
+    end
+end
+\end{lstlisting}
+\end{lrbox}%
+\scalebox{0.90}{\usebox{\mybox}}
+\end{tabular}
+\end{center}
+The two continuous bijections (implemented in blocks of code in the two branches) are inverses of one another.
+This is a common pattern in involution programs---an involution on the discrete parts of the traces (in this case, just $x[\mathtt{k}]$) determines via control flow which continuous code blocks get executed, such that the end-to-end program defines an involution.
 
-Note that in general there are observations $b$ that induce the target density $p(x)$ via $p(x) \propto \tilde{p}(x \oplus b)$ as described in Section~\ref{sec:dists-on-dicts}, and the involution $f$ in general depends on $b$.
-The involution program $\mathcal{F}$ can read the values of the $b$, which are stored alongside the unobserved random choices in the input model trace.
+Note that the observations $b$ (in this case, the x-coordinates) are included in traces of $\mathtt{p}$, which take the form $x \oplus b$ where $x$ is the latent part and $b$ is the observed part.
+The involution program $\mathcal{F}$ is allowed to read from the the observations in the model trace using the same syntax as used to read from the latent part of the trace $x$.
+To denote this dependency we use notation $\mathcal{F}_b$.
+(The example given here does not utilize this feature).
 
 \subsubsection{Computing the Jacobian with Automatic Differentiation}
 
