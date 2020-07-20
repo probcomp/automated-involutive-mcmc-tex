@@ -1028,7 +1028,13 @@ at random to delete
     deletion_idx ~ uniform_discrete(1, current_k)
   end
 end
+\end{lstlisting}}
+\end{tabular}
+\end{center}
 
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
 @transform h (tr1, tr2) to (tr3, tr4) begin
    is_birth = @read(tr2, :is_birth, :discrete)
    @write(tr4[:is_birth], !is_birth, :discrete)
@@ -1158,7 +1164,7 @@ For example, the choice $\mathtt{done}$ a recursive call to $\mathtt{walk\_tree}
 \[
 k = (\mathtt{:}\mathtt{left} \mbox{ \texttt{=>} } \mathtt{:}\mathtt{right} \mbox{ \texttt{=>} } \mathtt{:}\mathtt{done})
 \]
-(In Gen, `\texttt{=>}' constructs hierarchical addresses.)
+(`\texttt{=>}' is the Gen syntax for constructing hierarchical addresses).
 
 \paragraph{A complex state-dependent distribution.}
 At each iteration of the MCMC algorithm, the auxiliary probabilistic program $\mathtt{q}$ (Figure~\ref{fig:structure-learning}d) first picks a random node in the parse tree of the covariance function, by doing a stochastic walk of the existing parse tree that terminates at the chosen node.
@@ -1186,7 +1192,7 @@ end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-The resulting distributions on selected nodes for two example trees are shown below:
+The resulting distributions on selected nodes for two possible input trees are shown below:
 \begin{center}
 \includegraphics[width=0.8\linewidth]{figures/biased-tree-distribution.pdf} % TODO improve quality
 \end{center}
@@ -1218,7 +1224,7 @@ end
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-The resulting distributions, for two input trees, are:
+The resulting distributions, for two possible input trees, are:
 \begin{center}
 \includegraphics[width=0.8\linewidth]{figures/unbiased-tree-distribution.pdf}
 \end{center}
