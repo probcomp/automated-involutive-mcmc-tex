@@ -792,7 +792,9 @@ The $\mathtt{discrete}$ and $\mathtt{continuous}$ labels are also omitted from t
 
 \section{EXPLOITING SPARSITY FOR IMPROVED PERFORMANCE} \label{sec:sparsity}
 
-Suppose $N$ and $N'$ are the total number of random choices in the input traces $x, y$ and output traces $x', y'$ respectively, and $M$ is the number of continuous random choices (which must be the same in the input traces and output traces).
+Suppose $N$ and $N'$ are the total number of random choices in the input traces $x, y$ and output traces $x', y'$ respectively
+(note that the observations $b$ are excluded---$x$ and $x'$ are the \emph{latent} part of the model's traces only).
+Let $M$ be the number of continuous random choices among these (which must be the same in the input traces and output traces).
 Then, the number of operations used in Algorithm~\ref{alg:auto-involutive-mcmc} grows as $O(N + N') + O(M^3)$.
 The linear term is due to sampling $y'$ and computing the four log-densities required for the acceptance probability.
 The cubic term is due to computing the Jacobian determinant, which is also required for the acceptance probability (Equation~\ref{eq:acceptance-ratio-dictionaries}).
@@ -830,18 +832,19 @@ The $\mathtt{@copy}$ statement in our differentiable programming language makes 
 Many involutive MCMC kernels modify only a constant number of keys that does not depend on the sizes $N$ and $N'$ of the input and output traces or the total number of continous keys $M$; the other keys are copied over unchanged.
 For example, consider the Jacobian for a split-merge reversible jump move~\citet{richardson1997bayesian}, which is implemented in Figure~\ref{fig:mixture}:
 \includegraphics[width=\linewidth]{figures/sparse-jacobian.pdf}
+Here, the move is splitting cluster 2 into two clusters (cluster 2 and cluster 4).
 Black squares indicate nonzero entries.
-In this case, the size $N$ of the trace grows linearly both in the number of clusters and the number of data points, but the Jacobian determinant can be calculated from only the $6$-by-$6$ submatrix of the Jacobian that involves the parameters of the one cluster being split (or the two clusters being merged).
+In this case, the size $N$ of the latent part of the trace grows linearly in the number of clusters, but the Jacobian determinant can be calculated from only the $6$-by-$6$ submatrix of the Jacobian that involves the parameters of the one cluster being split (or the two clusters being merged).
 Therefore, the acceptance ratio computation reduces from $O(N + N') + O(M^3)$ to $O(N + N')$.
 While a reasonable hand-coded implementation of this algorithm would likely perform this sort of optimization as well, Algorithm~\ref{alg:auto-involutive-mcmc} automates it.
 
 % TODO show an performance table of moves per second with and without the sparsity reduction (?)
 \subsection{Incremental Computation of Output Traces and Density Ratios}
 
-Consider input traces $(x, y)$ and output traces $(x', y')$ with $f(x, y) = (x', y')$ for involution $f$ encoded by program $\mathcal{F}$.
+Consider input traces $(x, y)$ and output traces $(x', y')$ with $f(x, y) = (x', y')$ for involution $f$ encoded by program $\mathcal{F}$ (again, $x$ and $x'$ include only the \emph{latent} part of the model trace and not the observed part $b$).
 Let $N_1 := |K_{x}|$, $N_2 := |K_{y}|$, $N_1' := |K_{x'}|$ and $N_2' := |K_{y'}|$, and
 $N := N_1 + N_2$ and $N' := N_1' + N_2'$.
-Suppose that $N_1 + N_1' \gg N_2 + N_2'$, which occurs when the size of the model traces grows in the size of a data set, but the size of the auxiliary trace is constant.
+Suppose that $N_1 + N_1' \gg N_2 + N_2'$, which often occurs when the the number of latent variables is large, but the involutive MCMC move only updates a portion of the latent variables.
 Algorithm~\ref{alg:auto-involutive-mcmc} runs $\mathcal{F}$, which explicitly writes the value for each element of $(x', y')$, requiring $N' = N_1' + N_2' \approx N_1'$ `write' or `copy' operations.
 The algorithm also uses approximately $N_1 + N_1'$ operations to evaluate the log-densities, because it accumulates the log-density of each random choice in $x$, and $x'$.
 
@@ -889,7 +892,7 @@ modifying the requirement for the involution program $\mathcal{F}$:
 Instead of explicitly specifying a value for all keys in $x'$, it can specify $x'$ by only explicitly specifying values in $\delta$.
 Therefore, the involution program can run in $O(|K_{\delta}| + N_2 + N_2')$ operations.
 We replace the separate calls to \textproc{score} for the log-densities $\log \tilde{p}(x \oplus b)$ and $\log \tilde{p}(x' \oplus b)$ and replace them with a single call to \emph{trace-update} on $\mathcal{P}$ that takes in $x$ and $\delta$ and returns $x'$ and $\log (\tilde{p}(x' \oplus b) / \tilde{p}(x \oplus b))$.
-When $|K_{\delta}|$ and $N_2$ and $N_2'$ are all constant in the size $N_1$ of the model trace $x$, the resulting algorithm uses a number of operations that does not grow with $N_1 + N_1'$.
+When $|K_{\delta}|$ and $N_2$ and $N_2'$ are all constant in the size $N_1$ of the latent part of model trace ($x$), the resulting algorithm uses a number of operations that does not grow with $N_1 + N_1'$.
 % TODO need to differentiate between number of data and latent dimension here!
 % it is only constant in the latent dimension, not in the data.. (except in unusual cases)
 
