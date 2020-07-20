@@ -148,7 +148,7 @@ The contributions of this paper include:
 \begin{enumerate}
 \item A measure-theoretic formulation of involutive MCMC on general state spaces.
 \item A mathematical formulation of state spaces consisting of arbitrary key-value stores (i.e. dictionaries) that formalizes the space of execution traces of Gen probabilistic programs, and a formulation of involutive MCMC on these spaces.
-\item A differentiable programming language for defining bijections between spaces of traces of probabilistic programs.
+\item A differentiable programming language for defining transformations between spaces of traces of probabilistic programs.
 \item An algorithm that automates the implementation of an involutive MCMC kernel given two probabilistic programs and a differentiable program encoding the involution, using automatic differentiation and tracing of probabilistic programs.
 \item An extension to the algorithm that exploits sparsity in the involution to reduce the number of operations needed to apply an involutive MCMC kernel from $O(N^3)$ to $O(1)$ in some cases, where $N$ is the dimensionality of the latent space.
 \item An algorithm that dynamically detects errors in the specification of an involutive MCMC kernel.
@@ -166,7 +166,7 @@ Gen's involutive MCMC construction has since been used by a number of researcher
 The involutive MCMC construction encompasses many existing classes of MCMC kernels, some of which explicitly make use of bijective or involutive deterministic maps.
 In particular, the reversible jump framework~\citep{green1995reversible,hastie2012model} employs a family of continuously differentiable bijections between the parameter spaces of different models.
 \citet{tierney1998note} described a family of deterministic proposals based on a deterministic involution that is equivalent to involutive MCMC but without the auxiliary probability distribution.
-More recently,~\citet{spanbauer2020deep} defined a class of deep generative model based on differentiable involutions and trained these models to serve as efficient proposal distributions on continuous state spaces; the resulting algorithm is an instance of the construction presented in this paper.
+More recently,~\citet{spanbauer2020deep} defined a class of deep generative models based on differentiable involutions and trained these models to serve as efficient proposal distributions on continuous state spaces; the resulting algorithm is an instance of the construction presented in this paper.
 
 In recent decades, a number of probabilistic programming systems have automated the implementations of probabilistic inference algorithms~\citep{gilks1994language,milch2007,pfeffer200714,goodman2012church,gehr2016psi,carpenter2017stan}.
 Most of these systems support generic built-in inference algorithms, with user-customization limited to tweaking algorithm parameters.
@@ -392,7 +392,7 @@ See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
     \State $(y, \log q_x(y)) \gets \textproc{trace-and-score}(\mathcal{Q}_x)$
     \State\vspace{-2mm}
     \LineComment{{\small Compute $(x' \oplus y') = f(x \oplus y)$ and log(Radon-Nikodym derivative) via differentiable program $\mathcal{F}_b$}}
-    \State $(x' \oplus y', \log D) \gets \textproc{run-involution}(\mathcal{F}_b, x \oplus y)$
+    \State $(x' \oplus y', \log D) \gets \textproc{run-involution}(\mathcal{F}, x \oplus y, b)$
     \State\vspace{-2mm}
     \LineComment{Compute log-density via probabilistic program $\mathcal{P}$}
     \State $\log \tilde{p}(x \oplus b) \gets \textproc{score}(\mathcal{P}, x \oplus b)$
@@ -437,8 +437,7 @@ See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
 \EndProcedure
 \end{minipage}\\
 \vspace{1mm}
-\Procedure{run-involution}{$\mathcal{F}_b$, $z$}
-% TODO would be much simpler to describe if we didn't have to separate out x and y..
+\Procedure{run-involution}{$\mathcal{F}$, $z$, $b$}
     \LineComment{Run the involution, and keep track of copied, read, and written continuous keys}
     \State $z' \gets \{\}$ \Comment{Initialize empty output dictionary}
     \execute[$\mathcal{F}$], but with
@@ -451,6 +450,7 @@ See Section~\ref{sec:radon-nikodym-special-case} of the appendix for details.
             \algorithmicthen\hspace{1mm} evaluate to $z[k]$
             \algorithmicelse\hspace{1mm} set $R \gets R \cup \{k\}$ and evaluate to $z[k]$)
         \State $\mathtt{"@copy}(k_1, k_2)\mathtt{"} \equiv$ (set $z'[k_2] \gets z[k_1]$ and set $C \gets C \cup \{k_1\}$)
+        \State (and reading from observations $b$ for any $k \in K_b$)
     \END
     \LineComment{Use automatic differentiation of $\mathcal{F}$ to compute Jacobian, skipping copied addresses}
     \For{$i$ in $1$ to $|W|$}
@@ -499,7 +499,7 @@ But the technique is not limited to the Gen system---we also provide the impleme
 \subsubsection{A Probabilistic Programming Language}
 
 Our probabilistic programming language augments the syntax of Julia~\citep{bezanson2017julia}
-with a single new construct, the `$\{\mathtt{address}\} \sim \mathtt{distribution}$' expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form `$\{\mathtt{address}\} \sim \mathtt{distribution}$', (i) evaluating the \textit{address expression} (`$\mathtt{address}$') to obtain an address $k \in \mathcal{K}$; (ii) evaluating the \textit{distribution expression} (`$\mathtt{distribution}$') to obtain a probability distribution over the measurable space $V_k$; (iii) sampling a value $x_k$ from this distribution and adding the mapping $\{k \mapsto x_k\}$ to a dictionary called the program trace; and (iv) returning the sampled value $x_k$ to the program, to continue execution. When execution terminates, the program trace has accumulated a mapping for each random choice encountered during the program's execution.
+with a single new construct, the `$\{\mathtt{address}\} \sim \mathtt{distribution}$' expression, for making a \textit{named} random choice. An execution trace of a Gen probabilistic program is a dictionary that can be sampled by running the program according to Julia's usual semantics, and upon encountering an expression of the form `$\{\mathtt{address}\} \sim \mathtt{distribution}$', (i) evaluating the \textit{address expression} (`$\mathtt{address}$') to obtain an address $k \in \mathcal{K}$; (ii) evaluating the \textit{distribution expression} (`$\mathtt{distribution}$') to obtain a probability distribution over the measurable space $V_k$; (iii) sampling a value $x_k$ from this distribution and adding the mapping $\{k \mapsto x_k\}$ to the execution trace; and (iv) returning the sampled value $x_k$ to the program, to continue execution. When execution terminates, the execution trace has accumulated a mapping for each random choice encountered during the program's execution.
 
 For example, consider the probabilistic program below, which defines a Gaussian mixture model with an unknown number of components:
 \noindent
@@ -559,7 +559,7 @@ In this case, the program $\mathcal{Q}$
 accepts a trace $x$ of $\mathcal{P}$ as input, we denote a probabilistic program $\mathcal{Q}$
 applied to input $x$ by $\mathcal{Q}_x$.
 
-Typically, we cannot use a probabilistic program $\mathcal{P}$ to represent the target distribution directly: probabilistic programs implement simulators for a distribution, but target densities are typically not tractable to simulate (hence the need for MCMC). Instead, we may wish to sample from a target $p$ that arises from conditioning a probabilistic program $\mathcal{P}$'s distribution over traces on observations of the values at some addresses. Let $\tilde{p}$ denote $\mathcal{P}$'s distribution over traces, and let $b = (B, \textbf{b})$ be a dictionary of observations, as described in Section~\ref{sec:dists-on-dicts}. Then, as shown in that section, the target distribution $p(x) = \tilde{p}(x \mid b) = \frac{\tilde{p}(x \oplus b)}{\mathcal{L}(b)}$, where $\mathcal{L}(b) = \int_{\{m \mid m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)$ is the marginal likelihood of $b$, and does not depend on $x$. Then $\tilde{p}(x \oplus b) = \mathcal{L}(b)p(x)$. If we use $\tilde{p}(x \oplus b)$ in place of $p(x)$ to compute the ratio of densities in Algorithm~\ref{alg:involutive-mcmc}, we will wind up with the same output, because $\mathcal{L}(b)$ will cancel in the numerator and denominator:
+Typically, we cannot use a probabilistic program $\mathcal{P}$ to represent the target distribution directly: probabilistic programs implement simulators for a distribution, but target densities are typically not tractable to simulate (hence the need for MCMC). Instead, we may wish to sample from a target $p$ that arises from \emph{conditioning} a probabilistic program $\mathcal{P}$'s distribution over traces on observations of the values at some addresses. Let $\tilde{p}$ denote $\mathcal{P}$'s distribution over traces, and let $b = (B, \textbf{b})$ be a dictionary of observations, as described in Section~\ref{sec:dists-on-dicts}. Then, as shown in that section, the target distribution $p(x) = \tilde{p}(x \mid b) = \frac{\tilde{p}(x \oplus b)}{\mathcal{L}(b)}$, where $\mathcal{L}(b) = \int_{\{m \mid m \cap B = \emptyset\}} p(m \oplus b) \mu_\mathcal{D}(\text{d}m)$ is the marginal likelihood of $b$, and does not depend on $x$. Then $\tilde{p}(x \oplus b) = \mathcal{L}(b)p(x)$. If we use $\tilde{p}(x \oplus b)$ in place of $p(x)$ to compute the ratio of densities in Algorithm~\ref{alg:involutive-mcmc}, we will wind up with the same output, because $\mathcal{L}(b)$ will cancel in the numerator and denominator:
 \begin{equation}
 \frac{p(x') q_{x'}(y')}{p(x) q_{x}(y)}
 = \frac{\tilde{p}(x' \oplus b) q_{x'}(y')}{\tilde{p}(x \oplus b) q_x(y)}
@@ -568,14 +568,14 @@ Typically, we cannot use a probabilistic program $\mathcal{P}$ to represent the 
 
 Thus, this ratio can be computed term-by-term using \textsc{score} on the probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ (Algorithm~\ref{alg:auto-involutive-mcmc}): to compute $q_x(y')$, we run the algorithm directly on the program $\mathcal{Q}_x$, and to compute $p(x)$ and $p(x')$, we actually merge the dictionary $x$ with the observations $b$ and compute $\mathcal{L}(b)p(x) = \tilde{p}(x \oplus b)$ instead, by running the algorithm on $\mathcal{P}$ with trace $x \oplus b$. The density $q_x(y)$ can be computed while $y$ is being sampled, using \textsc{trace-and-score}.
 
-Section~\ref{sec:sparsity} describes a more efficient approach that exploits sparsity in the involution (and the resulting cancellations in the acceptance ratio) for improved efficiency, but requires a more sophisticated probabilistic programming runtime system.
+Section~\ref{sec:sparsity} describes a more efficient approach that exploits sparsity in the involution and cancellations in the acceptance ratio for improved efficiency, but requires a more sophisticated probabilistic programming runtime system.
 
 Figure~\ref{fig:mixture}b and Figure~\ref{fig:mixture}c show examples of probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$ respectively, for a split-merge reversible jump move.
 
 \subsection{Differentiable Programming with Traces} \label{sec:differentiable-programming-traces}
 
 Section~\ref{sec:probabilistic-programming} showed that if the densities $p$ and $q$ are specified using probabilistic programs $\mathcal{P}$ and $\mathcal{Q}$, then the density ratio in the acceptance probability for involutive MCMC on dictionaries (Equation~(\ref{eq:acceptance-ratio-dictionaries})) can be automated using probabilistic programming techniques.
-This section shows that if the involution $f$ is specified in using a differentiable program $\mathcal{F}$ that transforms the execution traces of probabilistic programs, then the Jacobian factor in Equation~(\ref{eq:acceptance-ratio-dictionaries}) can also be automated, using automatic differentiation.
+This section shows that if the involution $f$ is specified using a differentiable program $\mathcal{F}$ that transforms the execution traces of probabilistic programs, then the Jacobian factor in Equation~(\ref{eq:acceptance-ratio-dictionaries}) can also be automated, using automatic differentiation.
 The procedure \textproc{auto-involutive-mcmc} in Algorithm~\ref{alg:auto-involutive-mcmc} combines these two ideas and automates involutive MCMC given the programs $\mathcal{P}$, $\mathcal{Q}$, and $\mathcal{F}$.
 
 %The previous section described how the probability densities ($p$ and $q$) required for involutive MCMC on spaces of dictionaries can be specified and automatically computed using probabilistic programs.
@@ -620,22 +620,22 @@ end
 \end{center}
 Here, the traces $x$, $y$, $x'$ and $y'$ are given names $\mathtt{model\_in}$, $\mathtt{aux\_in}$, $\mathtt{model\_out}$, and $\mathtt{aux\_out}$, respectively.
 The syntax for address $\mathtt{a}$ within trace $\mathtt{trace}$ is $\mathtt{trace[a]}$.
-For example, to read the value of a continuous address $\mathtt{:}\mathtt{r}$ from the input model trace ($x$):
+For example, to read the value of a continuous address $\mathtt{:}\mathtt{a}$ from the input model trace ($x$):
 \noindent
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    val = @read(model_in[:r], :continuous)
+val = @read(model_in[:a], :continuous)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
 The syntax for writing to an address in $x' \oplus y' \in Z$ is similar.
-For example to write a value $\mathtt{val}$ to $x'[\mathtt{:}\mathtt{r}]$:
+For example to write a value $\mathtt{val}$ to $x'[\mathtt{:}\mathtt{a}]$:
 \noindent
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    @write(model_in[:r], val, :continuous)
+@write(model_out[:a], val, :continuous)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -649,7 +649,7 @@ While this is possible via a $\mathtt{@read}$ followed by a $\mathtt{@write}$, t
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    @copy(<from-address>, <to-address>)
+@copy(<source-address>, <destination-address>)
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -658,12 +658,12 @@ For example, to copy the value from address $\mathtt{:}\mathtt{u}$ in $x$ to add
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-    @copy(model_in[:u], model_in[:v])
+@copy(model_in[:u], model_out[:v])
 \end{lstlisting}}
 \end{tabular}
 \end{center}
 Of course, it is also possible to copy from $x$ to $y'$, from $y$ to $x'$ and from $y$ to $y'$.
-As we will see in Section~\ref{sec:sparsity}, it is preferable to use $\mathtt{@copy}$ when possible instead of reading and then writing, as this can improve the efficiency of automatic differentiation.
+As we will see in Section~\ref{sec:sparsity}, it is preferable to use $\mathtt{@copy}$ when possible instead of reading and then writing, as this can make the acceptance probability calculation more efficient.
 
 
 
@@ -706,11 +706,11 @@ end
 \scalebox{0.90}{\usebox{\mybox}}
 \end{tabular}
 \end{center}
-This is a simplified version of the unfinite Gaussian mixture model in Figure~\ref{fig:mixture}b.
-Each key of the form $(\mathtt{:}\mathtt{x}, i)$ will be observed (in the dictionary $b$), and the latent part of the trace (the dictionary $x$) contains the other keys $\mathtt{:}\mathtt{k}$ and $(\mathtt{:}\mathtt{mu}, 1)$ and (only if $\mathtt{k} = 2$) $(\mathtt{:}\mathtt{mu}, 2)$.
+This is a simplified version of the infinite Gaussian mixture model in Figure~\ref{fig:mixture}b.
+Each key of the form $(\mathtt{:}\mathtt{x}, i)$ will be observed (in the dictionary $b$), so the latent part of the trace (the dictionary $x$) contains the other keys $\mathtt{:}\mathtt{k}$ and $(\mathtt{:}\mathtt{mu}, 1)$ and (when $\mathtt{k} = 2$) $(\mathtt{:}\mathtt{mu}, 2)$.
 
 We will now walk through how to express a simple `split-merge' move~\citep{richardson1997bayesian} using our differentiable programming language.
-Suppose we want to construct an involutive MCMC kernel that changes $\mathtt{k}$ from $2$ to $1$ or vice-versa.
+Suppose we want to construct an involutive MCMC kernel that changes $\mathtt{k}$ from $2$ to $1$ or vice versa.
 The discrete part of the involution is straightforward:
 \noindent
 \begin{center}
@@ -749,13 +749,13 @@ end
 \end{center}
 Our involution is on the space of combined dictionaries $x \oplus y$ where $y$ are traces of $\mathtt{q}$.
 Note that for each $(x \oplus y)$ where $x[\mathtt{k}] = 1$, $y$ has a key $\mathtt{u}$, and for each $(x \oplus y)$ where $x[\mathtt{k}] = 2$, $y$ is empty.
-We extend the involution using a pair of bijections between $(\mu_1, \mu_2)$ and $(\mu_1, u)$:
-\[
-\mu_1, \mu_2 \mapsto ((\mu_1 + \mu_2) / 2, \mu_2 - (\mu_1 + \mu_2)/2)
-\]
-\[
-\mu_1, u \mapsto (\mu_1 - u, \mu_1 + u)
-\]
+We extend the involution using a pair of bijections between $(\mu_1, \mu_2)$ and $(\mu_1, u)$ that show how two cluster means should be transformed into one cluster mean (merge), and vice versa (split):
+\begin{equation} \label{eq:split-merge}
+\begin{array}{c}
+\mu_1, \mu_2 \mapsto ((\mu_1 + \mu_2) / 2, \mu_2 - (\mu_1 + \mu_2)/2) \;\; [\mathrm{Merge}]\\
+\mu_1, u \mapsto (\mu_1 - u, \mu_1 + u) \;\; [\mathrm{Split}]
+\end{array}
+\end{equation}
 The value of $x[\mathtt{k}]$ determines which of these functions is executed.
 The full involution program $\mathcal{F}$ is then:
 \noindent
@@ -768,6 +768,8 @@ begin
     k = @read(model_in["k"], discrete)
     if k == 1
         @write(model_out["k"], 2, discrete)
+
+        # split bijection
         mu = @read(model_in[("mu", 1)], continuous)
         u = @read(aux_in["u"], continuous)
         mu1 = mu - u; mu2 = mu + u
@@ -775,6 +777,8 @@ begin
         @write(model_out[("mu", 2)], mu2, continuous)
     else
         @write(model_out["k"], 1, discrete)
+
+        # merge bijection
         mu1 = @read(model_in[("mu", 1)], continuous)
         mu2 = @read(model_in[("mu", 2)], continuous)
         mu = (mu2 + mu1) / 2
@@ -793,13 +797,15 @@ This is a common pattern in involution programs---an involution on the discrete 
 
 Note that the observations $b$ (in this case, the x-coordinates) are included in traces of $\mathtt{p}$, which take the form $x \oplus b$ where $x$ is the latent part and $b$ is the observed part.
 The involution program $\mathcal{F}$ is allowed to read from the the observations in the model trace using the same syntax as used to read from the latent part of the trace $x$.
-To denote this dependency we use notation $\mathcal{F}_b$.
 (The example given here does not utilize this feature).
 
 \subsubsection{Computing the Jacobian with Automatic Differentiation}
 
 Recall that the involution $f$ must decompose into (i) an involution $g$ on elements $e \in E$ of a partition of the state space, and (ii) a pair of continuous differentiable bijections $h_{e}$ and $h_{g(e)} = h_{e}^{-1}$ between each pair of corresponding elements of the partition.
 Each function $h_e$ is a function from the values at continuous addresses in the input trace ($z[k]$ for $k \in K_z \cap \mathcal{J}$) to the values at continuous addresses in the output trace ($z'[k]$ for $k \in K_{z'} \cap \mathcal{J}$).
+In the example above, the partition $E$ is given by the equivalence classes of the relation $(x_1, y_1) \sim (x_2, y_2) \iff x_1[\mathtt{k}] = x_2[\mathtt{k}]$ (there are two equivalence classes), $g$ maps the $k = 1$ class to the $k = 2$ class and vice versa, and 
+the continuous bijections $h_e$ and $h_{g(e)}$ are the functions in Equation~(\ref{eq:split-merge}).
+
 We compute the Jacobian using automatic differentiation. (The Gen implementation uses forward-mode AD whereas our PyTorch implementation uses reverse-mode AD.)
 The procedure \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc} shows the implementation of the interpreter for the language that uses reverse-mode AD.
 The interpreter executes $\mathcal{F}$ using regular Julia or Python semantics, but intercepts calls to \texttt{@write}, \texttt{@read}, and \texttt{@copy} statements, and in addition to performing the desired operation, records the set of continuous addresses that are read, written, and copied.
@@ -827,7 +833,7 @@ The naive implementation of Algorithm~\ref{alg:auto-involutive-mcmc} computes by
 However, we observe that in many applications of involutive MCMC, the values at continuous choices in the input traces are directly copied into the output traces (either at the same key or a different key).
 These copy operations result in columns in the Jacobian matrix that have a single $1$ entry with remaining entries equal to $0$.
 For example, for the function $(u, v, x, y) \mapsto (u, 2 u - v, y, x) = (u', v', x', y')$, the Jacobian is (with columns corresponding to $u'$, $v'$, $x'$, and $y'$ and rows corresponding to $u$, $v$, $x$, and $y$):
-\begin{equation}
+\begin{equation*}
 \left[
 \begin{array}{cccc}
 1 & 2 & 0 & 0\\
@@ -839,11 +845,11 @@ For example, for the function $(u, v, x, y) \mapsto (u, 2 u - v, y, x) = (u', v'
 \begin{array}{c}
 u\\ v\\ x\\ y
 \end{array}
-\end{equation}
+\end{equation*}
 Using the cofactor expansion of the determinant, we observe that for any `copy' column in an $M$-by-$M$ Jacobian matrix (a column with a single $1$ and all other entries $0$), the absolute value of the determinant is equivalent to that of the $(M-1)$-by-$(M-1)$ sub-matrix with the corresponding column \textit{and} row omitted (even if that would remove other nonzero entries from the matrix).
 By applying this rule recursively, we can instead compute the determinant of a much smaller matrix; for the example above with $M=4$, the absolute value of the determinant simplifies to the absolute value of a single entry ($|-1|$).
 Indeed, if some input key is copied to some output key, then we can entirely avoid computing its row (and corresponding column) of the Jacobian.
-Therefore, the number of operations (which is dominated by the determinant) reduces from $M^3$ to $(M-|C|)^3$ where $|C|$ is the number of input keys that were copied to some output input key.
+Therefore, the number of operations (which is dominated by the determinant) reduces from $M^3$ to $(M-|C|)^3$ where $|C|$ is the number of input keys that were copied to some output key.
 The $\mathtt{@copy}$ statement in our differentiable programming language makes the set of input keys that were copied explicitly available to the interpreter, which makes automating this optimization straightforward, as shown in \textproc{run-involution} in Algorithm~\ref{alg:auto-involutive-mcmc}.
 
 Many involutive MCMC kernels modify only a constant number of keys that does not depend on the sizes $N$ and $N'$ of the input and output traces or the total number of continous keys $M$; the other keys are copied over unchanged.
@@ -867,11 +873,11 @@ The algorithm also uses approximately $N_1 + N_1'$ operations to evaluate the lo
 
 We now show how to modify the program $\mathcal{F}$ and its interpreter, so that both computing $z' = (x', y')$ from $z = (x, y)$, and computing the log density ratio $\log(\tilde{p}(x' \oplus b) / \tilde{p}(x \oplus b))$, can take $O(1)$ operations (that is, constant in $N_1 + N_1'$) when the involution $f$ has sparse structure and the model density $p$ has conditional independencies.
 
-Note that $x$ and $x'$ may both have values for certain keys, and $x$ may contains keys not present in $x'$, and vice-versa.
+Note that $x$ and $x'$ may both have values for certain keys, and $x$ may contains keys not present in $x'$, and vice versa.
 Often, an involution does not modify the values of many keys in the trace---this is the case in the split-merge reversible jump move described earlier.
 Suppose that $A \subseteq K_{x} \cap K_{x'}$ is the set of keys $k$ in both $x$ and $x'$ for which $x'[k] = x[k]$.
 Let $\Delta := K_{x'} \setminus A$ be the set of keys in $x'$ that are either (i) not in $x$, or (ii) in $x$ but have their value changed.
-Then, the previous trace $x$ and a dictionary $\delta$ with $K_{\delta} = \Delta$ and $\delta[k] = x'[k]$ and the density function $p$ suffice to uniquely define the trace $x'$, provided the density satisfies the following condition, which is satisfied by densities as probabilistic programs:
+Then, the previous trace $x$ and a dictionary $\delta$ with $K_{\delta} = \Delta$ and $\delta[k] = x'[k]$ and the density function $p$ suffice to uniquely define the trace $x'$, provided the density satisfies the following condition, which is satisfied by densities defined by probabilistic programs\footnote{Intuitively, two traces of a probabilistic program cannot have different sets of addresses unless they share an address and disagree on its value.}:
 $p(x) > 0$ and $p(x') > 0$ and $x \ne x'$ implies there exists $k \in K_x \cap K_{x'}$ with $x[k] \ne x'[k]$.
 Let $x|_A$ denote the \emph{restriction} of a dictionary $x$ to only keys in $A$.
 Then, \textproc{naive-trace-update} (Algorithm~\ref{alg:naive-update}) computes the new trace $x'$ and log-densities ratio $\log (p(x') / p(x))$ of a probabilistic program from a previous trace $x$ and a dictionary $\delta$ (and observations $b$), provided there exists $x' = \delta \oplus x|_A$ for some $A$ where $p(x') > 0$.
@@ -904,10 +910,10 @@ The details of these more efficient implementations are outside the scope of thi
 
 Given an implementation of \emph{trace-update} (that has the same input and output signature of \textproc{naive-trace-update}) we can optimize Algorithm~\ref{alg:auto-involutive-mcmc} by
 modifying the requirement for the involution program $\mathcal{F}$:
-Instead of explicitly specifying a value for all keys in $x'$, it can specify $x'$ by only explicitly specifying values in $\delta$.
-(The other values in $x'$ are \emph{implicit copies} via \emph{trace-update}---they could be explicitly copied within $\mathcal{F}$, but this would result in uncessary code and possibly unecessary computation.)
+Instead of explicitly specifying a value for all keys in $x'$, it need only explicitly specify values in $\delta$.
+(We call the other values in $x'$ \emph{implicit copies}---they could be explicitly copied within $\mathcal{F}$, but this would result in uncessary code and possibly unecessary computation.)
 Therefore, the involution program can run in $O(|K_{\delta}| + N_2 + N_2')$ operations.
-We replace the separate calls to \textproc{score} for the log-densities $\log \tilde{p}(x \oplus b)$ and $\log \tilde{p}(x' \oplus b)$ and replace them with a single call to \emph{trace-update} on $\mathcal{P}$ that takes in $x$ and $\delta$ and returns $x'$ and $\log (\tilde{p}(x' \oplus b) / \tilde{p}(x \oplus b))$.
+We remove the separate calls to \textproc{score} for the log-densities $\log \tilde{p}(x \oplus b)$ and $\log \tilde{p}(x' \oplus b)$ and replace them with a single call to \emph{trace-update} on $\mathcal{P}$ that takes in $x$ and $\delta$ and returns $x'$ and $\log (\tilde{p}(x' \oplus b) / \tilde{p}(x \oplus b))$.
 When $|K_{\delta}|$ and $N_2$ and $N_2'$ are all constant in the size $N_1$ of the latent part of model trace ($x$), the resulting algorithm uses a number of operations that does not grow with $N_1 + N_1'$.
 
 \section{DYNAMICALLY DETECTING BUGS IN INVOLUTIONS}
@@ -922,22 +928,23 @@ Fortunately, the factorization of diverse algorithms into a common template, inv
 \begin{algorithm}[h]
 \begin{algorithmic}
 \Procedure{involutive-mcmc-check}{$\mathcal{P}$, $\mathcal{Q}$, $\mathcal{F}$}
+    \State \vspace{-2mm}
     \LineComment{Generate a randomized test case}
-    \State $(x \oplus b) \sim \textproc{trace-and-score}(\mathcal{P})$ % TODO not conditioned on data?
-    \State $y \sim \textproc{trace-and-score}(\mathcal{Q}_x)$
+    \State $((x \oplus b), \_) \sim \textproc{trace-and-score}(\mathcal{P})$ % TODO not conditioned on data?
+    \State $(y, \_) \sim \textproc{trace-and-score}(\mathcal{Q}_x)$
     %\State $x \sim p(\cdot)$ \Comment{Sample state from prior}
     %\State $y \sim q_x(\cdot)$ \Comment{Sample auxiliary variables}
-
+    \State \vspace{-2mm}
     \LineComment{Run involution and perform dimension check}
-    \State $x' \oplus y' \gets \textproc{run-involution}(\mathcal{F}, x \oplus y)$
-
+    \State $x' \oplus y' \gets \textproc{run-involution}(\mathcal{F}, x \oplus y, b)$
+    \State \vspace{-2mm}
     \LineComment{Support check}
     \State $\log p(x') \gets \textproc{score}(\mathcal{P}, x')$
     \State $\log q_{x'}(y') \gets \textproc{score}(\mathcal{Q}_{x'}, y')$
     \State {\bf assert} $(\log p(x') > -\infty) \land (\log q_{x'}(y') > -\infty)$
-
+    \State \vspace{-2mm}
     \LineComment{Involution check}
-    \State $\tilde{x} \oplus \tilde{y} \gets \textproc{run-involution}(\mathcal{F}, x' \oplus y')$
+    \State $\tilde{x} \oplus \tilde{y} \gets \textproc{run-involution}(\mathcal{F}, x' \oplus y', b)$
     \State ${\bf assert} (\tilde{x} = x) \land (\tilde{y} = y)$
     %\State $(x', y') \gets f(x, y)$ \Comment{Apply involution}
     %\State {\bf assert} $f(x', y') = (x, y)$ \Comment{Involution check}
@@ -1079,6 +1086,7 @@ Reversible jump MCMC~\citep{green1995reversible,hastie2012model} is a special ca
 the implementation of reversible jump MCMC kernels can be automated using the probabilistic and differentiable programming languages presented in this paper.
 We now review reversible jump MCMC, then show how it can be automated using the techniques presented earlier, and give an example.
 
+\paragraph{Review of reversible jump MCMC.}
 The reversible jump MCMC framework involves a set of `models' $h \in \mathcal{H}$, and a prior distribution on models $p(h)$.
 For each model, there is a latent continuous parameter vector $\theta_h \in \mathbb{R}^{n(h)}$ where $n(h)$ is the dimension of model $h$, and a likelihood function $L_{D,h}(\theta_h)$ for each $h$ given data $D$.
 The latent state $x$ is a pair $(h, \theta_h)$ of model and continuous parameter.
@@ -1099,6 +1107,7 @@ A proposal is made from state $x = (h, \theta_h)$ by (i) sampling a move type $m
 %}
 %\end{equation*}
 
+\paragraph{Encoding reversible jump in involutive MCMC.}
 To encode reversible jump MCMC in our framework, we write a probabilistic program $\mathcal{P}$ that encodes the space of models $\mathcal{H}$, the prior distribution on models, $p(h)$, the per-model priors $p_h(\theta_h)$ and the per-model likelihoods $L_{D,h}(\theta_h)$.
 The set of all models $h$ is encoded in the set of all pairs $(K_\mathcal{P}, \mathbf{d}_\mathcal{P})$ where $K_\mathcal{P}$ represent possible trace structures (i.e. control-flow paths through $\mathcal{P}$) and $\mathbf{d}_\mathcal{P}$ are the set of assignments to discrete random choices made by $\mathcal{P}$.
 The per-model continuous parameters $\theta$ are encoded via continuous random choices $\mathbf{c}_\mathcal{P}$.
@@ -1106,10 +1115,11 @@ The per-model continuous parameters $\theta$ are encoded via continuous random c
 The auxiliary probabilistic program $\mathcal{Q}$ encodes both the probability distribution on moves types using discrete random choices and possibly stochastic control flow ($(K_\mathcal{Q}, \mathbf{d}_\mathcal{Q})$), and the per-move-type probability densities on $u$ using continuous random choices $\mathbf{c}_\mathcal{Q}$.
 The involution $f$ factors into an (i) involution $f_1$ on pairs $i = ((K_\mathcal{P}, \mathbf{d}_\mathcal{P}), (H_\mathcal{Q}, \mathbf{d}_\mathcal{Q}))$ that defines the association between move types $\mathcal{M}$ and the model pairs ($h_1, h_2$); and (ii) a family of bijections $f_{1,i}$ on the space of pairs $(\mathbf{c}_\mathcal{P}, \mathbf{c}_\mathcal{Q})$ of continuous random choices for both programs for fixed values of the discrete random choices and fixed trace structure.
 
+\paragraph{Example: Split-merge reversible jump.}
 Figure~\ref{fig:mixture} shows a split-merge reversible jump kernel for an infinite Gaussian mixture model~\citep{richardson1997bayesian} implemented using the probabilistic and differentiable programming languages described in this paper.
-Figure~\ref{fig:mixture}b shows the infinite Gaussian mixture model, specified as a probabilistic program $\mathcal{P}$.
+Figure~\ref{fig:mixture}b shows the infinite Gaussian mixture model, specified as a probabilistic program $\mathtt{p}$.
 The program takes the number of data points as input, then samples the number of clusters from a Poisson distribution, then samples cluster parameters and mixture proportions, and finally samples the data points from the resulting finite mixture.
-Figure~\ref{fig:mixture}c shows the auxiliary probabilistic program $\mathcal{Q}$ for the split-merge kernel.
+Figure~\ref{fig:mixture}c shows the auxiliary probabilistic program $\mathtt{q}$ for the split-merge kernel.
 This program takes a trace of the model program as input, and randomly decides whether to split a cluster and increase the number of clusters by one or merge two clusters and decrease the number of clusters by one.
 Then, the program randomly picks which cluster to split, or which clusters to merge.
 This kernel always merges the last cluster with a random other cluster; for ergodicity the move can be composed with a simple move (that has acceptance probability $1$) that swaps a random cluster with the last cluster.
@@ -1120,24 +1130,43 @@ The green section (2) specifies the continuous bijections that govern the transf
 
 \subsection{State-Dependent Mixture Proposals}
 
+
+\paragraph{Example: Bayesian structure learning for Gaussian processes}
 Figure~\ref{fig:structure-learning} shows automated involutive MCMC being applied to fully Bayesian inference over the covariance function of a Gaussian process, where the prior on covariance functions (Figure~\ref{fig:structure-learning}a) is based on a probabilistic context-free grammar.
 The inference algorithm is based on an involutive MCMC kernel that uses a state-dependent mixture of proposals.
 A variant of this inference algorithm was previously studied in~\citep{schaechtle2016time,saad2019bayesian} based on a model of~\citet{grosse2012exploiting}.
 
-At each iteration of the MCMC algorithm, the auxiliary probabilistic program $\mathcal{Q}$ (Figure~\ref{fig:structure-learning}d) first picks a random node in the parse tree of the covariance function, by doing a stochastic walk of the existing parse tree that terminates at the chosen node.
+\paragraph{Hierarchical address spaces.}
+This example uses probabilistic programs that invoke other probabilistic programs, sometimes recursively.
+For example, the model probabilistic program $\mathtt{p}$ invokes the probabilistic program $\mathtt{cov\_function\_prior}$, which is itself recursive.
+Similarly, the auxiliary probabilistic program $\mathtt{q}$ invokes $\mathtt{walk\_tree}$ (which is recursive) as well as $\mathtt{cov\_function\_prior}$.
+Consider the syntax used to recursively invoke $\mathtt{walk\_tree}$ within $\mathtt{walk\_tree}$:
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+({:left} ~ walk_tree(node.left, path))
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+This expression resembles a random choice expression.
+However, instead of associating the return value of the function $\mathtt{walk\_tree}$ with the address $\mathtt{:}\mathtt{left}$, the address $\mathtt{:}\mathtt{left}$ is associated with the entire trace of random choices made within $\mathtt{walk\_tree}$.
+That is, $\mathtt{:}\mathtt{left}$ is the \emph{namespace} for the addresses of all random choice made within the invocation.
+Further invocations by the callee themselves result in nested namespaces.
+This process results in a \emph{hierarchical address space} for random choices, as shown in Figure~\ref{fig:structure-learning}b.
+This does not modify the mathematical formalism---each random choice made during the execution of a probabilistic program still has a unique address, but the address has multiple components that localize it within the hierarchy.
+For example, the choice $\mathtt{done}$ a recursive call to $\mathtt{walk\_tree}$ might have address:
+\[
+k = (\mathtt{:}\mathtt{left} \mbox{ \texttt{=>} } \mathtt{:}\mathtt{right} \mbox{ \texttt{=>} } \mathtt{:}\mathtt{done})
+\]
+(In Gen, `\texttt{=>}' constructs hierarchical addresses.)
+
+\paragraph{A complex state-dependent distribution.}
+At each iteration of the MCMC algorithm, the auxiliary probabilistic program $\mathtt{q}$ (Figure~\ref{fig:structure-learning}d) first picks a random node in the parse tree of the covariance function, by doing a stochastic walk of the existing parse tree that terminates at the chosen node.
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
 prev_cov_function = trace[:cov_function]
 path ~ walk_tree(prev_cov_function, ..)
-\end{lstlisting}}
-\end{tabular}
-\end{center}
-The first part of the involution (Figure~\ref{fig:structure-learning}e) copies the random choices made during this walk from the input auxiliary trace to the output auxiliary trace.
-\begin{center}
-\begin{tabular}{c}
-{\begin{lstlisting}[basicstyle=\small\ttfamily]
-@copy(aux_in[:path], aux_out[:path])
 \end{lstlisting}}
 \end{tabular}
 \end{center}
@@ -1161,37 +1190,17 @@ The resulting distributions on selected nodes for two example trees are shown be
 \begin{center}
 \includegraphics[width=0.8\linewidth]{figures/biased-tree-distribution.pdf} % TODO improve quality
 \end{center}
-The other parts of the auxiliary probabilistic program and the involution program specifies a proposal distribution for the subtree of the parse tree that is rooted at the chosen node.
-In particular, the rest of the auxiliary probabilistic program $\mathcal{Q}$ proposes a new subtree by sampling from the same process used to recursively define the prior distribution:
+The first part of the involution (Figure~\ref{fig:structure-learning}e) copies the random choices made during this walk from the input auxiliary trace to the output auxiliary trace.
 \begin{center}
 \begin{tabular}{c}
 {\begin{lstlisting}[basicstyle=\small\ttfamily]
-new_subtree ~ cov_function_prior()
+@copy(aux_in[:path], aux_out[:path])
 \end{lstlisting}}
 \end{tabular}
 \end{center}
-The involution program swaps the old subtree with the newly proposed subtree:
-\begin{center}
-\begin{tabular}{c}
-\begin{lrbox}{\mybox}%
-\begin{lstlisting}[basicstyle=\small\ttfamily]
-@copy(model_in[subtree_address], aux_out[:new_subtree])
-@copy(aux_in[:new_subtree], model_out[subtree_address])
-\end{lstlisting}
-\end{lrbox}%
-\scalebox{0.9}{\usebox{\mybox}}
-\end{tabular}
-\end{center}
-This is an instance of a more general pattern for implementing state-dependent mixture proposals:
-\begin{enumerate}
-\item The auxiliary probabilistic program $\mathcal{Q}$ samples from a distribution over different sets of random choices that will be proposed to
-(in this case, each set is a different subtree of the parse tree).
-\item The auxiliary probabilistic program $\mathcal{Q}$ then samples new values for those random choices (in this case, a new subtree).
-\item The involution program $\mathcal{F}$ swaps the previous values of those random choices with their new values, by swapping data between the model trace and the auxiliary trace.
-\item The involution program $\mathcal{F}$ copies the random choices that determined what subset of random choices to propose to from the input auxiliary trace to the output auxiliary trace.
-\end{enumerate}
+Note that here, $\mathtt{@copy}$ is being used to copy the entire \emph{set} of random choices from the namespace $\mathtt{:}\mathtt{path}$ in $\mathtt{aux\_in}$ to the namespace $\mathtt{:}\mathtt{path}$ in $\mathtt{aux\_out}$.
 
-Note that because the mixture distribution is specified using a probabilistic program, it is straightforward to modify the program $\mathcal{Q}$ to define a different mixture distribution.
+Because the mixture distribution is specified using a probabilistic program, it is straightforward to modify the program $\mathtt{p}$ to define a different mixture distribution.
 The code below specifies a mixture distribution that is uniform over all nodes in the tree.
 \begin{center}
 \begin{tabular}{c}
@@ -1218,6 +1227,38 @@ Therefore, the mixture probabilities do not in general cancel in the the accepta
 For the original mixture distribution, the ratio of mixture probabilities is either $1$, $0.5$, or $2$ depending on whether the previous and new subtrees are leaf or internal nodes.
 For this alternative mixture distribution, the ratio of mixture probabilities is the ratio of sizes of the two trees (e.g. $9/5$ or $5/9$ for the trees above).
 In both cases, our automated involutive MCMC algorithm automatically computes the acceptance probability.
+
+\paragraph{A general pattern for state-dependent mixtures of proposals in Metropolis-Hastings}
+The other parts of the auxiliary probabilistic program and the involution program specifies a proposal distribution for the subtree of the parse tree that is rooted at the chosen node.
+In particular, the rest of the auxiliary probabilistic program $\mathtt{q}$ proposes a new subtree by sampling from the same process used to recursively define the prior distribution:
+\begin{center}
+\begin{tabular}{c}
+{\begin{lstlisting}[basicstyle=\small\ttfamily]
+new_subtree ~ cov_function_prior()
+\end{lstlisting}}
+\end{tabular}
+\end{center}
+The involution program swaps the old subtree with the newly proposed subtree:
+\begin{center}
+\begin{tabular}{c}
+\begin{lrbox}{\mybox}%
+\begin{lstlisting}[basicstyle=\small\ttfamily]
+@copy(model_in[subtree_address], aux_out[:new_subtree])
+@copy(aux_in[:new_subtree], model_out[subtree_address])
+\end{lstlisting}
+\end{lrbox}%
+\scalebox{0.9}{\usebox{\mybox}}
+\end{tabular}
+\end{center}
+
+This is an instance of a more general pattern for implementing state-dependent mixture proposals:
+\begin{enumerate}
+\item The auxiliary probabilistic program $\mathcal{Q}$ samples from a distribution over different sets of random choices that will be proposed to
+(in this case, each set is a different subtree of the parse tree).
+\item The auxiliary probabilistic program $\mathcal{Q}$ then samples new values for those random choices (in this case, a new subtree).
+\item The involution program $\mathcal{F}$ swaps the previous values of those random choices with their new values, by swapping data between the model trace and the auxiliary trace.
+\item The involution program $\mathcal{F}$ copies the random choices that determined what subset of random choices to propose to from the input auxiliary trace to the output auxiliary trace.
+\end{enumerate}
 
 
 
