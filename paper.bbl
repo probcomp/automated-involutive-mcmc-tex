@@ -9,13 +9,13 @@ Bezanson, J., Edelman, A., Karpinski, S., and Shah, V.~B. (2017).
 Bingham, E., Chen, J.~P., Jankowiak, M., Obermeyer, F., Pradhan, N.,
   Karaletsos, T., Singh, R., Szerlip, P., Horsfall, P., and Goodman, N.~D.
   (2019).
-\newblock Pyro: Deep universal probabilistic programming.
+\newblock {Pyro: Deep universal probabilistic programming}.
 \newblock {\em The Journal of Machine Learning Research}, 20(1):973--978.
 
 \bibitem[Carpenter et~al., 2017]{carpenter2017stan}
 Carpenter, B., Gelman, A., Hoffman, M.~D., Lee, D., Goodrich, B., Betancourt,
   M., Brubaker, M., Guo, J., Li, P., and Riddell, A. (2017).
-\newblock Stan: A probabilistic programming language.
+\newblock {Stan: A probabilistic programming language}.
 \newblock {\em Journal of statistical software}, 76(1).
 
 \bibitem[Chang and Pollard, 1997]{chang1997conditioning}
@@ -25,7 +25,7 @@ Chang, J.~T. and Pollard, D. (1997).
 
 \bibitem[Cusumano-Towner, 2018]{gen-inv-mcmc}
 Cusumano-Towner, M. (2018).
-\newblock {Inference Library of the Gen Probabilistic Programming System}.
+\newblock {Inference library of the Gen probabilistic programming system}.
 \newblock
   \url{https://github.com/probcomp/Gen.jl/blob/b9d72b/src/inference/mh.jl#L73-L108}.
 \newblock Accessed: 2018-12-27.
@@ -39,20 +39,20 @@ Cusumano-Towner, M., Bichsel, B., Gehr, T., Vechev, M., and Mansinghka, V.~K.
 
 \bibitem[Cusumano-Towner et~al., 2019]{cusumano2019gen}
 Cusumano-Towner, M.~F., Saad, F.~A., Lew, A.~K., and Mansinghka, V.~K. (2019).
-\newblock Gen: a general-purpose probabilistic programming system with
+\newblock Gen: A general-purpose probabilistic programming system with
   programmable inference.
 \newblock In {\em Proceedings of the 40th ACM SIGPLAN Conference on Programming
   Language Design and Implementation}, pages 221--236. ACM.
 
 \bibitem[Del~Moral et~al., 2006]{del2006sequential}
 Del~Moral, P., Doucet, A., and Jasra, A. (2006).
-\newblock Sequential monte carlo samplers.
+\newblock {Sequential Monte Carlo samplers}.
 \newblock {\em Journal of the Royal Statistical Society: Series B (Statistical
   Methodology)}, 68(3):411--436.
 
 \bibitem[Duane et~al., 1987]{hmc}
 Duane, S., Kennedy, A.~D., Pendleton, B.~J., and Roweth, D. (1987).
-\newblock Hybrid monte carlo.
+\newblock {Hybrid Monte Carlo}.
 \newblock {\em Physics letters B}, 195(2):216--222.
 
 \bibitem[Gehr et~al., 2016]{gehr2016psi}
@@ -63,26 +63,26 @@ Gehr, T., Misailovic, S., and Vechev, M. (2016).
 
 \bibitem[Geiger et~al., 2011]{geiger2011generative}
 Geiger, A., Lauer, M., and Urtasun, R. (2011).
-\newblock A generative model for 3d urban scene understanding from movable
-  platforms.
+\newblock {A generative model for 3D urban scene understanding from movable
+  platforms}.
 \newblock In {\em CVPR 2011}, pages 1945--1952. IEEE.
 
 \bibitem[Gilks et~al., 1994]{gilks1994language}
 Gilks, W.~R., Thomas, A., and Spiegelhalter, D.~J. (1994).
-\newblock A language and program for complex bayesian modelling.
+\newblock {A language and program for complex Bayesian modelling}.
 \newblock {\em Journal of the Royal Statistical Society: Series D (The
   Statistician)}, 43(1):169--177.
 
 \bibitem[Goodman et~al., 2012]{goodman2012church}
 Goodman, N., Mansinghka, V., Roy, D.~M., Bonawitz, K., and Tenenbaum, J.~B.
   (2012).
-\newblock Church: a language for generative models.
+\newblock {Church: a language for generative models}.
 \newblock {\em arXiv preprint arXiv:1206.3255}.
 
 \bibitem[Green, 1995]{green1995reversible}
 Green, P.~J. (1995).
-\newblock Reversible jump markov chain monte carlo computation and bayesian
-  model determination.
+\newblock {Reversible jump Markov chain Monte Carlo computation and Bayesian
+  model determination}.
 \newblock {\em Biometrika}, 82(4):711--732.
 
 \bibitem[Grosse et~al., 2012]{grosse2012exploiting}
@@ -94,13 +94,13 @@ Grosse, R.~B., Salakhutdinov, R., Freeman, W.~T., and Tenenbaum, J.~B. (2012).
 
 \bibitem[Hastie and Green, 2012]{hastie2012model}
 Hastie, D.~I. and Green, P.~J. (2012).
-\newblock Model choice using reversible jump markov chain monte carlo.
+\newblock {Model choice using reversible jump Markov chain Monte Carlo}.
 \newblock {\em Statistica Neerlandica}, 66(3):309--338.
 
 \bibitem[Huelsenbeck et~al., 2004]{huelsenbeck2004bayesian}
 Huelsenbeck, J.~P., Larget, B., and Alfaro, M.~E. (2004).
-\newblock Bayesian phylogenetic model selection using reversible jump markov
-  chain monte carlo.
+\newblock {Bayesian phylogenetic model selection using reversible jump Markov
+  chain Monte Carlo}.
 \newblock {\em Molecular biology and evolution}, 21(6):1123--1133.
 
 \bibitem[Lee et~al., 2019]{verified_svi}
@@ -145,19 +145,19 @@ Narayanan, P. and Shan, C.-c. (2020).
 
 \bibitem[Neklyudov et~al., 2020]{imcmc}
 Neklyudov, K., Welling, M., Egorov, E., and Vetrov, D. (2020).
-\newblock {Involutive MCMC: a Unifying Framework}.
+\newblock {Involutive MCMC: A Unifying Framework}.
 \newblock {\em arXiv preprint arXiv:2006.16653}.
 
 \bibitem[Pfeffer, 2007]{pfeffer200714}
 Pfeffer, A. (2007).
-\newblock 14 the design and implementation of ibal: A general-purpose
-  probabilistic language.
+\newblock {The design and implementation of IBAL: A general-purpose
+  probabilistic language}.
 \newblock {\em Introduction to statistical relational learning}, page 399.
 
 \bibitem[Richardson and Green, 1997]{richardson1997bayesian}
 Richardson, S. and Green, P.~J. (1997).
-\newblock On bayesian analysis of mixtures with an unknown number of components
-  (with discussion).
+\newblock {On Bayesian analysis of mixtures with an unknown number of
+  components (with discussion)}.
 \newblock {\em Journal of the Royal Statistical Society: series B (statistical
   methodology)}, 59(4):731--792.
 
@@ -187,24 +187,24 @@ Schaechtle, U., Saad, F., Radul, A., and Mansinghka, V. (2016).
 
 \bibitem[Spanbauer et~al., 2020]{spanbauer2020deep}
 Spanbauer, S., Freer, C., and Mansinghka, V. (2020).
-\newblock Deep involutive generative models for neural mcmc.
+\newblock Deep involutive generative models for neural {MCMC}.
 \newblock {\em arXiv preprint arXiv:2006.15167}.
 
 \bibitem[Tenenbaum et~al., 2011]{tenenbaum2011grow}
 Tenenbaum, J.~B., Kemp, C., Griffiths, T.~L., and Goodman, N.~D. (2011).
 \newblock How to grow a mind: Statistics, structure, and abstraction.
-\newblock {\em science}, 331(6022):1279--1285.
+\newblock {\em Science}, 331(6022):1279--1285.
 
 \bibitem[Tierney, 1998]{tierney1998note}
 Tierney, L. (1998).
-\newblock A note on metropolis-hastings kernels for general state spaces.
+\newblock {A note on Metropolis-Hastings kernels for general state spaces}.
 \newblock {\em Annals of applied probability}, pages 1--9.
 
 \bibitem[Zhi-Xuan et~al., 2020]{zhi2020online}
 Zhi-Xuan, T., Mann, J.~L., Silver, T., Tenenbaum, J.~B., and Mansinghka, V.~K.
   (2020).
-\newblock Online bayesian goal inference for boundedly-rational planning
-  agents.
+\newblock {Online Bayesian goal inference for boundedly-rational planning
+  agents}.
 \newblock {\em arXiv preprint arXiv:2006.07532}.
 
 \end{thebibliography}
