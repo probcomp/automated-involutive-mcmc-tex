@@ -132,7 +132,7 @@ These challenges are especially pronounced when sampling from probability distri
 
 Involutive MCMC is a mathematical construction for MCMC kernels that gives a simplifying and unifying perspective on a number of previously disparate classes of kernels,
 including reversible jump MCMC~\citep{green1995reversible}, which is the dominant mathematical framework for MCMC on complex state spaces.
-Involutive MCMC constructs an MCMC kernel from three components: (i) the unnormalized target density, (ii) a sampler and density for an auxiliary probability distribution, and (iii) an involution\footnote{a bijection that is its own inverse ($f$ where $f(f(z)) = z$)} on an extended state space.
+Involutive MCMC constructs an MCMC kernel from three components: (i) the unnormalized target density, (ii) a sampler and density for an auxiliary probability distribution, and (iii) an involution\footnote{An \emph{involution} is a bijection that is its own inverse (that is, $f$ where $f(f(z)) = z$).} on an extended state space.
 While this construction is mathematically clarifying, correctly implementing involutive MCMC kernels on complex state spaces remains challenging due to tedious density and Jacobian computations and the need for careful reasoning about the state space.
 
 This paper formulates involutive MCMC on general state spaces and shows how to automate the implementation of an involutive MCMC kernel from three declarative programs that define the target probability distribution, auxiliary probability distribution, and the involution, respectively.
