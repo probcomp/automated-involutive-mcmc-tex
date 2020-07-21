@@ -73,11 +73,12 @@ Gilks, W.~R., Thomas, A., and Spiegelhalter, D.~J. (1994).
 \newblock {\em Journal of the Royal Statistical Society: Series D (The
   Statistician)}, 43(1):169--177.
 
-\bibitem[Goodman et~al., 2012]{goodman2012church}
+\bibitem[Goodman et~al., 2008]{goodman2012church}
 Goodman, N., Mansinghka, V., Roy, D.~M., Bonawitz, K., and Tenenbaum, J.~B.
-  (2012).
-\newblock {Church: a language for generative models}.
-\newblock {\em arXiv preprint arXiv:1206.3255}.
+  (2008).
+\newblock Church: a language for generative models.
+\newblock In {\em Proceedings of the 24th Annual Conference on Uncertainty in
+  Artificial Intelligence}, UAI 2008, pages 220--229. AUAI Press.
 
 \bibitem[Green, 1995]{green1995reversible}
 Green, P.~J. (1995).
